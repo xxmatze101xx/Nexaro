@@ -46,6 +46,16 @@ def fetch_messages(credentials: dict, since: str) -> list[dict]:
 | `proton` | `tools/adapters/proton_adapter.py` | ProtonMail Bridge (IMAP) | IMAP credentials |
 | `apple` | `tools/adapters/apple_adapter.py` | Apple Calendar (CalDAV) | App-specific password |
 
+## Status
+
+| Source   | Python Adapter | OAuth Routes | UI |
+|----------|---------------|-------------|-----|
+| `gmail`  | ✅ (gmail_adapter.py) | ✅ /api/gmail/* | ✅ Settings |
+| `slack`  | ✅ slack_adapter.py | ✅ /api/slack/connect + callback | ✅ Settings |
+| `outlook`| ✅ outlook_adapter.py | ✅ /api/microsoft/* | ✅ Settings |
+| `teams`  | ✅ teams_adapter.py | shared /api/microsoft/* | ✅ Settings |
+| `gcal`   | — | ✅ /api/calendar/* | ✅ Settings |
+
 ## Adding a New Integration
 1. Create `tools/adapters/<name>_adapter.py` implementing the contract above.
 2. Add credentials to `.env` and `.env.example`.

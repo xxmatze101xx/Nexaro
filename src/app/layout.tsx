@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Nexaro — Unified Inbox for Executives",
+  title: "Nexaro",
   description:
     "One app for all your business communication. AI-powered importance scoring, smart drafts, and unified inbox across Slack, Gmail, Calendar, Teams, and more.",
 };
@@ -21,7 +22,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen bg-background text-foreground">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

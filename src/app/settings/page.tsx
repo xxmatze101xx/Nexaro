@@ -1,186 +1,392 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
     Settings as SettingsIcon,
-    Moon,
-    Sun,
-    Bell,
+    ChevronLeft,
+    User,
+    CreditCard,
+    Link as LinkIcon,
     Shield,
-    Sparkles,
     LogOut,
-    ChevronLeft
 } from "lucide-react";
-import { SOURCE_CONFIG, SourceIcon } from "@/components/source-filter";
+import { uploadProfilePicture } from "@/lib/storage";
+import { auth } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
+import { AuthGuard } from "@/components/AuthGuard";
+import {
+    getUserProfile,
+    getGmailAccounts,
+    saveGmailRefreshToken,
+    disconnectGmail,
+    getCalendarAccounts,
+    saveCalendarRefreshToken,
+    disconnectCalendar,
+    getSlackConnection,
+    disconnectSlack,
+    getMicrosoftConnection,
+    disconnectMicrosoft,
+    type CalendarAccount,
+} from "@/lib/user";
+import { AccountSection } from "@/components/settings/AccountSection";
+import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
+import { BillingSection } from "@/components/settings/BillingSection";
+import { SecuritySection } from "@/components/settings/SecuritySection";
 
 export default function SettingsPage() {
-    const [darkMode, setDarkMode] = useState(false);
+    return (
+        <AuthGuard>
+            <SettingsContent />
+        </AuthGuard>
+    );
+}
 
-    const integrations = [
-        { id: "slack", status: "connected", email: "matte@company.com" },
-        { id: "gmail", status: "connected", email: "matte@company.com" },
-        { id: "gcal", status: "connected", email: "matte@company.com" },
-        { id: "outlook", status: "disconnected", email: null },
-        { id: "teams", status: "disconnected", email: null },
-        { id: "proton", status: "connected", email: "matte@proton.me" },
-    ];
+function SettingsContent() {
+    const { user, isLoading: isAuthLoading } = useAuth();
+    const [activeSection, setActiveSection] = useState("Konto");
+    const [profilePic, setProfilePic] = useState<string | null>(null);
+    const [displayName, setDisplayName] = useState("");
+    const [email, setEmail] = useState("");
+    const [isUploading, setIsUploading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [gmailAccounts, setGmailAccounts] = useState<{ email: string; token: string }[]>([]);
+    const [calendarAccounts, setCalendarAccounts] = useState<CalendarAccount[]>([]);
+    const [slackConnected, setSlackConnected] = useState(false);
+    const [microsoftConnected, setMicrosoftConnected] = useState(false);
+    const codeHandledRef = useRef(false);
 
-    const toggleDarkMode = () => {
-        setDarkMode(!darkMode);
-        document.documentElement.classList.toggle("dark");
+    // Force light mode on this page
+    useEffect(() => {
+        document.documentElement.classList.remove("dark");
+    }, []);
+
+    // Load profile data when user becomes available
+    useEffect(() => {
+        if (!user) return;
+        getUserProfile(user.uid).then((profile) => {
+            if (profile) {
+                if (profile.photoURL) setProfilePic(profile.photoURL);
+                if (profile.displayName) setDisplayName(profile.displayName);
+                if (profile.email) setEmail(profile.email);
+            } else {
+                if (user.photoURL) setProfilePic(user.photoURL);
+                if (user.displayName) setDisplayName(user.displayName);
+                if (user.email) setEmail(user.email ?? "");
+            }
+        });
+    }, [user]);
+
+    // OAuth callback handling
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+        const service = urlParams.get("service");
+        const slackConnectedParam = urlParams.get("slack_connected");
+        const microsoftConnectedParam = urlParams.get("microsoft_connected");
+
+        if (code && !codeHandledRef.current) {
+            codeHandledRef.current = true;
+            if (service === "calendar") {
+                handleCalendarOAuthCallback(code, user.uid);
+            } else {
+                handleGmailOAuthCallback(code, user.uid);
+            }
+        } else {
+            // Load all integration statuses
+            getGmailAccounts(user.uid).then(setGmailAccounts);
+            getCalendarAccounts(user.uid).then(setCalendarAccounts);
+            getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
+            getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
+
+            if (slackConnectedParam === "true" || microsoftConnectedParam === "true") {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            const errorParam = urlParams.get("slack_error") ?? urlParams.get("microsoft_error");
+            if (errorParam) {
+                alert(`OAuth-Fehler: ${errorParam}`);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }, [user]);
+
+    // Intersection observer for active nav section
+    useEffect(() => {
+        const sectionIds = ["Konto", "Dienste", "Abonnement", "Sicherheit"];
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) setActiveSection(entry.target.id);
+                });
+            },
+            { rootMargin: "-120px 0px -60% 0px" }
+        );
+        sectionIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el);
+        });
+        return () => observer.disconnect();
+    }, []);
+
+    const scrollToSection = (id: string) => {
+        const element = document.getElementById(id);
+        if (element) {
+            const y = element.getBoundingClientRect().top + window.scrollY - 100;
+            window.scrollTo({ top: y, behavior: "smooth" });
+            setActiveSection(id);
+        }
     };
 
+    const handleGmailOAuthCallback = async (code: string, uid: string) => {
+        try {
+            const res = await fetch("/api/gmail/exchange", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code }),
+            });
+            const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
+            if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
+
+            if (data.access_token) {
+                const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+                    headers: { Authorization: `Bearer ${data.access_token}` },
+                });
+                if (profileRes.ok) {
+                    const profileData = (await profileRes.json()) as { emailAddress?: string };
+                    const newEmail = profileData.emailAddress;
+                    if (newEmail) {
+                        localStorage.setItem(`gmail_access_token_${newEmail}`, data.access_token);
+                        localStorage.setItem(`gmail_token_expiry_${newEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
+                        if (data.refresh_token) await saveGmailRefreshToken(uid, data.refresh_token, newEmail);
+                        setGmailAccounts(await getGmailAccounts(uid));
+                    }
+                }
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            alert(`Ein Fehler ist aufgetreten: ${msg}`);
+        }
+    };
+
+    const handleCalendarOAuthCallback = async (code: string, uid: string) => {
+        try {
+            const res = await fetch("/api/calendar/exchange", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code }),
+            });
+            const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
+            if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
+
+            if (data.access_token) {
+                const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+                    headers: { Authorization: `Bearer ${data.access_token}` },
+                });
+                if (profileRes.ok) {
+                    const profileData = (await profileRes.json()) as { email?: string };
+                    const accountEmail = profileData.email;
+                    if (accountEmail) {
+                        localStorage.setItem(`gcal_access_token_${accountEmail}`, data.access_token);
+                        localStorage.setItem(`gcal_token_expiry_${accountEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
+                        if (data.refresh_token) await saveCalendarRefreshToken(uid, data.refresh_token, accountEmail);
+                        setCalendarAccounts(await getCalendarAccounts(uid));
+                    }
+                }
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            alert(`Fehler: ${msg}`);
+        }
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const targetUid = user?.uid ?? "test_user";
+        try {
+            setIsUploading(true);
+            const downloadURL = await uploadProfilePicture(targetUid, file);
+            setProfilePic(downloadURL);
+            if (user?.uid) {
+                const { updateUserProfile } = await import("@/lib/user");
+                await updateUserProfile(user.uid, { photoURL: downloadURL });
+            }
+            alert("Profilbild erfolgreich aktualisiert!");
+        } catch (error) {
+            console.error("Fehler beim Upload:", error);
+            alert("Fehler beim Hochladen des Bildes.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleSaveChanges = async () => {
+        if (!user?.uid) return;
+        try {
+            setIsSaving(true);
+            const { updateUserProfile } = await import("@/lib/user");
+            await updateUserProfile(user.uid, { displayName });
+            alert("Änderungen erfolgreich gespeichert!");
+        } catch (error) {
+            console.error("Fehler beim Speichern:", error);
+            alert("Fehler beim Speichern der Änderungen.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleConnectProvider = async (integrationId: string) => {
+        if (!user?.uid) { alert("Bitte zuerst einloggen."); return; }
+
+        const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+        if (integrationId === "Gmail") {
+            if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
+            const redirectUri = `${window.location.origin}/settings`;
+            const scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
+        } else if (integrationId === "Google Calendar") {
+            if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
+            const redirectUri = `${window.location.origin}/settings?service=calendar`;
+            const scope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
+        } else if (integrationId === "Slack") {
+            // Redirect to our server-side OAuth initiator
+            window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}`;
+        } else if (integrationId === "Outlook" || integrationId === "Microsoft Teams") {
+            window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}`;
+        } else {
+            alert(`${integrationId} Integration ist noch nicht implementiert.`);
+        }
+    };
+
+    const handleDisconnectGmail = async (accEmail: string) => {
+        if (!user?.uid) return;
+        await disconnectGmail(user.uid, accEmail);
+        localStorage.removeItem(`gmail_access_token_${accEmail}`);
+        localStorage.removeItem(`gmail_token_expiry_${accEmail}`);
+        setGmailAccounts(prev => prev.filter(a => a.email !== accEmail));
+    };
+
+    const handleDisconnectCalendar = async (accEmail: string) => {
+        if (!user?.uid) return;
+        await disconnectCalendar(user.uid, accEmail);
+        localStorage.removeItem(`gcal_access_token_${accEmail}`);
+        localStorage.removeItem(`gcal_token_expiry_${accEmail}`);
+        setCalendarAccounts(prev => prev.filter(a => a.email !== accEmail));
+    };
+
+    const integrations = [
+        { id: "Slack", name: "Slack", domain: "slack.com", description: "Sende Benachrichtigungen in Kanäle und erstelle Projekte aus Nachrichten.", status: (slackConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
+        { id: "Gmail", name: "Gmail", domain: "gmail.com", description: "Synchronisiere und verwalte deine E-Mails nahtlos in all deinen Projekten.", status: (gmailAccounts.length > 0 ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
+        { id: "Google Calendar", name: "Google Calendar", domain: "calendar.google.com", description: "Behalte deine Termine und Fristen stets im Blick mit der Kalender-Integration.", status: (calendarAccounts.length > 0 ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
+        { id: "Outlook", name: "Microsoft Outlook", domain: "outlook.live.com", description: "Greife über Microsofts etablierten Dienst direkt auf deine Mails und Kontakte zu.", status: (microsoftConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
+        { id: "Microsoft Teams", name: "Microsoft Teams", domain: "teams.microsoft.com", description: "Kommunikation auf Unternehmensebene nahtlos mit Projektaktivitäten verbunden.", status: (microsoftConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
+        { id: "Proton Mail", name: "Proton Mail", domain: "proton.me", description: "Sichere Ende-zu-Ende verschlüsselte Kommunikation direkt aus Nexaro heraus.", status: "disconnected" as const, email: null },
+        { id: "HubSpot", name: "HubSpot", domain: "hubspot.com", description: "Verwalte Marketing- und CRM-Daten, um das Wachstum deines Business voranzutreiben.", status: "disconnected" as const, email: null },
+        { id: "Jira", name: "Jira", domain: "jira.atlassian.com", description: "Ticket-Erstellung und Issue-Tracking komplett integriert in deine Support-Flows.", status: "disconnected" as const, email: null },
+        { id: "Linear", name: "Linear", domain: "linear.app", description: "Eine magische und reibungslose Methode, Software-Projekte, Issues und Features zu bearbeiten.", status: "disconnected" as const, email: null },
+        { id: "Salesforce", name: "Salesforce", domain: "salesforce.com", description: "Globale CRM-Plattform für Vertrieb, Service, Marketing und mehr in einem.", status: "disconnected" as const, email: null },
+    ];
+
+    const NAV_ITEMS = [
+        { id: "Konto", icon: <User className="w-4 h-4" /> },
+        { id: "Dienste", icon: <LinkIcon className="w-4 h-4" /> },
+        { id: "Abonnement", icon: <CreditCard className="w-4 h-4" /> },
+        { id: "Sicherheit", icon: <Shield className="w-4 h-4" /> },
+    ];
+
     return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
             {/* Header */}
-            <header className="h-14 border-b border-border flex items-center px-6 bg-card shrink-0 sticky top-0 z-10">
-                <div className="flex items-center gap-4 w-full max-w-5xl mx-auto">
-                    <button
-                        onClick={() => window.location.href = "/"}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors -ml-2"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <SettingsIcon className="w-5 h-5 text-primary" />
-                        <h1 className="text-lg font-semibold font-[Inter]">Settings</h1>
+            <header className="h-16 border-b border-slate-200 flex items-center px-6 bg-white/80 backdrop-blur-xl shrink-0 sticky top-0 z-50">
+                <div className="flex items-center justify-between w-full max-w-6xl mx-auto">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => (window.location.href = "/")}
+                            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all duration-300 group"
+                        >
+                            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
+                        <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                <SettingsIcon className="w-5 h-5" />
+                            </div>
+                            <h1 className="text-xl font-semibold tracking-tight">Einstellungen</h1>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-6">
-                <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8">
+            {/* Main */}
+            <main className="flex-1 overflow-visible p-6 lg:p-10">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
 
-                    {/* Settings Nav Sidebar */}
-                    <div className="md:col-span-3 space-y-1">
-                        <SettingsNavLink icon={<SettingsIcon className="w-4 h-4" />} label="General" active />
-                        <SettingsNavLink icon={<Sparkles className="w-4 h-4" />} label="AI Preferences" />
-                        <SettingsNavLink icon={<Bell className="w-4 h-4" />} label="Notifications" />
-                        <SettingsNavLink icon={<Shield className="w-4 h-4" />} label="Security" />
-                    </div>
-
-                    {/* Settings Content */}
-                    <div className="md:col-span-9 space-y-8">
-
-                        {/* Appearance */}
-                        <section className="space-y-4">
-                            <h2 className="text-xl font-semibold font-[Inter] border-b border-border pb-2">Appearance</h2>
-
-                            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card">
-                                <div>
-                                    <h3 className="font-medium text-sm">Theme Theme</h3>
-                                    <p className="text-sm text-muted-foreground mt-1">Switch between light and dark mode.</p>
-                                </div>
+                    {/* Sidebar Nav */}
+                    <div className="lg:col-span-3 space-y-6 sticky top-28 hidden lg:block">
+                        <div className="space-y-1">
+                            {NAV_ITEMS.map(item => (
                                 <button
-                                    onClick={toggleDarkMode}
+                                    key={item.id}
+                                    onClick={() => scrollToSection(item.id)}
                                     className={cn(
-                                        "flex items-center justify-center p-2 rounded-lg border border-border",
-                                        "hover:bg-muted transition-colors"
+                                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
+                                        activeSection === item.id
+                                            ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+                                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                                     )}
                                 >
-                                    {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                                    {item.icon}
+                                    {item.id}
                                 </button>
-                            </div>
-                        </section>
+                            ))}
+                        </div>
 
-                        {/* AI Preferences */}
-                        <section className="space-y-4">
-                            <h2 className="text-xl font-semibold font-[Inter] border-b border-border pb-2">AI Preferences</h2>
-                            <p className="text-sm text-muted-foreground">Configure how Nexaro's AI drafts your responses and scores importance.</p>
-
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                                    <h3 className="font-medium text-sm">Draft Tone</h3>
-                                    <select className="w-full text-sm bg-background border border-input rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30">
-                                        <option>Professional & Concise</option>
-                                        <option>Friendly & Casual</option>
-                                        <option>Direct & Analytical</option>
-                                    </select>
-                                </div>
-
-                                <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                                    <h3 className="font-medium text-sm">Auto-Draft Threshold</h3>
-                                    <p className="text-xs text-muted-foreground">Only draft responses for messages scoring above:</p>
-                                    <div className="flex items-center gap-3">
-                                        <input type="range" min="0" max="10" step="1" defaultValue="5" className="flex-1 accent-primary" />
-                                        <span className="text-sm font-medium w-6 text-right">5.0</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Integrations */}
-                        <section className="space-y-4">
-                            <div className="flex items-end justify-between border-b border-border pb-2">
-                                <div>
-                                    <h2 className="text-xl font-semibold font-[Inter]">Connected Integrations</h2>
-                                    <p className="text-sm text-muted-foreground mt-1">Manage your connected channels for the unified inbox.</p>
-                                </div>
-                            </div>
-
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {integrations.map((integration) => {
-                                    const config = SOURCE_CONFIG[integration.id] || { label: integration.id, color: "text-gray-500" };
-                                    const isConnected = integration.status === "connected";
-
-                                    return (
-                                        <div key={integration.id} className={cn(
-                                            "flex items-center justify-between p-4 rounded-xl border transition-all",
-                                            isConnected ? "border-primary/20 bg-primary/5" : "border-border bg-card"
-                                        )}>
-                                            <div className="flex items-center gap-3">
-                                                <SourceIcon source={integration.id} size="md" />
-                                                <div>
-                                                    <h3 className="text-sm font-medium">{config.label}</h3>
-                                                    {isConnected ? (
-                                                        <p className="text-xs text-muted-foreground">{integration.email}</p>
-                                                    ) : (
-                                                        <p className="text-xs text-muted-foreground">Not connected</p>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <button className={cn(
-                                                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                                                isConnected
-                                                    ? "border border-border text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                                                    : "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm"
-                                            )}>
-                                                {isConnected ? "Disconnect" : "Connect"}
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-
-                        {/* Danger Zone */}
-                        <section className="pt-8">
-                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
+                        <div className="pt-6 border-t border-slate-200">
+                            <button
+                                onClick={async () => {
+                                    try { await auth.signOut(); window.location.href = "/login"; }
+                                    catch (error) { console.error("Logout error", error); }
+                                }}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300"
+                            >
                                 <LogOut className="w-4 h-4" />
-                                Sign Out
+                                Abmelden
                             </button>
-                        </section>
+                        </div>
+                    </div>
 
+                    {/* Content */}
+                    <div className="lg:col-span-9 space-y-20 pb-20">
+                        <AccountSection
+                            user={user}
+                            isAuthLoading={isAuthLoading}
+                            profilePic={profilePic}
+                            displayName={displayName}
+                            email={email}
+                            isUploading={isUploading}
+                            isSaving={isSaving}
+                            onDisplayNameChange={setDisplayName}
+                            onFileChange={handleFileChange}
+                            onSave={handleSaveChanges}
+                        />
+                        <IntegrationsSection
+                            integrations={integrations}
+                            gmailAccounts={gmailAccounts}
+                            calendarAccounts={calendarAccounts}
+                            onConnect={handleConnectProvider}
+                            onDisconnectGmail={handleDisconnectGmail}
+                            onDisconnectCalendar={handleDisconnectCalendar}
+                        />
+                        <BillingSection />
+                        <SecuritySection />
                     </div>
                 </div>
             </main>
         </div>
-    );
-}
-
-function SettingsNavLink({ icon, label, active }: { icon: React.ReactNode, label: string, active?: boolean }) {
-    return (
-        <button className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-            active
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-        )}>
-            {icon}
-            {label}
-        </button>
     );
 }

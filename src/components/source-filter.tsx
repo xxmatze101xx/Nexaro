@@ -40,50 +40,6 @@ export function SourceIcon({ source, size = "md", className }: SourceIconProps) 
     );
 }
 
-interface SourceFilterProps {
-    sources: string[];
-    activeSource: string | null;
-    onSourceChange: (source: string | null) => void;
-    className?: string;
-}
 
-export function SourceFilter({ sources, activeSource, onSourceChange, className }: SourceFilterProps) {
-    const allSources = ["all", ...sources];
-
-    return (
-        <div className={cn("flex items-center gap-2 overflow-x-auto pb-1", className)}>
-            {allSources.map((source) => {
-                const isActive = source === "all" ? activeSource === null : activeSource === source;
-                const config = SOURCE_CONFIG[source];
-
-                return (
-                    <button
-                        key={source}
-                        onClick={() => onSourceChange(source === "all" ? null : source)}
-                        className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200",
-                            "hover:scale-105 active:scale-95",
-                            isActive
-                                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                                : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                    >
-                        {source === "all" ? (
-                            <>
-                                <span>📥</span>
-                                <span>All</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>{config?.icon || "📌"}</span>
-                                <span>{config?.label || source}</span>
-                            </>
-                        )}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
 
 export { SOURCE_CONFIG };

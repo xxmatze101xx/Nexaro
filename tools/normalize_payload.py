@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 
 
-VALID_SOURCES = {"slack", "gmail", "gcal", "outlook", "teams", "proton", "apple"}
+VALID_SOURCES = {"slack", "gmail", "gcal", "outlook", "teams", "proton", "apple", "microsoft"}
 
 
 def normalize(raw: dict) -> dict:

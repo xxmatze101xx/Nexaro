@@ -18,4 +18,4 @@
 - [ ] Refine data formats/UI
 
 ## Phase 5: Trigger
-- [ ] Deploy and automate
+- [x] Deploy and automate

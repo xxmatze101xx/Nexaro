@@ -3,45 +3,33 @@
 import { cn } from "@/lib/utils";
 
 interface ImportanceBadgeProps {
+    /** Score on 0–10 scale (from Python pipeline / Firestore). Displayed as 0–100. */
     score: number;
     className?: string;
 }
 
 export function ImportanceBadge({ score, className }: ImportanceBadgeProps) {
-    const getBadgeConfig = (score: number) => {
-        if (score >= 7.0) {
-            return {
-                label: "High",
-                emoji: "🔴",
-                bgClass: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-            };
-        } else if (score >= 4.0) {
-            return {
-                label: "Medium",
-                emoji: "🟡",
-                bgClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-            };
-        } else {
-            return {
-                label: "Low",
-                emoji: "🟢",
-                bgClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-            };
-        }
+    // Convert Python 0–10 scale to 0–100 for display
+    const displayScore = Math.round(score * 10);
+
+    const getBadgeConfig = (s: number) => {
+        if (s >= 80) return { label: "High",   bgClass: "bg-red-500/60" };
+        if (s >= 50) return { label: "Medium", bgClass: "bg-amber-500/60" };
+        return            { label: "Low",    bgClass: "bg-slate-400/60" };
     };
 
-    const config = getBadgeConfig(score);
+    const config = getBadgeConfig(displayScore);
 
     return (
         <span
             className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                config.bgClass,
+                "inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground transition-colors",
                 className
             )}
+            title={`Importance Score: ${displayScore}/100`}
         >
-            <span>{config.emoji}</span>
-            <span>{score.toFixed(1)}</span>
+            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", config.bgClass)} />
+            <span className="opacity-80 group-hover:opacity-100 transition-opacity">{displayScore}</span>
         </span>
     );
 }

@@ -4,12 +4,14 @@ import { cn } from "@/lib/utils";
 import { ImportanceBadge } from "./importance-badge";
 import { SourceIcon } from "./source-filter";
 import type { Message } from "@/lib/mock-data";
-import { Sparkles, Clock, CheckCheck } from "lucide-react";
+import { Sparkles, Clock, CheckCheck, Archive, Eye, EyeOff } from "lucide-react";
 
 interface MessageCardProps {
     message: Message;
     isSelected: boolean;
     onSelect: (message: Message) => void;
+    onArchive?: (message: Message) => void;
+    onToggleRead?: (message: Message) => void;
     className?: string;
 }
 
@@ -37,37 +39,53 @@ function getStatusIcon(status: string) {
     }
 }
 
-export function MessageCard({ message, isSelected, onSelect, className }: MessageCardProps) {
+export function MessageCard({ message, isSelected, onSelect, onArchive, onToggleRead, className }: MessageCardProps) {
     return (
         <button
             onClick={() => onSelect(message)}
             className={cn(
-                "group w-full text-left rounded-xl border p-4 transition-all duration-200",
-                "hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5",
-                "active:translate-y-0 active:shadow-sm",
+                "group w-full text-left p-2.5 transition-all duration-200",
+                "border-b border-border/50",
+                "hover:bg-muted/40 relative",
+                "active:bg-muted/60",
                 isSelected
-                    ? "border-primary/50 bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                    : "border-border bg-card",
-                message.status === "unread" && !isSelected && "border-l-2 border-l-primary",
+                    ? "bg-primary/[0.04] border-l-[3px] border-l-primary shadow-[inset_0_1px_0_hsl(var(--primary)/0.05)]"
+                    : "bg-background border-l-[3px] border-l-transparent",
+                message.status === "unread" && !isSelected && "bg-muted/10 border-l-primary/40",
                 className
             )}
         >
             <div className="flex items-start gap-3">
-                {/* Source Icon */}
-                <SourceIcon source={message.source} size="md" />
+                {/* Avatar */}
+                <div className="shrink-0 mt-0.5">
+                    <div className={cn(
+                        "w-7 h-7 flex items-center justify-center text-xs font-bold text-white shadow-sm rounded-sm",
+                        // Generate a consistent but clean gradient based on the sender's name length (simple trick)
+                        message.sender.length % 3 === 0 ? "bg-slate-700" :
+                            message.sender.length % 3 === 1 ? "bg-zinc-700" :
+                                "bg-stone-700"
+                    )}>
+                        {message.sender.charAt(0).toUpperCase()}
+                    </div>
+                </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-8">
                     {/* Header Row */}
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                        <span
-                            className={cn(
-                                "text-sm truncate",
-                                message.status === "unread" ? "font-semibold text-foreground" : "font-medium text-foreground/80"
+                    <div className="flex items-center justify-between gap-1.5 mb-0.5">
+                        <div className="flex items-center gap-1.5 truncate">
+                            {message.status === "unread" && (
+                                <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                             )}
-                        >
-                            {message.sender}
-                        </span>
+                            <span
+                                className={cn(
+                                    "text-sm truncate",
+                                    message.status === "unread" ? "font-bold text-foreground" : "font-semibold text-foreground/80"
+                                )}
+                            >
+                                {message.sender}
+                            </span>
+                        </div>
                         <div className="flex items-center gap-2 shrink-0">
                             {message.ai_draft_response && (
                                 <Sparkles className="h-3.5 w-3.5 text-primary opacity-60" />
@@ -80,18 +98,20 @@ export function MessageCard({ message, isSelected, onSelect, className }: Messag
                         </div>
                     </div>
 
-                    {/* Content Preview */}
-                    <p
-                        className={cn(
-                            "text-sm line-clamp-2 mb-2",
-                            message.status === "unread" ? "text-foreground/90" : "text-muted-foreground"
-                        )}
-                    >
-                        {message.content}
-                    </p>
+                    {/* Subject (if available) */}
+                    {message.subject && (
+                        <h4
+                            className={cn(
+                                "text-xs font-medium line-clamp-1 mb-1.5",
+                                message.status === "unread" ? "text-foreground" : "text-foreground/90"
+                            )}
+                        >
+                            {message.subject}
+                        </h4>
+                    )}
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pt-1">
                         <ImportanceBadge score={message.importance_score} />
                         {message.ai_draft_response && (
                             <span className="text-xs text-primary/70 flex items-center gap-1">
@@ -101,6 +121,32 @@ export function MessageCard({ message, isSelected, onSelect, className }: Messag
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Quick Actions (Hover) */}
+            <div className="absolute right-2 top-2.5 flex flex-col gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200">
+                <button
+                    title="Archivieren"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onArchive?.(message);
+                    }}
+                >
+                    <Archive className="h-3.5 w-3.5" />
+                </button>
+                <button
+                    title={message.status === "unread" ? "Als gelesen markieren" : "Als ungelesen markieren"}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleRead?.(message);
+                    }}
+                >
+                    {message.status === "unread"
+                        ? <Eye className="h-3.5 w-3.5" />
+                        : <EyeOff className="h-3.5 w-3.5" />}
+                </button>
             </div>
         </button>
     );
