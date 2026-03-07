@@ -14,8 +14,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing Google credentials" }, { status: 500 });
         }
 
-        // Use the same redirect URI pattern as Gmail, but with service=calendar marker
-        const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         const redirectUri = `${origin}/settings?service=calendar`;
 
         const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
