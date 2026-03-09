@@ -2,9 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { ImportanceBadge } from "./importance-badge";
-import { SourceIcon } from "./source-filter";
 import type { Message } from "@/lib/mock-data";
-import { Sparkles, Clock, CheckCheck, Archive, Eye, EyeOff } from "lucide-react";
+import { Sparkles, Clock, CheckCheck, Archive, Eye, EyeOff, Star, Trash2, Inbox } from "lucide-react";
 
 interface MessageCardProps {
     message: Message;
@@ -12,6 +11,8 @@ interface MessageCardProps {
     onSelect: (message: Message) => void;
     onArchive?: (message: Message) => void;
     onToggleRead?: (message: Message) => void;
+    onStar?: (message: Message) => void;
+    onDelete?: (message: Message) => void;
     className?: string;
 }
 
@@ -39,7 +40,11 @@ function getStatusIcon(status: string) {
     }
 }
 
-export function MessageCard({ message, isSelected, onSelect, onArchive, onToggleRead, className }: MessageCardProps) {
+export function MessageCard({ message, isSelected, onSelect, onArchive, onToggleRead, onStar, onDelete, className }: MessageCardProps) {
+    const isStarred = message.labels?.includes('STARRED') ?? false;
+    // A message is "archived" if it has labels but INBOX is not among them (gmail only)
+    const isArchived = message.source === 'gmail' && Array.isArray(message.labels) && message.labels.length > 0 && !message.labels.includes('INBOX');
+
     return (
         <button
             onClick={() => onSelect(message)}
@@ -60,7 +65,6 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
                 <div className="shrink-0 mt-0.5">
                     <div className={cn(
                         "w-7 h-7 flex items-center justify-center text-xs font-bold text-white shadow-sm rounded-sm",
-                        // Generate a consistent but clean gradient based on the sender's name length (simple trick)
                         message.sender.length % 3 === 0 ? "bg-slate-700" :
                             message.sender.length % 3 === 1 ? "bg-zinc-700" :
                                 "bg-stone-700"
@@ -85,6 +89,9 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
                             >
                                 {message.sender}
                             </span>
+                            {isStarred && (
+                                <Star className="h-3 w-3 text-yellow-500 fill-current shrink-0" />
+                            )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                             {message.ai_draft_response && (
@@ -125,16 +132,38 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
 
             {/* Quick Actions (Hover) */}
             <div className="absolute right-2 top-2.5 flex flex-col gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200">
+                {/* Star / Unstar */}
                 <button
-                    title="Archivieren"
+                    title={isStarred ? "Markierung entfernen" : "Als wichtig markieren"}
+                    className={cn(
+                        "p-1.5 rounded-md border border-transparent hover:border-border/50 transition-all bg-background",
+                        isStarred
+                            ? "text-yellow-500 hover:text-yellow-600"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onStar?.(message);
+                    }}
+                >
+                    <Star className={cn("h-3.5 w-3.5", isStarred && "fill-current")} />
+                </button>
+
+                {/* Archive / Unarchive */}
+                <button
+                    title={isArchived ? "In Inbox verschieben" : "Archivieren"}
                     className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
                     onClick={(e) => {
                         e.stopPropagation();
                         onArchive?.(message);
                     }}
                 >
-                    <Archive className="h-3.5 w-3.5" />
+                    {isArchived
+                        ? <Inbox className="h-3.5 w-3.5 text-primary" />
+                        : <Archive className="h-3.5 w-3.5" />}
                 </button>
+
+                {/* Read / Unread */}
                 <button
                     title={message.status === "unread" ? "Als gelesen markieren" : "Als ungelesen markieren"}
                     className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
@@ -146,6 +175,18 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
                     {message.status === "unread"
                         ? <Eye className="h-3.5 w-3.5" />
                         : <EyeOff className="h-3.5 w-3.5" />}
+                </button>
+
+                {/* Delete */}
+                <button
+                    title="Löschen"
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete?.(message);
+                    }}
+                >
+                    <Trash2 className="h-3.5 w-3.5" />
                 </button>
             </div>
         </button>

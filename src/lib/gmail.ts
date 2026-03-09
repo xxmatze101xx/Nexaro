@@ -459,3 +459,218 @@ export async function markEmailStatus(
 
     return res.json();
 }
+
+// ── Fetch emails by folder/label with pagination ───────────────────────────
+
+/**
+ * Fetches a page of emails for a specific folder/label.
+ * Pass folder=null to fetch all mail (like fetchRecentEmailsAndCache).
+ * Returns messages and the nextPageToken for subsequent pages.
+ */
+export async function fetchEmailsPage(
+    uid: string,
+    accountEmail: string,
+    folder: 'INBOX' | 'SENT' | 'STARRED' | 'TRASH' | 'ARCHIVE' | null,
+    maxResults = 20,
+    pageToken?: string
+): Promise<{ messages: GmailMessage[]; nextPageToken: string | null } | null> {
+    const accessToken = await getValidAccessToken(uid, accountEmail);
+    if (!accessToken) return null;
+
+    try {
+        const params = new URLSearchParams({ maxResults: String(maxResults) });
+        if (folder === 'INBOX') params.set('labelIds', 'INBOX');
+        else if (folder === 'SENT') params.set('labelIds', 'SENT');
+        else if (folder === 'STARRED') params.set('labelIds', 'STARRED');
+        else if (folder === 'TRASH') params.set('labelIds', 'TRASH');
+        else if (folder === 'ARCHIVE') params.set('q', '-in:inbox -in:trash -in:spam');
+        if (pageToken) params.set('pageToken', pageToken);
+
+        const listRes = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+
+        if (!listRes.ok) {
+            console.error('Error fetching emails page', await listRes.text());
+            return null;
+        }
+
+        const listData = (await listRes.json()) as {
+            messages?: { id: string }[];
+            nextPageToken?: string;
+        };
+
+        const messagesToFetch = listData.messages ?? [];
+        const nextToken = listData.nextPageToken ?? null;
+
+        const detailedEmails = await Promise.all(
+            messagesToFetch.map(async (msg) => {
+                const msgRes = await fetch(
+                    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+                    { headers: { Authorization: `Bearer ${accessToken}` } }
+                );
+                return msgRes.ok ? ((await msgRes.json()) as GmailMessage) : null;
+            })
+        );
+
+        const messages: GmailMessage[] = detailedEmails
+            .filter((e): e is GmailMessage => e !== null)
+            .map((e) => ({ ...e, _accountId: accountEmail }));
+
+        return { messages, nextPageToken: nextToken };
+    } catch (error) {
+        console.error('Error fetching emails page', error);
+        return null;
+    }
+}
+
+// ── Toggle starred label ────────────────────────────────────────────────────
+
+/**
+ * Stars or unstars an email via the Gmail API.
+ * Mirrors the change in the local IndexedDB cache.
+ */
+export async function starEmail(
+    uid: string,
+    accountEmail: string,
+    messageId: string,
+    starred: boolean
+): Promise<unknown> {
+    const accessToken = await getValidAccessToken(uid, accountEmail);
+    if (!accessToken) throw new Error('Kein Zugriff auf Gmail.');
+
+    const res = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(
+                starred
+                    ? { addLabelIds: ['STARRED'] }
+                    : { removeLabelIds: ['STARRED'] }
+            ),
+        }
+    );
+
+    if (!res.ok) {
+        console.error('Error starring email', await res.text());
+        throw new Error('Fehler beim Markieren der E-Mail.');
+    }
+
+    try {
+        const cached = await getCachedEmails();
+        const email = cached.find((e) => e.id === messageId);
+        if (email) {
+            if (starred) {
+                if (!email.labelIds?.includes('STARRED')) {
+                    email.labelIds = [...(email.labelIds ?? []), 'STARRED'];
+                }
+            } else {
+                email.labelIds = (email.labelIds ?? []).filter((id) => id !== 'STARRED');
+            }
+            const dbConn = await initDB();
+            dbConn.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(email);
+        }
+    } catch (e) {
+        console.error('Failed to update cache after star', e);
+    }
+
+    return res.json();
+}
+
+// ── Move to Trash ────────────────────────────────────────────────────────────
+
+/**
+ * Moves an email to Gmail Trash.
+ * Mirrors the change in the local IndexedDB cache.
+ */
+export async function trashEmail(
+    uid: string,
+    accountEmail: string,
+    messageId: string
+): Promise<unknown> {
+    const accessToken = await getValidAccessToken(uid, accountEmail);
+    if (!accessToken) throw new Error('Kein Zugriff auf Gmail.');
+
+    const res = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/trash`,
+        {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}` },
+        }
+    );
+
+    if (!res.ok) {
+        console.error('Error trashing email', await res.text());
+        throw new Error('Fehler beim Löschen der E-Mail.');
+    }
+
+    try {
+        const cached = await getCachedEmails();
+        const email = cached.find((e) => e.id === messageId);
+        if (email) {
+            email.labelIds = [
+                ...(email.labelIds ?? []).filter((id) => id !== 'INBOX'),
+                'TRASH',
+            ];
+            const dbConn = await initDB();
+            dbConn.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(email);
+        }
+    } catch (e) {
+        console.error('Failed to update cache after trash', e);
+    }
+
+    return res.json();
+}
+
+// ── Unarchive (move back to Inbox) ─────────────────────────────────────────
+
+/**
+ * Unarchives an email by adding the INBOX label back.
+ * Mirrors the change in the local IndexedDB cache.
+ */
+export async function unarchiveEmail(
+    uid: string,
+    accountEmail: string,
+    messageId: string
+): Promise<unknown> {
+    const accessToken = await getValidAccessToken(uid, accountEmail);
+    if (!accessToken) throw new Error('Kein Zugriff auf Gmail.');
+
+    const res = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ addLabelIds: ['INBOX'] }),
+        }
+    );
+
+    if (!res.ok) {
+        console.error('Error unarchiving email', await res.text());
+        throw new Error('Fehler beim Verschieben in die Inbox.');
+    }
+
+    try {
+        const cached = await getCachedEmails();
+        const email = cached.find((e) => e.id === messageId);
+        if (email) {
+            if (!email.labelIds?.includes('INBOX')) {
+                email.labelIds = [...(email.labelIds ?? []), 'INBOX'];
+            }
+            const dbConn = await initDB();
+            dbConn.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(email);
+        }
+    } catch (e) {
+        console.error('Failed to update cache after unarchive', e);
+    }
+
+    return res.json();
+}

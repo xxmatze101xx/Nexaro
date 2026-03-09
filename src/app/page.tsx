@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { type Message } from "@/lib/mock-data";
-import { getCachedEmails, fetchRecentEmailsAndCache, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, subscribeToGmailScores } from "@/lib/gmail";
+import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, unarchiveEmail, starEmail, trashEmail, saveEmailsToCache, subscribeToGmailScores } from "@/lib/gmail";
 import { db } from "@/lib/firebase";
 import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
@@ -40,7 +40,8 @@ import {
   Plus,
   Contact,
   RefreshCw,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +75,10 @@ function DashboardContent() {
   const [displayName, setDisplayName] = useState("");
   const [refreshCount, setRefreshCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [folderMessages, setFolderMessages] = useState<Message[]>([]);
+  const [folderPageToken, setFolderPageToken] = useState<string | null>(null);
+  const [inboxNextPageToken, setInboxNextPageToken] = useState<string | null>(null);
+  const [isFolderLoading, setIsFolderLoading] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
@@ -173,17 +178,26 @@ function DashboardContent() {
         }
 
         if (gmailAccounts.length > 0) {
-          const freshPromises = gmailAccounts.map(acc => fetchRecentEmailsAndCache(user.uid, acc.email, 20));
-          const freshResultsArray = await Promise.all(freshPromises);
+          const freshResults = await Promise.all(
+            gmailAccounts.map(acc => fetchEmailsPage(user.uid, acc.email, null, 20))
+          );
 
           let newMessages: Message[] = [];
-          freshResultsArray.forEach(freshArray => {
-            if (freshArray && freshArray.length > 0) {
-              newMessages = newMessages.concat(freshArray.map(msg => parseGmailToNexaroMessage(msg)));
+          freshResults.forEach(result => {
+            if (result && result.messages.length > 0) {
+              newMessages = newMessages.concat(result.messages.map(msg => parseGmailToNexaroMessage(msg)));
             }
           });
 
-          if (newMessages.length > 0) {
+          // Capture nextPageToken from first account for inbox pagination
+          const firstToken = freshResults[0]?.nextPageToken ?? null;
+          if (isMounted) setInboxNextPageToken(firstToken);
+
+          // Save to cache for offline use
+          const allRaw = freshResults.flatMap(r => r?.messages ?? []);
+          if (allRaw.length > 0) await saveEmailsToCache(allRaw);
+
+          if (newMessages.length > 0 && isMounted) {
             setGmailMessages(newMessages);
           }
         }
@@ -196,6 +210,35 @@ function DashboardContent() {
     loadGmail();
     return () => { isMounted = false; };
   }, [user, gmailAccounts, refreshCount]);
+
+  // When a specific folder (SENT/STARRED/TRASH/ARCHIVE) is selected, fetch its emails
+  useEffect(() => {
+    const folder = selectedSidebarItem?.folder;
+    if (!folder || folder === 'INBOX' || !user) {
+      setFolderMessages([]);
+      setFolderPageToken(null);
+      return;
+    }
+
+    const accountEmail = selectedSidebarItem?.accountId ?? gmailAccounts[0]?.email;
+    if (!accountEmail) return;
+
+    let isMounted = true;
+    setIsFolderLoading(true);
+    setFolderMessages([]);
+    setFolderPageToken(null);
+
+    fetchEmailsPage(user.uid, accountEmail, folder as 'SENT' | 'STARRED' | 'TRASH' | 'ARCHIVE', 20)
+      .then(result => {
+        if (!isMounted || !result) return;
+        setFolderMessages(result.messages.map(m => parseGmailToNexaroMessage(m)));
+        setFolderPageToken(result.nextPageToken);
+      })
+      .catch(err => console.error('Failed to load folder messages', err))
+      .finally(() => { if (isMounted) setIsFolderLoading(false); });
+
+    return () => { isMounted = false; };
+  }, [selectedSidebarItem?.folder, selectedSidebarItem?.accountId, user, gmailAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allMessages = useMemo(() => {
     // Overlay Python pipeline scores on Gmail messages where available
@@ -213,20 +256,26 @@ function DashboardContent() {
 
   const [sortOrder, setSortOrder] = useState<"date" | "importance">("date");
 
+  // Use folder-specific messages for non-INBOX folders, otherwise allMessages
+  const displayMessages = useMemo(() => {
+    const folder = selectedSidebarItem?.folder;
+    if (folder && folder !== 'INBOX') return folderMessages;
+    return allMessages;
+  }, [selectedSidebarItem, folderMessages, allMessages]);
+
   // Filter and sort messages
   const filteredMessages = useMemo(() => {
-    let msgs = [...allMessages];
+    let msgs = [...displayMessages];
 
-    // Filter by sidebar selection
-    if (selectedSidebarItem) {
+    // For INBOX, keep only INBOX-labeled messages when that folder is explicitly selected
+    if (selectedSidebarItem?.folder === 'INBOX') {
+      msgs = msgs.filter(m => m.labels?.includes('INBOX'));
+    }
+
+    // Filter by source/account when no folder is active (all-messages view)
+    if (selectedSidebarItem && !selectedSidebarItem.folder) {
       if (selectedSidebarItem.source) msgs = msgs.filter(m => m.source === selectedSidebarItem.source);
       if (selectedSidebarItem.accountId) msgs = msgs.filter(m => m.accountId === selectedSidebarItem.accountId);
-      if (selectedSidebarItem.folder) {
-        if (selectedSidebarItem.folder === 'INBOX') msgs = msgs.filter(m => m.labels?.includes('INBOX'));
-        else if (selectedSidebarItem.folder === 'SENT') msgs = msgs.filter(m => m.labels?.includes('SENT'));
-        else if (selectedSidebarItem.folder === 'STARRED') msgs = msgs.filter(m => m.labels?.includes('STARRED'));
-        else if (selectedSidebarItem.folder === 'ARCHIVE') msgs = msgs.filter(m => !m.labels?.includes('INBOX') && !m.labels?.includes('TRASH'));
-      }
     }
 
     // Filter by search
@@ -248,7 +297,7 @@ function DashboardContent() {
     }
 
     return msgs;
-  }, [allMessages, selectedSidebarItem, searchQuery, sortOrder]);
+  }, [displayMessages, selectedSidebarItem, searchQuery, sortOrder]);
 
   // Stats
 
@@ -260,6 +309,23 @@ function DashboardContent() {
     const aiDrafts = allMessages.filter((m) => m.ai_draft_response).length;
     return { unread, highPriority, aiDrafts, total: allMessages.length };
   }, [allMessages]);
+
+  // Dynamic header title based on selected folder
+  const headerTitle = useMemo(() => {
+    if (!selectedSidebarItem) return 'Inbox';
+    switch (selectedSidebarItem.folder) {
+      case 'INBOX': return 'Inbox';
+      case 'SENT': return 'Gesendet';
+      case 'STARRED': return 'Markiert';
+      case 'ARCHIVE': return 'Archiv';
+      case 'TRASH': return 'Papierkorb';
+      default: break;
+    }
+    if (selectedSidebarItem.source === 'slack') return 'Slack';
+    if (selectedSidebarItem.source === 'teams') return 'Teams';
+    if (selectedSidebarItem.source === 'outlook') return 'Outlook';
+    return 'Inbox';
+  }, [selectedSidebarItem]);
 
   // Persist dark mode preference
   useEffect(() => {
@@ -311,12 +377,90 @@ function DashboardContent() {
 
   const handleArchive = async (message: Message) => {
     if (message.source !== "gmail" || !user || !message.accountId) return;
+    const isArchived = Array.isArray(message.labels) && message.labels.length > 0 && !message.labels.includes('INBOX');
     try {
-      await archiveEmail(user.uid, message.accountId, message.id);
+      if (isArchived) {
+        // Unarchive: add INBOX label back
+        await unarchiveEmail(user.uid, message.accountId, message.id);
+        const newLabels = [...(message.labels ?? []), 'INBOX'];
+        setGmailMessages(prev => prev.map(m => m.id === message.id ? { ...m, labels: newLabels } : m));
+        setFolderMessages(prev => prev.filter(m => m.id !== message.id));
+      } else {
+        // Archive: remove from INBOX
+        await archiveEmail(user.uid, message.accountId, message.id);
+        setGmailMessages(prev => prev.filter(m => m.id !== message.id));
+        if (selectedMessage?.id === message.id) setSelectedMessage(null);
+      }
+    } catch (err) {
+      console.error("Failed to archive/unarchive message", err);
+    }
+  };
+
+  const handleStar = async (message: Message) => {
+    if (message.source !== "gmail" || !user || !message.accountId) return;
+    const isStarred = message.labels?.includes('STARRED') ?? false;
+    try {
+      await starEmail(user.uid, message.accountId, message.id, !isStarred);
+      const newLabels = isStarred
+        ? (message.labels ?? []).filter(l => l !== 'STARRED')
+        : [...(message.labels ?? []), 'STARRED'];
+      const updateLabels = (msgs: Message[]) =>
+        msgs.map(m => m.id === message.id ? { ...m, labels: newLabels } : m);
+      setGmailMessages(updateLabels);
+      setFolderMessages(updateLabels);
+      if (selectedMessage?.id === message.id) {
+        setSelectedMessage(prev => prev ? { ...prev, labels: newLabels } : prev);
+      }
+    } catch (err) {
+      console.error("Failed to star message", err);
+    }
+  };
+
+  const handleDelete = async (message: Message) => {
+    if (message.source !== "gmail" || !user || !message.accountId) return;
+    try {
+      await trashEmail(user.uid, message.accountId, message.id);
       setGmailMessages(prev => prev.filter(m => m.id !== message.id));
+      setFolderMessages(prev => prev.filter(m => m.id !== message.id));
       if (selectedMessage?.id === message.id) setSelectedMessage(null);
     } catch (err) {
-      console.error("Failed to archive message", err);
+      console.error("Failed to delete message", err);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    if (!user || isFolderLoading) return;
+    const folder = selectedSidebarItem?.folder;
+    const accountEmail = selectedSidebarItem?.accountId ?? gmailAccounts[0]?.email;
+    if (!accountEmail) return;
+
+    setIsFolderLoading(true);
+    try {
+      if (!folder || folder === 'INBOX') {
+        const result = await fetchEmailsPage(user.uid, accountEmail, null, 20, inboxNextPageToken ?? undefined);
+        if (result) {
+          const existing = new Set(gmailMessages.map(m => m.id));
+          const newMsgs = result.messages
+            .map(m => parseGmailToNexaroMessage(m))
+            .filter(m => !existing.has(m.id));
+          setGmailMessages(prev => [...prev, ...newMsgs]);
+          setInboxNextPageToken(result.nextPageToken);
+        }
+      } else {
+        const result = await fetchEmailsPage(user.uid, accountEmail, folder as 'SENT' | 'STARRED' | 'TRASH' | 'ARCHIVE', 20, folderPageToken ?? undefined);
+        if (result) {
+          const existing = new Set(folderMessages.map(m => m.id));
+          const newMsgs = result.messages
+            .map(m => parseGmailToNexaroMessage(m))
+            .filter(m => !existing.has(m.id));
+          setFolderMessages(prev => [...prev, ...newMsgs]);
+          setFolderPageToken(result.nextPageToken);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load more messages", err);
+    } finally {
+      setIsFolderLoading(false);
     }
   };
 
@@ -353,7 +497,8 @@ function DashboardContent() {
           { name: 'Inbox', icon: <Inbox className="w-4 h-4" />, source: 'gmail', accountId: acc.email, folder: 'INBOX' },
           { name: 'Gesendet', icon: <Send className="w-4 h-4" />, source: 'gmail', accountId: acc.email, folder: 'SENT' },
           { name: 'Markiert', icon: <Star className="w-4 h-4" />, source: 'gmail', accountId: acc.email, folder: 'STARRED' },
-          { name: 'Archiv', icon: <Archive className="w-4 h-4" />, source: 'gmail', accountId: acc.email, folder: 'ARCHIVE' }
+          { name: 'Archiv', icon: <Archive className="w-4 h-4" />, source: 'gmail', accountId: acc.email, folder: 'ARCHIVE' },
+          { name: 'Papierkorb', icon: <Trash2 className="w-4 h-4" />, source: 'gmail', accountId: acc.email, folder: 'TRASH' }
         ]
       };
     });
@@ -516,7 +661,7 @@ function DashboardContent() {
                 <div className="flex items-center gap-2">
                   <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0", expandedAccounts[account.id] && "rotate-90")} />
                   {account.icon}
-                  <span className="text-foreground truncate">{account.name}</span>
+                  <span className="text-foreground truncate" title={account.name}>{account.name}</span>
                 </div>
                 {account.badge && (
                   <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center shrink-0">
@@ -563,12 +708,12 @@ function DashboardContent() {
           ))}
 
           <div className="px-2 pt-2">
-            <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium py-2 w-full transition-colors">
+            <Link href="/settings?tab=integrations" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium py-2 w-full transition-colors">
               <div className="w-5 h-5 rounded-full border border-dashed border-muted-foreground flex items-center justify-center shrink-0">
                 <Plus className="w-3 h-3" />
               </div>
               Account hinzufügen
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -587,7 +732,7 @@ function DashboardContent() {
         <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold text-foreground font-[Inter]">
-              Inbox
+              {headerTitle}
             </h1>
             <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold">
               {stats.unread} new
@@ -687,7 +832,12 @@ function DashboardContent() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {filteredMessages.length === 0 ? (
+              {isFolderLoading && filteredMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <RefreshCw className="h-8 w-8 text-muted-foreground/30 mb-3 animate-spin" />
+                  <p className="text-sm text-muted-foreground">Laden...</p>
+                </div>
+              ) : filteredMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <MailOpen className="h-12 w-12 text-muted-foreground/30 mb-3" />
                   <p className="text-sm text-muted-foreground">
@@ -695,16 +845,34 @@ function DashboardContent() {
                   </p>
                 </div>
               ) : (
-                filteredMessages.map((message) => (
-                  <MessageCard
-                    key={message.id}
-                    message={message}
-                    isSelected={selectedMessage?.id === message.id}
-                    onSelect={handleSelectMessage}
-                    onArchive={handleArchive}
-                    onToggleRead={handleToggleRead}
-                  />
-                ))
+                <>
+                  {filteredMessages.map((message) => (
+                    <MessageCard
+                      key={message.id}
+                      message={message}
+                      isSelected={selectedMessage?.id === message.id}
+                      onSelect={handleSelectMessage}
+                      onArchive={handleArchive}
+                      onToggleRead={handleToggleRead}
+                      onStar={handleStar}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                  {/* Load More */}
+                  {(selectedSidebarItem?.folder && selectedSidebarItem.folder !== 'INBOX' ? folderPageToken : inboxNextPageToken) && (
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={isFolderLoading}
+                      className="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground text-center transition-colors border border-border/50 rounded-md hover:bg-muted"
+                    >
+                      {isFolderLoading ? (
+                        <RefreshCw className="h-4 w-4 animate-spin mx-auto" />
+                      ) : (
+                        'Mehr laden'
+                      )}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
