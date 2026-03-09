@@ -263,14 +263,14 @@ ich kurz deine Hilfe — danach kann ich alleine weitermachen.
  6. In .env.local eintragen:
     SLACK_CLIENT_ID=...
     SLACK_CLIENT_SECRET=...
-    SLACK_REDIRECT_URI=https://localhost:3000/api/slack/callback
+    SLACK_REDIRECT_URI=https://nexaro-9j3h.vercel.app/api/slack/callback
 
 ─────────────────────────────────────────────────────
  SCHRITT 2 — Microsoft Azure App (~10 Min)
 ─────────────────────────────────────────────────────
  1. Gehe zu: portal.azure.com → "App registrations"
  2. "New registration" → Name: "Nexaro"
- 3. Redirect URI: https://localhost:3000/api/microsoft/callback
+ 3. Redirect URI: https://nexaro-9j3h.vercel.app/api/microsoft/callback
  4. API Permissions hinzufügen: Mail.Read, Calendars.Read, Chat.Read
  5. Client ID + Client Secret kopieren
  6. In .env.local eintragen:
