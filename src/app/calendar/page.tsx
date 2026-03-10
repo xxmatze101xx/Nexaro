@@ -40,6 +40,17 @@ const snapH = (h: number) => Math.round(h * 4) / 4; // snap to 15-min
 const fmtH = (h: number) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
 const parseH = (s: string) => { const [hh, mm] = s.split(":").map(Number); return hh + (mm || 0) / 60; };
 
+// ─── Color Contrast Helper ────────────────────────────────────────────────────
+/** Returns a dark or light text color for readable contrast on any bg hex color */
+function readableTextColor(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    // Perceived luminance (WCAG formula)
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum > 0.45 ? "#1e293b" : "#f8fafc";
+}
+
 // ─── Overlap Layout ───────────────────────────────────────────────────────────
 interface LayoutEv extends CalendarEvent { lane: number; lanes: number; }
 
@@ -396,7 +407,7 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, acco
                                 {allDayEvs(d).map(ev => (
                                     <div key={ev.id} onClick={(e) => onSelect(selected?.id === ev.id ? null : ev, e)}
                                         className="text-[10px] font-bold px-1.5 py-0.5 rounded mb-0.5 cursor-pointer truncate"
-                                        style={{ backgroundColor: ev.color + "66", color: ev.color }}>
+                                        style={{ backgroundColor: ev.color + "66", color: readableTextColor(ev.color + "ff") }}>
                                         {ev.title}
                                     </div>
                                 ))}
@@ -484,9 +495,9 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, acco
                                                     borderLeft: `3px solid ${ev.color}`,
                                                 }}
                                                 className={`rounded-r-md px-1.5 py-1 cursor-pointer transition-all hover:brightness-95 z-10 ${isSel ? "ring-2 ring-primary/50 z-20 shadow-lg" : ""}`}>
-                                                <p className="text-[11px] font-bold leading-tight line-clamp-2" style={{ color: ev.color }}>{ev.title}</p>
+                                                <p className="text-[11px] font-bold leading-tight line-clamp-2" style={{ color: readableTextColor(ev.color + "ff") }}>{ev.title}</p>
                                                 {height > 30 && (
-                                                    <p className="text-[9px] mt-0.5 font-medium opacity-80" style={{ color: ev.color }}>
+                                                    <p className="text-[9px] mt-0.5 font-medium opacity-80" style={{ color: readableTextColor(ev.color + "ff") }}>
                                                         {ev.start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
                                                         {" – "}
                                                         {ev.end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
@@ -537,7 +548,7 @@ function MonthView({ anchor, events, selected, onSelect, onDay }: {
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={e => { e.stopPropagation(); onSelect(selected?.id === ev.id ? null : ev, e); }}
                                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80 mb-0.5"
-                                    style={{ backgroundColor: ev.color + "66", color: ev.color }}>
+                                    style={{ backgroundColor: ev.color + "66", color: readableTextColor(ev.color + "ff") }}>
                                     {ev.title}
                                 </div>
                             ))}

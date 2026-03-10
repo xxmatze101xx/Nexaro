@@ -40,8 +40,8 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
             setTimeout(() => {
                 onClose();
             }, 1200);
-        } catch (err: any) {
-            setError(err.message || "Fehler beim Senden der E-Mail.");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Fehler beim Senden der E-Mail.");
         } finally {
             setIsSending(false);
         }

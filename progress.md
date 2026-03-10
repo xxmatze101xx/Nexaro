@@ -25,3 +25,22 @@
 | UI-P4 Black Email Bleed | ✅ | `dangerouslySetInnerHTML` → `<iframe sandbox="" srcDoc>` in ai-draft-panel.tsx |
 | SLACK-B1 Slack Auth Fix | ✅ | `?key=${NEXT_PUBLIC_FIREBASE_API_KEY}` in Firestore REST URL (slack + microsoft callbacks); OAuth redirect useEffect mit Early-Exit Guard |
 | INFRA-01 Integration Roadmap | ✅ | `architecture/integrations-roadmap.md` erstellt (10 Integrationen, Checkliste, WhatsApp-Sonderfall) |
+
+## Phase 3 (claude-agent-instructions-v3.md) — ✅ Abgeschlossen (2026-03-10)
+
+| Task | Status | Änderungen |
+|------|--------|-----------|
+| UI-P1 Compose X-Button | ✅ | TypeScript `catch (err: any)` → `catch (err: unknown)` in compose-email-dialog + compose-panel |
+| UI-P2 Generate Draft Feedback | ✅ | `draftError` state + rotes Banner statt `alert()`; spezifische Msg bei fehlendem API-Key |
+| INFRA-B1 Firestore Permissions | ✅ | `onSnapshot` nur wenn `user !== null`; Error-Handler mit `console.warn` |
+| CAL-B1 Kalender Kontrast | ✅ | `readableTextColor(hex)` WCAG-Funktion; dunkler Text auf hellen Events |
+| UI-P4 Importance Score Variation | ✅ | Keyword-Heuristik + stabiler Hash-Offset ersetzt fixed `3.0` Default |
+| LIVE-01 Gmail Polling 60s | ✅ | `setInterval` 60_000ms auf `refreshCount` State |
+| LIVE-02 New Message Toast | ✅ | `new-message-toast.tsx` Komponente; `prevMsgIdsRef` zum Tracking neuer IDs |
+| UI-L1 Email Detail Height | ✅ | iframe `onLoad` passt Höhe dynamisch an scrollHeight an (max 600px) |
+| UX-V1 Globale Suche | ✅ | `searchScope` State; Toggle-Pills unter Suchfeld; `allMessages` vs `displayMessages` |
+| UX-V2 Action Toasts | ✅ | `useToast` hook, `ToastContainer`; Archive/Star/Delete/ToggleRead zeigen Toast |
+| UX-V3 Reply Greeting | ✅ | Auto-fill "Guten Tag [firstName],\n\n\nMit freundlichen Grüßen" wenn kein Draft |
+| FEAT-01 Digest Settings | ✅ | `DigestSection.tsx` + `/api/digest/route.ts`; Firestore `users/{uid}/settings/digest` |
+| FEAT-02 Keyboard Shortcuts | ✅ | `d`=delete, `u`=unread, `s`=star, Escape=close; Overlay mit allen 7 Shortcuts |
+| FEAT-03 Inbox Overview Widget | ✅ | `inbox-overview-widget.tsx`; Farb-Indikator grün/orange/rot; Klick setzt Source-Filter |

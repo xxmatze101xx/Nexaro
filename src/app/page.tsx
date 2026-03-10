@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -13,8 +13,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { MessageCard } from "@/components/message-card";
 import { ComposePanel } from "@/components/compose-panel";
-
 import { AIDraftPanel } from "@/components/ai-draft-panel";
+import { ToastContainer } from "@/components/ui/toast";
+import { NewMessageToast } from "@/components/new-message-toast";
+import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
+import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
   Search,
@@ -79,8 +82,14 @@ function DashboardContent() {
   const [isFolderLoading, setIsFolderLoading] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
+  // Toast system
+  const { toasts: actionToasts, showToast, dismissToast } = useToast();
+  // New-message toasts (LIVE-02) – max 3
+  const [newMsgToasts, setNewMsgToasts] = useState<{ id: string; message: Message }[]>([]);
+  const prevMsgIdsRef = useRef<Set<string>>(new Set());
 
   const toggleAccount = (id: string) => {
     setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
@@ -115,11 +124,14 @@ function DashboardContent() {
     return () => unsub();
   }, []);
 
-  // Subscribe to real-time messages from Firestore
+  // Subscribe to real-time messages from Firestore (only when authenticated)
   useEffect(() => {
+    if (!user) {
+      setMessages([]);
+      return;
+    }
     const q = query(
       collection(db, "messages"),
-      // Optionally filter by user_id here when auth is fully implemented
       orderBy("importance_score", "desc"),
       limit(100)
     );
@@ -127,10 +139,12 @@ function DashboardContent() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedMessages = snapshot.docs.map((doc) => doc.data() as Message);
       setMessages(fetchedMessages);
+    }, (err) => {
+      console.warn("Firestore messages listener error:", err.code);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   // Load user data whenever the auth user changes
   useEffect(() => {
@@ -276,15 +290,16 @@ function DashboardContent() {
 
   // Filter and sort messages
   const filteredMessages = useMemo(() => {
-    let msgs = [...displayMessages];
+    // For global search, search all messages regardless of folder
+    let msgs = searchQuery && searchScope === "global" ? [...allMessages] : [...displayMessages];
 
     // For INBOX, keep only INBOX-labeled messages when that folder is explicitly selected
-    if (selectedSidebarItem?.folder === 'INBOX') {
+    if (!searchQuery && selectedSidebarItem?.folder === 'INBOX') {
       msgs = msgs.filter(m => m.labels?.includes('INBOX'));
     }
 
     // Filter by source/account when no folder is active (all-messages view)
-    if (selectedSidebarItem && !selectedSidebarItem.folder) {
+    if (!searchQuery && selectedSidebarItem && !selectedSidebarItem.folder) {
       if (selectedSidebarItem.source) msgs = msgs.filter(m => m.source === selectedSidebarItem.source);
       if (selectedSidebarItem.accountId) msgs = msgs.filter(m => m.accountId === selectedSidebarItem.accountId);
     }
@@ -295,7 +310,8 @@ function DashboardContent() {
       msgs = msgs.filter(
         (m) =>
           m.content.toLowerCase().includes(q) ||
-          m.sender.toLowerCase().includes(q)
+          m.sender.toLowerCase().includes(q) ||
+          (m.subject ?? "").toLowerCase().includes(q)
       );
     }
 
@@ -354,10 +370,11 @@ function DashboardContent() {
     localStorage.setItem("nexaro-dark-mode", String(next));
   };
 
-  // Keyboard shortcuts: e = archive, r = reply, ? = shortcuts overlay
+  // Keyboard shortcuts: e=archive, r=reply, d=delete, u=toggle-read, ?=overlay, Esc=close
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement).tagName.toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    const isEditable = (e.target as HTMLElement).hasAttribute("contenteditable");
+    if (tag === "input" || tag === "textarea" || tag === "select" || isEditable) return;
 
     if (e.key === "?") {
       e.preventDefault();
@@ -365,7 +382,8 @@ function DashboardContent() {
       return;
     }
     if (e.key === "Escape") {
-      setShowShortcuts(false);
+      if (showShortcuts) { setShowShortcuts(false); return; }
+      if (selectedMessage) { setSelectedMessage(null); return; }
       return;
     }
     if (!selectedMessage) return;
@@ -375,11 +393,18 @@ function DashboardContent() {
       handleArchive(selectedMessage);
     } else if (e.key === "r" || e.key === "R") {
       e.preventDefault();
-      // Trigger reply by selecting the message (AIDraftPanel will open reply mode)
-      // Since AIDraftPanel is already open, we dispatch a custom event
       document.dispatchEvent(new CustomEvent("nexaro:reply"));
+    } else if (e.key === "d" || e.key === "D") {
+      e.preventDefault();
+      handleDelete(selectedMessage);
+    } else if (e.key === "u" || e.key === "U") {
+      e.preventDefault();
+      handleToggleRead(selectedMessage);
+    } else if (e.key === "s" || e.key === "S") {
+      e.preventDefault();
+      handleStar(selectedMessage);
     }
-  }, [selectedMessage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedMessage, showShortcuts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -396,11 +421,13 @@ function DashboardContent() {
         const newLabels = [...(message.labels ?? []), 'INBOX'];
         setGmailMessages(prev => prev.map(m => m.id === message.id ? { ...m, labels: newLabels } : m));
         setFolderMessages(prev => prev.filter(m => m.id !== message.id));
+        showToast("In Inbox verschoben", "📥");
       } else {
         // Archive: remove from INBOX
         await archiveEmail(user.uid, message.accountId, message.id);
         setGmailMessages(prev => prev.filter(m => m.id !== message.id));
         if (selectedMessage?.id === message.id) setSelectedMessage(null);
+        showToast("Archiviert", "📁");
       }
     } catch (err) {
       console.error("Failed to archive/unarchive message", err);
@@ -422,6 +449,7 @@ function DashboardContent() {
       if (selectedMessage?.id === message.id) {
         setSelectedMessage(prev => prev ? { ...prev, labels: newLabels } : prev);
       }
+      showToast(isStarred ? "Stern entfernt" : "Favorit gesetzt", isStarred ? "☆" : "⭐");
     } catch (err) {
       console.error("Failed to star message", err);
     }
@@ -437,6 +465,7 @@ function DashboardContent() {
     if (selectedMessage?.id === message.id) setSelectedMessage(null);
     try {
       await trashEmail(user.uid, message.accountId, message.id);
+      showToast("Gelöscht", "🗑️");
     } catch (err) {
       // Restore on failure
       setGmailMessages(prevGmail);
@@ -492,10 +521,41 @@ function DashboardContent() {
       if (selectedMessage?.id === message.id) {
         setSelectedMessage(prev => prev ? { ...prev, status: newStatus } : prev);
       }
+      showToast(newStatus === "read" ? "Als gelesen markiert" : "Als ungelesen markiert", "✉️");
     } catch (err) {
       console.error("Failed to toggle read status", err);
     }
   };
+
+  // LIVE-01: Gmail polling every 60s to keep inbox fresh without webhooks
+  useEffect(() => {
+    if (!user || gmailAccounts.length === 0) return;
+    const interval = setInterval(() => {
+      setRefreshCount(prev => prev + 1);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [user, gmailAccounts]);
+
+  // LIVE-02: Detect new messages and show toast notifications
+  useEffect(() => {
+    const allIds = new Set(allMessages.map(m => m.id));
+    const newMsgs = allMessages.filter(m => !prevMsgIdsRef.current.has(m.id));
+    // Skip first load (prevMsgIdsRef is empty)
+    if (prevMsgIdsRef.current.size > 0 && newMsgs.length > 0) {
+      setNewMsgToasts(prev => {
+        const next = [...prev, ...newMsgs.map(m => ({ id: m.id + "_toast_" + Date.now(), message: m }))];
+        return next.slice(-3); // max 3 toasts (LIFO)
+      });
+      // Auto-dismiss after 5s
+      newMsgs.forEach(m => {
+        const toastId = m.id + "_toast_" + Date.now();
+        setTimeout(() => {
+          setNewMsgToasts(prev => prev.filter(t => t.message.id !== m.id));
+        }, 5000);
+      });
+    }
+    prevMsgIdsRef.current = allIds;
+  }, [allMessages]);
 
   const handleRefresh = async () => {
     await clearEmailCache();
@@ -569,10 +629,13 @@ function DashboardContent() {
             <h2 className="text-sm font-bold text-foreground mb-4 tracking-tight uppercase">Keyboard Shortcuts</h2>
             <div className="space-y-3">
               {[
-                { key: "e", description: "Archive selected message" },
-                { key: "r", description: "Reply to selected message" },
-                { key: "?", description: "Show / hide shortcuts" },
-                { key: "Esc", description: "Close overlay / deselect" },
+                { key: "e", description: "Archivieren" },
+                { key: "r", description: "Antworten" },
+                { key: "d", description: "Löschen" },
+                { key: "u", description: "Gelesen / Ungelesen" },
+                { key: "s", description: "Favorit markieren" },
+                { key: "?", description: "Shortcuts anzeigen/verstecken" },
+                { key: "Esc", description: "Overlay schließen / Auswahl aufheben" },
               ].map(({ key, description }) => (
                 <div key={key} className="flex items-center justify-between gap-4">
                   <span className="text-sm text-muted-foreground">{description}</span>
@@ -771,20 +834,38 @@ function DashboardContent() {
             </button>
           </div>
 
-          {/* Search */}
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search messages..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
-                "w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm",
-                "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50",
-                "transition-all"
-              )}
-            />
+          {/* Search + scope toggle (UX-V1) */}
+          <div className="flex flex-col gap-1">
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Suchen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={cn(
+                  "w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm",
+                  "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50",
+                  "transition-all"
+                )}
+              />
+            </div>
+            {searchQuery && (
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setSearchScope("global")}
+                  className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors", searchScope === "global" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                >
+                  Global
+                </button>
+                <button
+                  onClick={() => setSearchScope("folder")}
+                  className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors", searchScope === "folder" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                >
+                  Nur aktueller Ordner
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -819,6 +900,12 @@ function DashboardContent() {
             </button>
           </div>
         </header>
+
+        {/* FEAT-03: Inbox Overview Widget */}
+        <InboxOverviewWidget
+          messages={allMessages}
+          onFilter={(source) => setSelectedSidebarItem({ source })}
+        />
 
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
@@ -913,7 +1000,15 @@ function DashboardContent() {
         </div>
       </div>
 
+      {/* UX-V2: Action Toast (bottom center) */}
+      <ToastContainer toasts={actionToasts} onDismiss={dismissToast} />
 
+      {/* LIVE-02: New Message Toast (bottom right) */}
+      <NewMessageToast
+        toasts={newMsgToasts}
+        onDismiss={(id) => setNewMsgToasts(prev => prev.filter(t => t.id !== id))}
+        onOpen={(message) => { handleSelectMessage(message); setNewMsgToasts(prev => prev.filter(t => t.message.id !== message.id)); }}
+      />
     </div>
   );
 }

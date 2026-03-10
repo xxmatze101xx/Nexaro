@@ -24,10 +24,12 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
     const [isArchiving, setIsArchiving] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isReplying, setIsReplying] = useState(false);
+    const [draftError, setDraftError] = useState<string | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         setIsReplying(false);
+        setDraftError(null);
         setDraftText(message?.ai_draft_response || "");
     }, [message?.id, message?.ai_draft_response]);
 
@@ -35,12 +37,17 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
     useEffect(() => {
         const handler = () => {
             if (!message) return;
+            if (!draftText) {
+                // UX-V3: auto-fill greeting if no draft exists
+                const firstName = message.sender.split(/[\s,]+/)[0] ?? message.sender;
+                setDraftText(`Guten Tag ${firstName},\n\n\n\nMit freundlichen Grüßen`);
+            }
             setIsReplying(true);
             setTimeout(() => textareaRef.current?.focus(), 50);
         };
         document.addEventListener("nexaro:reply", handler);
         return () => document.removeEventListener("nexaro:reply", handler);
-    }, [message]);
+    }, [message, draftText]);
 
     if (!message) {
         return (
@@ -123,6 +130,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
     const handleGenerateDraft = async () => {
         if (!message) return;
         setIsGenerating(true);
+        setDraftError(null);
         try {
             const res = await fetch("/api/ai/draft", {
                 method: "POST",
@@ -135,13 +143,19 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                 }),
             });
             const data = (await res.json()) as { draft?: string; error?: string };
-            if (!res.ok) throw new Error(data.error ?? "Generation failed");
+            if (!res.ok) {
+                const errMsg = data.error ?? "Generation failed";
+                if (errMsg.toLowerCase().includes("api key") || errMsg.toLowerCase().includes("gemini")) {
+                    throw new Error("AI-Draft nicht verfügbar: Kein API-Key konfiguriert. Bitte GEMINI_API_KEY in .env.local eintragen.");
+                }
+                throw new Error(errMsg);
+            }
             setDraftText(data.draft ?? "");
             setIsReplying(true);
             setTimeout(() => textareaRef.current?.focus(), 50);
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
-            alert(`Fehler beim Generieren: ${msg}`);
+            const msg = e instanceof Error ? e.message : "AI-Draft nicht verfügbar: Unbekannter Fehler.";
+            setDraftError(msg);
         } finally {
             setIsGenerating(false);
         }
@@ -234,6 +248,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                                     title="Reply"
                                     className="px-3 py-1.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 hover:border-border transition-all shadow-sm bg-background flex items-center gap-1.5"
                                     onClick={() => {
+                                        if (!draftText) {
+                                            const firstName = message.sender.split(/[\s,]+/)[0] ?? message.sender;
+                                            setDraftText(`Guten Tag ${firstName},\n\n\n\nMit freundlichen Grüßen`);
+                                        }
                                         setIsReplying(true);
                                         setTimeout(() => {
                                             textareaRef.current?.focus();
@@ -276,7 +294,15 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                             <iframe
                                 srcDoc={message.htmlContent}
                                 sandbox=""
-                                className="w-full min-h-[300px] border-0 rounded"
+                                className="w-full min-h-[300px] h-full flex-1 border-0 rounded"
+                                style={{ minHeight: "300px", height: "auto" }}
+                                onLoad={(e) => {
+                                    const iframe = e.currentTarget;
+                                    try {
+                                        const h = iframe.contentDocument?.documentElement?.scrollHeight;
+                                        if (h) iframe.style.height = `${Math.min(h, 600)}px`;
+                                    } catch { /* cross-origin */ }
+                                }}
                                 title="Email content"
                             />
                         ) : (
@@ -284,6 +310,14 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                         )}
                     </div>
                 </div>
+
+                {/* Draft Error Banner */}
+                {draftError && (
+                    <div className="mx-0 mt-2 mb-2 p-3 text-sm text-destructive-foreground bg-destructive/90 rounded-md flex items-start gap-2">
+                        <span className="shrink-0 mt-0.5">⚠</span>
+                        <span>{draftError}</span>
+                    </div>
+                )}
 
                 {/* AI Draft Section */}
                 {(message.ai_draft_response || isReplying) && (
@@ -377,6 +411,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                         </button>
                     </div>
                 )}
+                {/* UX-V3: Reply with greeting when opening reply without AI draft */}
             </div>
         </div>
     );

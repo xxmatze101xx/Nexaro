@@ -265,9 +265,22 @@ export function parseGmailToNexaroMessage(gmailMsg: GmailMessage, accountEmail?:
     const htmlData = gmailMsg.payload ? findHtmlPart(gmailMsg.payload as GmailPayloadPart) : null;
     const htmlContent = htmlData ? decodeBase64URL(htmlData) : null;
 
+    // Base heuristic score (0–10). Python pipeline overwrites via Firestore overlay.
     let importance = 3.0;
     if (gmailMsg.labelIds?.includes("IMPORTANT")) importance = 7.5;
     if (gmailMsg.labelIds?.includes("STARRED")) importance = 9.0;
+    if (importance === 3.0) {
+        const subj = subject.toLowerCase();
+        const from = senderEmail.toLowerCase();
+        if (/urgent|wichtig|asap|dringend|frist|deadline/.test(subj)) importance = 6.0;
+        else if (/invoice|rechnung|vertrag|contract|payment|zahlung/.test(subj)) importance = 5.5;
+        else if (/newsletter|unsubscribe|promo|sale|angebot/.test(subj + " " + from)) importance = 1.5;
+        else if (/meeting|termin|kalender|calendar|einladung|invite/.test(subj)) importance = 5.0;
+        else {
+            const hash = gmailMsg.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+            importance = Math.max(1.0, 3.0 + ((hash % 11) - 5) * 0.2);
+        }
+    }
 
     return {
         id: gmailMsg.id,

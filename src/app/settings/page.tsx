@@ -10,6 +10,7 @@ import {
     Link as LinkIcon,
     Shield,
     LogOut,
+    Mail,
 } from "lucide-react";
 import { uploadProfilePicture } from "@/lib/storage";
 import { auth } from "@/lib/firebase";
@@ -33,6 +34,7 @@ import { AccountSection } from "@/components/settings/AccountSection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { BillingSection } from "@/components/settings/BillingSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
+import { DigestSection } from "@/components/settings/DigestSection";
 
 export default function SettingsPage() {
     return (
@@ -296,6 +298,7 @@ function SettingsContent() {
     const NAV_ITEMS = [
         { id: "Konto", icon: <User className="w-4 h-4" /> },
         { id: "Dienste", icon: <LinkIcon className="w-4 h-4" /> },
+        { id: "Zusammenfassungen", icon: <Mail className="w-4 h-4" /> },
         { id: "Abonnement", icon: <CreditCard className="w-4 h-4" /> },
         { id: "Sicherheit", icon: <Shield className="w-4 h-4" /> },
     ];
@@ -382,6 +385,7 @@ function SettingsContent() {
                             onDisconnectGmail={handleDisconnectGmail}
                             onDisconnectCalendar={handleDisconnectCalendar}
                         />
+                        <DigestSection uid={user?.uid} userEmail={email} />
                         <BillingSection />
                         <SecuritySection />
                     </div>

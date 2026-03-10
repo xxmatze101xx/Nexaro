@@ -26,6 +26,23 @@
 - ~~INFRA-01: Integration Roadmap~~ ✅ `architecture/integrations-roadmap.md` erstellt
 - **Bonus:** Microsoft callback ebenfalls `?key=` Fix (gleicher Bug wie Slack)
 
+## Phase 3 (claude-agent-instructions-v3.md) — ✅ Abgeschlossen (2026-03-10)
+
+- ~~UI-P1: Compose X-Button~~ ✅ Buttons waren korrekt; TypeScript `any` in catch-clauses gefixt
+- ~~UI-P2: Generate Draft kein Feedback~~ ✅ Inline `draftError` State + Banner; kein alert() mehr
+- ~~INFRA-B1: Permission-Denied Firestore~~ ✅ `onSnapshot` nur wenn `user` nicht null
+- ~~CAL-B1: Kalender Text unlesbar~~ ✅ `readableTextColor(hex)` Hilfsfunktion via WCAG-Luminanz
+- ~~UI-P4: Alle Scores = 30~~ ✅ Heuristische Keyword-Scores + stabiler Hash-Offset pro Message
+- ~~LIVE-01: Gmail Polling~~ ✅ `setInterval` alle 60s auf refreshCount
+- ~~LIVE-02: New-Message Toast~~ ✅ `NewMessageToast` component, bottom-right, max 3, 5s auto-dismiss
+- ~~UI-L1: Email Detail zu niedrig~~ ✅ iframe onLoad passt Höhe an (max 600px)
+- ~~UX-V1: Globale Suche~~ ✅ Toggle Global/Ordner-Scope unter Suchfeld (nur wenn Suche aktiv)
+- ~~UX-V2: Toast für Aktionen~~ ✅ `useToast` hook + `ToastContainer` (bottom-center)
+- ~~UX-V3: Reply mit Greeting~~ ✅ Reply-Button füllt "Guten Tag [Name],...,Mit freundlichen Grüßen" vor
+- ~~FEAT-01: Tägliche Zusammenfassung~~ ✅ `DigestSection` Settings + `/api/digest` Route; ⏳ BLOCKED (needs Vercel Cron)
+- ~~FEAT-02: Keyboard Shortcuts~~ ✅ `d`=delete, `u`=toggle-read, `s`=star, Escape=close-detail; Overlay aktualisiert
+- ~~FEAT-03: Inbox Overview Widget~~ ✅ `InboxOverviewWidget` über Message-Liste, klickbar filtert nach Source
+
 ## Remaining Phase 6 Polish (not started)
 
 | Task | Notes |
