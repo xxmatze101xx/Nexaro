@@ -8,7 +8,7 @@ import { type Message } from "@/lib/mock-data";
 import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, unarchiveEmail, starEmail, trashEmail, saveEmailsToCache, subscribeToGmailScores } from "@/lib/gmail";
 import { db } from "@/lib/firebase";
 import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
-import { fetchSlackChannels, type SlackChannel } from "@/lib/slack";
+import type { SlackChannel } from "@/lib/slack";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -98,6 +98,25 @@ function DashboardContent() {
   const isLoadingMoreRef = useRef(false);
   const sessionStartTimestampRef = useRef<number>(Date.now());
 
+  // Fetch Slack channels via server-side proxy (logs errors in Vercel, avoids CORS/scope issues)
+  const loadSlackChannels = useCallback(async () => {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/slack/channels", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json() as { channels?: SlackChannel[]; error?: string; needed_scope?: string; token_type?: string };
+      if (data.channels && data.channels.length > 0) {
+        setSlackChannels(data.channels);
+      } else {
+        console.warn("[slack] channels empty or error:", data.error, data.needed_scope ?? "", data.token_type ?? "");
+      }
+    } catch (e: unknown) {
+      console.warn("[slack] loadSlackChannels failed:", e instanceof Error ? e.message : String(e));
+    }
+  }, [user]);
+
   const toggleAccount = (id: string) => {
     setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -158,10 +177,7 @@ function DashboardContent() {
     if (!user) return;
     getSlackConnection(user.uid).then(conn => {
       setSlackConnected(!!conn);
-      // Use the user token (xoxp-) — is_member reflects the USER's membership.
-      // The bot token (xoxb-) would return is_member=false for all channels
-      // since the bot hasn't been added anywhere.
-      if (conn) fetchSlackChannels(conn.user_access_token || conn.access_token).then(setSlackChannels);
+      if (conn) loadSlackChannels();
     });
     getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
     getGmailAccounts(user.uid).then((accounts) => {
@@ -184,7 +200,7 @@ function DashboardContent() {
         if (user.displayName) setDisplayName(user.displayName);
       }
     });
-  }, [user]);
+  }, [user, loadSlackChannels]);
 
   // Re-check connections after OAuth redirects (e.g. ?slack_connected=true)
   // Early-exit if no relevant params — avoids Firestore reads on normal logins
@@ -200,7 +216,7 @@ function DashboardContent() {
     if (msOk) setMicrosoftConnected(true);
     if (slackOk) getSlackConnection(user.uid).then(conn => {
       setSlackConnected(!!conn);
-      if (conn) fetchSlackChannels(conn.user_access_token || conn.access_token).then(setSlackChannels);
+      if (conn) loadSlackChannels();
     });
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);
