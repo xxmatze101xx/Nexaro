@@ -161,7 +161,7 @@ function DashboardContent() {
       // Use the user token (xoxp-) — is_member reflects the USER's membership.
       // The bot token (xoxb-) would return is_member=false for all channels
       // since the bot hasn't been added anywhere.
-      if (conn) fetchSlackChannels(conn.user_access_token ?? conn.access_token).then(setSlackChannels);
+      if (conn) fetchSlackChannels(conn.user_access_token || conn.access_token).then(setSlackChannels);
     });
     getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
     getGmailAccounts(user.uid).then((accounts) => {
@@ -200,7 +200,7 @@ function DashboardContent() {
     if (msOk) setMicrosoftConnected(true);
     if (slackOk) getSlackConnection(user.uid).then(conn => {
       setSlackConnected(!!conn);
-      if (conn) fetchSlackChannels(conn.user_access_token ?? conn.access_token).then(setSlackChannels);
+      if (conn) fetchSlackChannels(conn.user_access_token || conn.access_token).then(setSlackChannels);
     });
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);
