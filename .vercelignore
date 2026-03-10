@@ -1,5 +1,6 @@
 firebase-debug.log
 .agent/
+.claude/
 tools/
 *.py
 *.pyc
