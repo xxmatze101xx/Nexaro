@@ -185,6 +185,9 @@ function DashboardContent() {
     const msOk = params.get("microsoft_connected") === "true";
     if (!slackOk && !msOk) return;
     window.history.replaceState({}, "", "/");
+    // Optimistic updates first — avoids flicker if Firestore hasn't propagated yet
+    if (slackOk) setSlackConnected(true);
+    if (msOk) setMicrosoftConnected(true);
     if (slackOk) getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);

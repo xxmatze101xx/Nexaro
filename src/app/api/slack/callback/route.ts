@@ -78,12 +78,19 @@ export async function GET(request: Request) {
             },
         };
 
-        await fetch(firestoreUrl, {
+        const fsRes = await fetch(firestoreUrl, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(firestoreBody),
         });
 
+        if (!fsRes.ok) {
+            const errText = await fsRes.text().catch(() => "(unreadable)");
+            console.error(`Slack token Firestore write failed: status=${fsRes.status} body=${errText.slice(0, 300)}`);
+            return NextResponse.redirect(`${appUrl}/settings?slack_error=token_storage_failed`);
+        }
+
+        console.log(`Slack token stored successfully for uid=${uid} team=${tokenData.team?.name ?? "?"}`);
         return NextResponse.redirect(`${appUrl}/settings?slack_connected=true`);
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "unknown";

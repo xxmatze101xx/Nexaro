@@ -100,8 +100,37 @@ function SettingsContent() {
             // Load all integration statuses
             getGmailAccounts(user.uid).then(setGmailAccounts);
             getCalendarAccounts(user.uid).then(setCalendarAccounts);
-            getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
-            getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
+
+            // Optimistic update: trust the OAuth redirect param immediately to avoid race
+            // condition where Firestore hasn't propagated the write yet
+            if (slackConnectedParam === "true") setSlackConnected(true);
+            if (microsoftConnectedParam === "true") setMicrosoftConnected(true);
+
+            // Async verify (with retry to handle Firestore propagation delay)
+            const verifyWithRetry = async (
+                fetcher: () => Promise<unknown>,
+                setter: (v: boolean) => void,
+                maxAttempts = 3,
+            ) => {
+                for (let i = 0; i < maxAttempts; i++) {
+                    const conn = await fetcher();
+                    if (conn) { setter(true); return; }
+                    if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 600 * (i + 1)));
+                }
+                // If all retries fail but optimistic param was set, keep optimistic state
+            };
+
+            if (slackConnectedParam === "true") {
+                verifyWithRetry(() => getSlackConnection(user.uid), setSlackConnected);
+            } else {
+                getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
+            }
+
+            if (microsoftConnectedParam === "true") {
+                verifyWithRetry(() => getMicrosoftConnection(user.uid), setMicrosoftConnected);
+            } else {
+                getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
+            }
 
             if (slackConnectedParam === "true" || microsoftConnectedParam === "true") {
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -257,8 +286,15 @@ function SettingsContent() {
             const scope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
         } else if (integrationId === "Slack") {
-            // Redirect to our server-side OAuth initiator
-            window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}`;
+            if (slackConnected) {
+                if (confirm("Slack wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
+                    await disconnectSlack(user.uid);
+                    setSlackConnected(false);
+                }
+            } else {
+                // Redirect to server-side OAuth initiator
+                window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}`;
+            }
         } else if (integrationId === "Outlook" || integrationId === "Microsoft Teams") {
             window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}`;
         } else {
