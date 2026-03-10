@@ -78,7 +78,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
 
     const handleSend = async () => {
         if (!auth.currentUser || !message || message.source !== "gmail") {
-            alert("Senden ist derzeit nur für verbundene Gmail-Konten implementiert.");
+            setDraftError("Senden ist derzeit nur für verbundene Gmail-Konten implementiert.");
             return;
         }
 
@@ -102,11 +102,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                 message.rfcMessageId,
                 message.threadId
             );
-            alert("E-Mail erfolgreich gesendet!");
             onClose();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
-            alert(`Fehler beim Senden: ${msg}`);
+            setDraftError(`Fehler beim Senden: ${msg}`);
         } finally {
             setIsSending(false);
         }
@@ -121,7 +120,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
             onClose();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
-            alert(`Fehler beim Archivieren: ${msg}`);
+            setDraftError(`Fehler beim Archivieren: ${msg}`);
         } finally {
             setIsArchiving(false);
         }
@@ -169,7 +168,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
             onStatusChanged?.(message, newStatus);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
-            alert(`Fehler: ${msg}`);
+            setDraftError(`Fehler: ${msg}`);
         }
     };
 
@@ -181,7 +180,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
             )}
         >
             {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-border">
                 <div className="flex items-center gap-2">
                     <SourceIcon source={message.source} size="sm" />
                     <span className="text-xs font-medium text-muted-foreground">
@@ -196,10 +195,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                 </button>
             </div>
 
-            {/* Message Detail */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {/* Sender & Meta — fixed, does not scroll */}
+            <div className="flex-shrink-0 p-3 border-b border-border/40">
                 {/* Sender & Importance */}
-                <div className="space-y-3 mb-1">
+                <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
                             {/* Avatar */}
@@ -285,8 +284,12 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                     </div>
                 </div>
 
+            </div>
+
+            {/* Email Body — flex-1, scrolls independently */}
+            <div className="flex-1 overflow-y-auto min-h-[400px] p-3">
                 {/* Full Content - Sharp Document Sheet Effect */}
-                <div className="relative mt-4 mb-6 group">
+                <div className="relative mt-0 mb-0 group">
                     {/* Hard drop shadow effect for kantiger design */}
                     <div className="absolute inset-0 bg-black/5 dark:bg-white/5 transform translate-y-1 translate-x-1 z-0" />
                     <div className="relative bg-background border border-border shadow-sm p-4 sm:p-5 z-10 transition-all">
@@ -310,7 +313,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                         )}
                     </div>
                 </div>
+            </div>
 
+            {/* AI Draft / Reply — fixed bottom section, capped height */}
+            <div className="flex-shrink-0 border-t border-border overflow-y-auto max-h-[280px] p-3 space-y-3">
                 {/* Draft Error Banner */}
                 {draftError && (
                     <div className="mx-0 mt-2 mb-2 p-3 text-sm text-destructive-foreground bg-destructive/90 rounded-md flex items-start gap-2">
@@ -321,7 +327,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
 
                 {/* AI Draft Section */}
                 {(message.ai_draft_response || isReplying) && (
-                    <div className="space-y-3 pt-3 border-t border-border/40">
+                    <div className="space-y-3">
                         <div className="flex items-center gap-1.5">
                             <div className="h-7 w-7 rounded-sm bg-primary/10 flex items-center justify-center border border-primary/20">
                                 <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -411,7 +417,6 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                         </button>
                     </div>
                 )}
-                {/* UX-V3: Reply with greeting when opening reply without AI draft */}
             </div>
         </div>
     );

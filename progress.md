@@ -44,3 +44,10 @@
 | FEAT-01 Digest Settings | ✅ | `DigestSection.tsx` + `/api/digest/route.ts`; Firestore `users/{uid}/settings/digest` |
 | FEAT-02 Keyboard Shortcuts | ✅ | `d`=delete, `u`=unread, `s`=star, Escape=close; Overlay mit allen 7 Shortcuts |
 | FEAT-03 Inbox Overview Widget | ✅ | `inbox-overview-widget.tsx`; Farb-Indikator grün/orange/rot; Klick setzt Source-Filter |
+
+## Tagesplan UI-P1 — Email-Body Layout — ✅ Abgeschlossen (2026-03-10)
+
+| Task | Status | Änderungen |
+|------|--------|-----------|
+| UI-P1 Email-Body Platz | ✅ | `ai-draft-panel.tsx`: 1 großer Scroll-Container → 3 Sektionen: Header (flex-shrink-0), Body (flex-1 overflow-y-auto min-h-[400px]), AI Draft (flex-shrink-0 max-h-[280px] overflow-y-auto) |
+| Bonus: alert() entfernt | ✅ | handleSend, handleArchive, handleToggleRead nutzen jetzt `setDraftError()` statt `alert()` |

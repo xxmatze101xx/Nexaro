@@ -43,6 +43,10 @@
 - ~~FEAT-02: Keyboard Shortcuts~~ ✅ `d`=delete, `u`=toggle-read, `s`=star, Escape=close-detail; Overlay aktualisiert
 - ~~FEAT-03: Inbox Overview Widget~~ ✅ `InboxOverviewWidget` über Message-Liste, klickbar filtert nach Source
 
+## Tagesplan CLAUDE-email-height.md — ✅ Abgeschlossen (2026-03-10)
+
+- ~~UI-P1: Email-Body bekommt zu wenig vertikalen Platz~~ ✅ Detail-Panel in 3 unabhängige Flex-Sektionen aufgeteilt; Body scrollt eigenständig
+
 ## Remaining Phase 6 Polish (not started)
 
 | Task | Notes |
