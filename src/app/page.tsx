@@ -18,6 +18,7 @@ import { AIDraftPanel } from "@/components/ai-draft-panel";
 import { ToastContainer } from "@/components/ui/toast";
 import { NewMessageToast } from "@/components/new-message-toast";
 import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
+import { SlackChannelView } from "@/components/slack-channel-view";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -274,6 +275,12 @@ function DashboardContent() {
   // When a specific folder (SENT/STARRED/TRASH/ARCHIVE) is selected, fetch its emails
   useEffect(() => {
     const folder = selectedSidebarItem?.folder;
+    // Never run Gmail folder fetch for Slack items
+    if (selectedSidebarItem?.source === 'slack') {
+      setFolderMessages([]);
+      setFolderPageToken(null);
+      return;
+    }
     if (!folder || folder === 'INBOX' || !user) {
       setFolderMessages([]);
       setFolderPageToken(null);
@@ -383,7 +390,13 @@ function DashboardContent() {
       case 'TRASH': return 'Papierkorb';
       default: break;
     }
-    if (selectedSidebarItem.source === 'slack') return 'Slack';
+    if (selectedSidebarItem.source === 'slack') {
+      if (selectedSidebarItem.folder === 'channel') {
+        const ch = slackChannels.find(c => c.id === selectedSidebarItem.accountId);
+        return ch ? `#${ch.name}` : 'Slack';
+      }
+      return 'Direktnachrichten';
+    }
     if (selectedSidebarItem.source === 'teams') return 'Teams';
     if (selectedSidebarItem.source === 'outlook') return 'Outlook';
     return 'Inbox';
@@ -960,7 +973,26 @@ function DashboardContent() {
 
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Message List */}
+
+          {/* ── Slack Chat View ────────────────────────────────────────── */}
+          {selectedSidebarItem?.source === 'slack' && selectedSidebarItem.folder === 'channel' && selectedSidebarItem.accountId && user ? (
+            <SlackChannelView
+              key={selectedSidebarItem.accountId}
+              channelId={selectedSidebarItem.accountId}
+              channelName={slackChannels.find(c => c.id === selectedSidebarItem.accountId)?.name ?? "channel"}
+              isPrivate={slackChannels.find(c => c.id === selectedSidebarItem.accountId)?.is_private ?? false}
+              user={user}
+              className="flex-1"
+            />
+          ) : selectedSidebarItem?.source === 'slack' && selectedSidebarItem.folder === 'im' ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+              <MessageSquare className="w-10 h-10 opacity-20" />
+              <p className="text-sm font-medium">Wähle einen Kanal aus der Seitenleiste.</p>
+              <p className="text-xs opacity-60">Direktnachrichten-Unterstützung kommt bald.</p>
+            </div>
+          ) : (
+          <>
+          {/* ── Gmail Message List ─────────────────────────────────────── */}
           <div className="w-[480px] border-r border-border flex flex-col overflow-hidden">
 
             {/* List Header / Sort */}
@@ -1048,6 +1080,8 @@ function DashboardContent() {
               className="flex-1"
             />
           )}
+          </>
+          )}{/* end Slack/Gmail conditional */}
         </div>
       </div>
 
