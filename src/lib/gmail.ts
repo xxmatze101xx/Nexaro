@@ -324,7 +324,9 @@ export async function sendEmail(
     body: string,
     inReplyTo?: string,
     references?: string,
-    threadId?: string
+    threadId?: string,
+    cc?: string,
+    bcc?: string
 ): Promise<unknown> {
     const accessToken = await getValidAccessToken(uid, accountEmail);
     if (!accessToken)
@@ -334,6 +336,8 @@ export async function sendEmail(
 
     const emailLines: string[] = [];
     emailLines.push(`To: ${to}`);
+    if (cc) emailLines.push(`Cc: ${cc}`);
+    if (bcc) emailLines.push(`Bcc: ${bcc}`);
     emailLines.push('Content-Type: text/plain; charset="UTF-8"');
     emailLines.push("MIME-Version: 1.0");
     if (inReplyTo) emailLines.push(`In-Reply-To: ${inReplyTo}`);

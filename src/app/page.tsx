@@ -90,6 +90,9 @@ function DashboardContent() {
   // New-message toasts (LIVE-02) – max 3
   const [newMsgToasts, setNewMsgToasts] = useState<{ id: string; message: Message }[]>([]);
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
+  // Guards to prevent false-positive toasts on load-more and initial load
+  const isLoadingMoreRef = useRef(false);
+  const sessionStartTimestampRef = useRef<number>(Date.now());
 
   const toggleAccount = (id: string) => {
     setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
@@ -480,6 +483,7 @@ function DashboardContent() {
     const accountEmail = selectedSidebarItem?.accountId ?? gmailAccounts[0]?.email;
     if (!accountEmail) return;
 
+    isLoadingMoreRef.current = true;
     setIsFolderLoading(true);
     try {
       if (!folder || folder === 'INBOX') {
@@ -507,6 +511,7 @@ function DashboardContent() {
       console.error("Failed to load more messages", err);
     } finally {
       setIsFolderLoading(false);
+      isLoadingMoreRef.current = false;
     }
   };
 
@@ -537,22 +542,27 @@ function DashboardContent() {
   }, [user, gmailAccounts]);
 
   // LIVE-02: Detect new messages and show toast notifications
+  // Only fires for messages that arrived AFTER the session started and NOT during load-more
   useEffect(() => {
     const allIds = new Set(allMessages.map(m => m.id));
-    const newMsgs = allMessages.filter(m => !prevMsgIdsRef.current.has(m.id));
-    // Skip first load (prevMsgIdsRef is empty)
-    if (prevMsgIdsRef.current.size > 0 && newMsgs.length > 0) {
-      setNewMsgToasts(prev => {
-        const next = [...prev, ...newMsgs.map(m => ({ id: m.id + "_toast_" + Date.now(), message: m }))];
-        return next.slice(-3); // max 3 toasts (LIFO)
-      });
-      // Auto-dismiss after 5s
-      newMsgs.forEach(m => {
-        const toastId = m.id + "_toast_" + Date.now();
-        setTimeout(() => {
-          setNewMsgToasts(prev => prev.filter(t => t.message.id !== m.id));
-        }, 5000);
-      });
+    // Skip: initial load (prevMsgIdsRef is empty) OR load-more operation
+    if (prevMsgIdsRef.current.size > 0 && !isLoadingMoreRef.current) {
+      const newMsgs = allMessages.filter(m =>
+        !prevMsgIdsRef.current.has(m.id) &&
+        new Date(m.timestamp).getTime() > sessionStartTimestampRef.current
+      );
+      if (newMsgs.length > 0) {
+        setNewMsgToasts(prev => {
+          const next = [...prev, ...newMsgs.map(m => ({ id: m.id + "_toast_" + Date.now(), message: m }))];
+          return next.slice(-3); // max 3 toasts (LIFO)
+        });
+        // Auto-dismiss after 5s
+        newMsgs.forEach(m => {
+          setTimeout(() => {
+            setNewMsgToasts(prev => prev.filter(t => t.message.id !== m.id));
+          }, 5000);
+        });
+      }
     }
     prevMsgIdsRef.current = allIds;
   }, [allMessages]);
