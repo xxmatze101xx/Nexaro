@@ -8,6 +8,7 @@ import { type Message } from "@/lib/mock-data";
 import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, unarchiveEmail, starEmail, trashEmail, saveEmailsToCache, subscribeToGmailScores } from "@/lib/gmail";
 import { db } from "@/lib/firebase";
 import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
+import { fetchSlackChannels, type SlackChannel } from "@/lib/slack";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -37,6 +38,8 @@ import {
   Archive,
   FileText,
   MessageSquare,
+  Hash,
+  Lock,
   Calendar,
   LogOut,
   Plus,
@@ -71,6 +74,7 @@ function DashboardContent() {
   const [selectedSidebarItem, setSelectedSidebarItem] = useState<{ source: string, accountId?: string, folder?: string } | null>(null);
 
   const [slackConnected, setSlackConnected] = useState(false);
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -152,7 +156,10 @@ function DashboardContent() {
   // Load user data whenever the auth user changes
   useEffect(() => {
     if (!user) return;
-    getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
+    getSlackConnection(user.uid).then(conn => {
+      setSlackConnected(!!conn);
+      if (conn) fetchSlackChannels(conn.access_token).then(setSlackChannels);
+    });
     getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
     getGmailAccounts(user.uid).then((accounts) => {
       setGmailAccounts(accounts);
@@ -188,7 +195,10 @@ function DashboardContent() {
     // Optimistic updates first — avoids flicker if Firestore hasn't propagated yet
     if (slackOk) setSlackConnected(true);
     if (msOk) setMicrosoftConnected(true);
-    if (slackOk) getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
+    if (slackOk) getSlackConnection(user.uid).then(conn => {
+      setSlackConnected(!!conn);
+      if (conn) fetchSlackChannels(conn.access_token).then(setSlackChannels);
+    });
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);
 
@@ -602,7 +612,16 @@ function DashboardContent() {
         icon: <Image src="/ServiceLogos/Slack.svg" alt="Slack" width={16} height={16} className="shrink-0" />,
         badge: undefined,
         items: [
-          { name: 'Direktnachrichten', icon: <MessageSquare className="w-4 h-4" /> },
+          { name: 'Direktnachrichten', icon: <MessageSquare className="w-4 h-4" />, source: 'slack', folder: 'im' },
+          ...slackChannels.map(ch => ({
+            name: `#${ch.name}`,
+            icon: ch.is_private
+              ? <Lock className="w-3.5 h-3.5" />
+              : <Hash className="w-3.5 h-3.5" />,
+            source: 'slack',
+            accountId: ch.id,
+            folder: 'channel',
+          })),
         ],
       });
     }
@@ -625,7 +644,7 @@ function DashboardContent() {
     }
 
     return [...gmailEntries, ...extra];
-  }, [gmailAccounts, allMessages, slackConnected, microsoftConnected]);
+  }, [gmailAccounts, allMessages, slackConnected, slackChannels, microsoftConnected]);
 
   return (
     <div className="flex h-screen overflow-hidden">

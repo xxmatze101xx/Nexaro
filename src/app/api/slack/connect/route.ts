@@ -29,11 +29,15 @@ export async function GET(request: Request) {
     }
 
     const scopes = [
-        "channels:history",
-        "im:history",
-        "im:read",
-        "users:read",
-        "chat:write",
+        "channels:read",    // list public channels (conversations.list)
+        "channels:history", // read public channel messages
+        "groups:read",      // list private channels
+        "groups:history",   // read private channel messages
+        "im:read",          // list DMs
+        "im:history",       // read DM messages
+        "mpim:read",        // list group DMs
+        "users:read",       // resolve user IDs to names
+        "chat:write",       // send messages
     ].join(",");
 
     // Encode uid and Firebase ID token together in state — the callback needs
