@@ -34,11 +34,9 @@ import {
   Archive,
   FileText,
   MessageSquare,
-  Users,
   Calendar,
   LogOut,
   Plus,
-  Contact,
   RefreshCw,
   Pencil,
   Trash2
@@ -159,6 +157,19 @@ function DashboardContent() {
         if (user.displayName) setDisplayName(user.displayName);
       }
     });
+  }, [user]);
+
+  // Re-check connections after OAuth redirects (e.g. ?slack_connected=true)
+  // Early-exit if no relevant params — avoids Firestore reads on normal logins
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const slackOk = params.get("slack_connected") === "true";
+    const msOk = params.get("microsoft_connected") === "true";
+    if (!slackOk && !msOk) return;
+    window.history.replaceState({}, "", "/");
+    if (slackOk) getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
+    if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);
 
   // Load Gmail messages
@@ -418,12 +429,18 @@ function DashboardContent() {
 
   const handleDelete = async (message: Message) => {
     if (message.source !== "gmail" || !user || !message.accountId) return;
+    // Optimistic removal — feels instant, restored on error
+    const prevGmail = gmailMessages;
+    const prevFolder = folderMessages;
+    setGmailMessages(prev => prev.filter(m => m.id !== message.id));
+    setFolderMessages(prev => prev.filter(m => m.id !== message.id));
+    if (selectedMessage?.id === message.id) setSelectedMessage(null);
     try {
       await trashEmail(user.uid, message.accountId, message.id);
-      setGmailMessages(prev => prev.filter(m => m.id !== message.id));
-      setFolderMessages(prev => prev.filter(m => m.id !== message.id));
-      if (selectedMessage?.id === message.id) setSelectedMessage(null);
     } catch (err) {
+      // Restore on failure
+      setGmailMessages(prevGmail);
+      setFolderMessages(prevFolder);
       console.error("Failed to delete message", err);
     }
   };
@@ -640,11 +657,7 @@ function DashboardContent() {
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
           </Link>
-          <Link href="/contacts" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/contacts" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-            <Users className="w-4 h-4 shrink-0" />
-            Kontakte
-          </Link>
-          <Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+<Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Settings className="w-4 h-4 shrink-0" />
             Einstellungen
           </Link>
@@ -658,7 +671,7 @@ function DashboardContent() {
                 className="w-full flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm font-medium transition-colors"
                 onClick={() => toggleAccount(account.id)}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                   <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0", expandedAccounts[account.id] && "rotate-90")} />
                   {account.icon}
                   <span className="text-foreground truncate" title={account.name}>{account.name}</span>

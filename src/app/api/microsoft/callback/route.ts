@@ -71,7 +71,10 @@ export async function GET(request: Request) {
             : {};
 
         // Write to Firestore via REST API
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/microsoft`;
+        // The ?key= param authenticates the request using the Firebase Web API key,
+        // required for Firestore REST writes from server-side code without firebase-admin.
+        const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/microsoft?key=${apiKey}`;
         const firestoreBody = {
             fields: {
                 access_token: { stringValue: tokenData.access_token },

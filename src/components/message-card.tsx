@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { ImportanceBadge } from "./importance-badge";
 import type { Message } from "@/lib/mock-data";
-import { Sparkles, Clock, CheckCheck, Archive, Eye, EyeOff, Star, Trash2, Inbox } from "lucide-react";
+import { Sparkles, Clock, CheckCheck, Archive, Star, Trash2, Inbox } from "lucide-react";
 
 interface MessageCardProps {
     message: Message;
@@ -130,8 +130,8 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
                 </div>
             </div>
 
-            {/* Quick Actions (Hover) */}
-            <div className="absolute right-2 top-2.5 flex flex-col gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200">
+            {/* Quick Actions (Hover) — horizontal row, stays within card bounds */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-row gap-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200">
                 {/* Star / Unstar */}
                 <button
                     title={isStarred ? "Markierung entfernen" : "Als wichtig markieren"}
@@ -161,20 +161,6 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
                     {isArchived
                         ? <Inbox className="h-3.5 w-3.5 text-primary" />
                         : <Archive className="h-3.5 w-3.5" />}
-                </button>
-
-                {/* Read / Unread */}
-                <button
-                    title={message.status === "unread" ? "Als gelesen markieren" : "Als ungelesen markieren"}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleRead?.(message);
-                    }}
-                >
-                    {message.status === "unread"
-                        ? <Eye className="h-3.5 w-3.5" />
-                        : <EyeOff className="h-3.5 w-3.5" />}
                 </button>
 
                 {/* Delete */}

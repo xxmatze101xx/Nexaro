@@ -273,9 +273,11 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                     <div className="absolute inset-0 bg-black/5 dark:bg-white/5 transform translate-y-1 translate-x-1 z-0" />
                     <div className="relative bg-background border border-border shadow-sm p-4 sm:p-5 z-10 transition-all">
                         {message.htmlContent ? (
-                            <div
-                                className="text-sm text-foreground prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-a:text-primary hover:prose-a:text-primary/80"
-                                dangerouslySetInnerHTML={{ __html: message.htmlContent }}
+                            <iframe
+                                srcDoc={message.htmlContent}
+                                sandbox=""
+                                className="w-full min-h-[300px] border-0 rounded"
+                                title="Email content"
                             />
                         ) : (
                             <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-medium">{message.content}</p>
