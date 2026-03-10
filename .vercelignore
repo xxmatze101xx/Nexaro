@@ -1,0 +1,8 @@
+firebase-debug.log
+.agent/
+tools/
+*.py
+*.pyc
+__pycache__/
+.venv/
+venv/

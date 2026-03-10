@@ -51,3 +51,7 @@ pnpm-lock.yaml
 Thumbs.db
 .vercel
 .env*.local
+
+# Firebase
+firebase-debug.log
+.firebaserc
