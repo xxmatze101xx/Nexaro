@@ -28,16 +28,23 @@ export async function GET(request: Request) {
         );
     }
 
-    const scopes = [
-        "channels:read",    // list public channels (conversations.list)
-        "channels:history", // read public channel messages
-        "groups:read",      // list private channels
-        "groups:history",   // read private channel messages
+    // Bot scopes — used for posting messages, reading messages server-side
+    const botScopes = [
+        "channels:history",
+        "groups:history",
+        "im:history",
+        "chat:write",
+    ].join(",");
+
+    // User scopes — CRITICAL: conversations.list with is_member reflects the USER,
+    // not the bot. Without user_scope, is_member is always false for the bot,
+    // and every channel gets filtered out.
+    const userScopes = [
+        "channels:read",    // list public channels user is in
+        "groups:read",      // list private channels user is in
         "im:read",          // list DMs
-        "im:history",       // read DM messages
         "mpim:read",        // list group DMs
         "users:read",       // resolve user IDs to names
-        "chat:write",       // send messages
     ].join(",");
 
     // Encode uid and Firebase ID token together in state — the callback needs
@@ -47,7 +54,8 @@ export async function GET(request: Request) {
 
     const params = new URLSearchParams({
         client_id: clientId,
-        scope: scopes,
+        scope: botScopes,
+        user_scope: userScopes,
         redirect_uri: redirectUri,
         state,
     });

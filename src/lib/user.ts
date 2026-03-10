@@ -224,7 +224,8 @@ export async function setCalendarAccountVisibility(uid: string, email: string, v
 // ─── Slack ─────────────────────────────────────────────────────────────────────
 
 export interface SlackConnection {
-    access_token: string;
+    access_token: string;       // bot token (xoxb-) — for posting messages
+    user_access_token: string;  // user token (xoxp-) — for listing user's channels
     team_id: string;
     team_name: string;
     user_id: string;
