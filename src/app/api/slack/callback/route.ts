@@ -1,27 +1,41 @@
 import { NextResponse } from "next/server";
 
 /**
- * GET /api/slack/callback?code=<auth_code>&state=<uid>
+ * GET /api/slack/callback?code=<auth_code>&state=<uid>:<idToken>
  *
  * Exchanges the Slack OAuth code for access + bot tokens and stores them
  * in Firestore under users/{uid}/tokens/slack via Firestore REST API.
  *
+ * The state parameter encodes both the Firebase UID and Firebase ID token
+ * (format: "uid:idToken"). The ID token is used as Bearer auth for the
+ * Firestore REST write — a bare Web API key alone cannot satisfy
+ * `request.auth != null` Firestore security rules.
+ *
  * Required env vars:
  *   SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, SLACK_REDIRECT_URI
  *   NEXT_PUBLIC_FIREBASE_PROJECT_ID
- *   FIREBASE_ADMIN_API_KEY (server-side key for Firestore REST writes)
  */
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
-    const uid = searchParams.get("state");
+    const rawState = searchParams.get("state") ?? "";
     const error = searchParams.get("error");
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+    // Parse state: "uid:idToken" — uid has no colons, JWTs have no colons
+    const colonIdx = rawState.indexOf(":");
+    const uid = colonIdx > -1 ? rawState.slice(0, colonIdx) : rawState;
+    const idToken = colonIdx > -1 ? rawState.slice(colonIdx + 1) : "";
+
     if (error || !code || !uid) {
         const reason = error ?? "missing_code_or_state";
         return NextResponse.redirect(`${appUrl}/settings?slack_error=${reason}`);
+    }
+
+    if (!idToken) {
+        console.error("Slack callback: missing Firebase ID token in state — cannot authenticate Firestore write");
+        return NextResponse.redirect(`${appUrl}/settings?slack_error=missing_auth_token`);
     }
 
     const clientId = process.env.SLACK_CLIENT_ID;
@@ -60,12 +74,10 @@ export async function GET(request: Request) {
             return NextResponse.redirect(`${appUrl}/settings?slack_error=${tokenData.error ?? "exchange_failed"}`);
         }
 
-        // Write to Firestore via REST API
-        // Document path: users/{uid}/tokens/slack
-        // The ?key= param authenticates the request using the Firebase Web API key,
-        // which is required for Firestore REST writes from server-side code without firebase-admin.
-        const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack?key=${apiKey}`;
+        // Write to Firestore via REST API using the user's Firebase ID token as
+        // Bearer auth. This satisfies `request.auth != null` security rules —
+        // a bare ?key=<webApiKey> is NOT sufficient for auth-protected collections.
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack`;
         const firestoreBody = {
             fields: {
                 access_token: { stringValue: tokenData.access_token ?? "" },
@@ -80,7 +92,10 @@ export async function GET(request: Request) {
 
         const fsRes = await fetch(firestoreUrl, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${idToken}`,
+            },
             body: JSON.stringify(firestoreBody),
         });
 

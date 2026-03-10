@@ -292,8 +292,10 @@ function SettingsContent() {
                     setSlackConnected(false);
                 }
             } else {
-                // Redirect to server-side OAuth initiator
-                window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}`;
+                // Get a fresh Firebase ID token — the server-side callback needs it to
+                // authenticate the Firestore REST write (Bearer auth, satisfies security rules).
+                const idToken = await user.getIdToken(/* forceRefresh */ false);
+                window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
             }
         } else if (integrationId === "Outlook" || integrationId === "Microsoft Teams") {
             window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}`;
