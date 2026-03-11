@@ -53,25 +53,36 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "auth_failed", messages: [] }, { status: 401 });
     }
 
-    const token = tokens.userToken || tokens.botToken;
-    if (!token) {
+    if (!tokens.userToken && !tokens.botToken) {
         return NextResponse.json({ error: "no_token", messages: [] }, { status: 400 });
     }
 
     // ── Fetch conversation history ───────────────────────────────────────────
-    const histRes = await fetch(
-        `https://slack.com/api/conversations.history?channel=${channelId}&limit=50`,
-        { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const histData = await histRes.json() as {
-        ok: boolean;
-        error?: string;
-        messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }>;
-    };
+    // Try user token first (has channel context), fall back to bot token
+    const tokensToTry = [tokens.userToken, tokens.botToken].filter(Boolean);
+    let histData: { ok: boolean; error?: string; messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }> } | null = null;
+    let usedToken = "";
 
-    if (!histData.ok) {
-        console.error(`[slack/messages] conversations.history error=${histData.error} channel=${channelId}`);
-        return NextResponse.json({ error: histData.error, messages: [] });
+    for (const tok of tokensToTry) {
+        const histRes = await fetch(
+            `https://slack.com/api/conversations.history?channel=${channelId}&limit=50`,
+            { headers: { Authorization: `Bearer ${tok}` } }
+        );
+        const data = await histRes.json() as typeof histData;
+        if (data?.ok) {
+            histData = data;
+            usedToken = tok;
+            break;
+        }
+        // If missing_scope or not_in_channel, try next token
+        console.warn(`[slack/messages] token attempt failed: error=${data?.error} channel=${channelId}`);
+        histData = data; // keep last error
+    }
+
+    if (!histData?.ok) {
+        const errMsg = histData?.error ?? "unknown";
+        console.error(`[slack/messages] all tokens failed: error=${errMsg} channel=${channelId} usedToken=${usedToken ? "set" : "none"}`);
+        return NextResponse.json({ error: errMsg, messages: [] });
     }
 
     // Reverse to chronological order; skip subtypes (join/leave events)
@@ -87,7 +98,7 @@ export async function GET(request: Request) {
         uniqueUsers.slice(0, 15).map(async userId => {
             try {
                 const uRes = await fetch(`https://slack.com/api/users.info?user=${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${usedToken}` },
                 });
                 const uData = await uRes.json() as {
                     ok: boolean;
