@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (!uid) return NextResponse.json({ error: "uid_not_found" }, { status: 401 });
 
     // Read Slack token
-    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack`;
+    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack?key=${apiKey}`;
     const fsRes = await fetch(fsUrl, { headers: { Authorization: `Bearer ${idToken}` } });
     if (!fsRes.ok) return NextResponse.json({ error: "no_token" }, { status: 400 });
     const fsData = await fsRes.json() as {

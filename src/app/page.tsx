@@ -237,7 +237,7 @@ function DashboardContent() {
         if (user.displayName) setDisplayName(user.displayName);
       }
     });
-  }, [user, loadSlackChannels]);
+  }, [user, loadSlackChannels, loadSlackDMs]);
 
   // Re-check connections after OAuth redirects (e.g. ?slack_connected=true)
   // Early-exit if no relevant params — avoids Firestore reads on normal logins
@@ -256,7 +256,7 @@ function DashboardContent() {
       if (conn) loadSlackChannels();
     });
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
-  }, [user]);
+  }, [user, loadSlackChannels]);
 
   // Load Gmail messages — progressive batch loading on first load (200), quick refresh on poll (20)
   useEffect(() => {

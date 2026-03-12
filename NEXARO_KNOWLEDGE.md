@@ -174,3 +174,4 @@ users/{uid}/
 - History-Pagination serverseitig in der API-Route zentralisiert, damit UI simpel bleibt und keine Slack-Cursor-Details kennen muss.
 - Optimistisches UI im Client + endgültige Konsistenz durch direktes Re-Fetch nach erfolgreichem Senden.
 
+

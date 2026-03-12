@@ -22,7 +22,7 @@ async function getSlackToken(idToken: string, projectId: string): Promise<{ user
     if (!uid) return null;
 
     // Read Slack tokens from Firestore
-    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack`;
+    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack?key=${apiKey}`;
     const fsRes = await fetch(fsUrl, { headers: { Authorization: `Bearer ${idToken}` } });
     if (!fsRes.ok) return null;
     const fsData = await fsRes.json() as {

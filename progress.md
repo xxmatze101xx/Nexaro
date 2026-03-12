@@ -77,3 +77,4 @@
   - Optimistisches Senden implementiert (lokale Nachricht sofort sichtbar).
   - Fehlerbehandlung verbessert (`missing_scope`, `not_in_channel`, Netzwerkfehler) mit sichtbarer UI-Fehlermeldung statt nur `console.error`.
 
+

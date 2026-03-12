@@ -80,3 +80,5 @@ The Slack OAuth redirect URI in `.env.local` should be `https://nexaro-9j3h.verc
 You must add this **exact URL** to the Slack app's OAuth redirect URLs at api.slack.com/apps → OAuth & Permissions → Redirect URLs.
 
 - ~~SLACK-B1 Follow-up (Channel history pagination + send UX hardening)~~ ✅ `/api/slack/messages` paginiert jetzt bis zu 1000 Nachrichten; Slack-Send hat optimistisches UI + klare Fehlertexte
+
+===

@@ -10,6 +10,12 @@ export interface UserProfile {
     updatedAt: FieldValue | Timestamp;
 }
 
+
+export interface GmailAccount {
+    email: string;
+    token: string;
+}
+
 /**
  * Ensures a user document exists in Firestore after login/registration.
  */
@@ -102,20 +108,35 @@ export async function saveGmailRefreshToken(uid: string, refreshToken: string, p
 
 /**
  * Retrieves all connected Gmail accounts.
+ * Supports both schema variants in Firestore:
+ * - new:    { accounts: [{ email, refresh_token }] }
+ * - legacy: { accounts: [{ email, token }] } or { refresh_token, profile_email }
  */
-export async function getGmailAccounts(uid: string): Promise<{ email: string, token: string }[]> {
+export async function getGmailAccounts(uid: string): Promise<GmailAccount[]> {
     if (!uid) return [];
     const ref = doc(db, "users", uid, "private", "gmail");
     const snap = await getDoc(ref);
-    if (snap.exists()) {
-        const data = snap.data();
-        if (data.accounts && Array.isArray(data.accounts)) {
-            return data.accounts;
-        } else if (data.refresh_token) {
-            // Support legacy format
-            return [{ email: data.profile_email || "Unknown", token: data.refresh_token }];
-        }
+    if (!snap.exists()) return [];
+
+    const data = snap.data() as {
+        accounts?: Array<{ email?: string; token?: string; refresh_token?: string }>;
+        refresh_token?: string;
+        profile_email?: string;
+    };
+
+    if (Array.isArray(data.accounts)) {
+        return data.accounts
+            .map((a) => ({
+                email: a.email ?? "Unknown",
+                token: a.token ?? a.refresh_token ?? "",
+            }))
+            .filter((a) => !!a.email && !!a.token);
     }
+
+    if (data.refresh_token) {
+        return [{ email: data.profile_email || "Unknown", token: data.refresh_token }];
+    }
+
     return [];
 }
 
@@ -135,7 +156,9 @@ export async function disconnectGmail(uid: string, email: string) {
     if (!uid) return;
     const ref = doc(db, "users", uid, "private", "gmail");
     const accounts = await getGmailAccounts(uid);
-    const updatedAccounts = accounts.filter(a => a.email !== email);
+    const updatedAccounts = accounts
+        .filter(a => a.email !== email)
+        .map(a => ({ email: a.email, refresh_token: a.token }));
     await setDoc(ref, { accounts: updatedAccounts, updatedAt: serverTimestamp() }, { merge: true });
 }
 
@@ -206,7 +229,9 @@ export async function disconnectCalendar(uid: string, email: string) {
     if (!uid) return;
     const ref = doc(db, "users", uid, "private", "calendar");
     const accounts = await getCalendarAccounts(uid);
-    const updatedAccounts = accounts.filter(a => a.email !== email);
+    const updatedAccounts = accounts
+        .filter(a => a.email !== email)
+         .map(a => ({ email: a.email, refresh_token: a.refresh_token, visible: a.visible }));
     await setDoc(ref, { accounts: updatedAccounts, updatedAt: serverTimestamp() }, { merge: true });
 }
 
