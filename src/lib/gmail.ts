@@ -207,6 +207,86 @@ export async function fetchRecentEmailsAndCache(
     }
 }
 
+// ── Progressive batch fetch ────────────────────────────────────────────────
+
+/**
+ * Fetches up to `totalMax` message IDs in one call, then fetches details in
+ * batches of `batchSize`. Calls `onBatch` after each batch so the UI can
+ * render progressively.  Returns the nextPageToken for further pagination.
+ */
+export async function fetchEmailsProgressively(
+    uid: string,
+    accountEmail: string,
+    folder: 'INBOX' | 'SENT' | 'STARRED' | 'TRASH' | 'ARCHIVE' | null,
+    totalMax: number,
+    batchSize: number,
+    onBatch: (messages: GmailMessage[], nextPageToken: string | null, done: boolean) => void,
+): Promise<void> {
+    const accessToken = await getValidAccessToken(uid, accountEmail);
+    if (!accessToken) { onBatch([], null, true); return; }
+
+    try {
+        const params = new URLSearchParams({ maxResults: String(totalMax) });
+        if (folder === 'INBOX') params.set('labelIds', 'INBOX');
+        else if (folder === 'SENT') params.set('labelIds', 'SENT');
+        else if (folder === 'STARRED') params.set('labelIds', 'STARRED');
+        else if (folder === 'TRASH') params.set('labelIds', 'TRASH');
+        else if (folder === 'ARCHIVE') params.set('q', '-in:inbox -in:trash -in:spam');
+
+        const listRes = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+
+        if (!listRes.ok) {
+            console.error('Error fetching message IDs for progressive load', await listRes.text());
+            onBatch([], null, true);
+            return;
+        }
+
+        const listData = (await listRes.json()) as {
+            messages?: { id: string }[];
+            nextPageToken?: string;
+        };
+
+        const allIds = listData.messages ?? [];
+        const nextToken = listData.nextPageToken ?? null;
+
+        if (allIds.length === 0) {
+            onBatch([], nextToken, true);
+            return;
+        }
+
+        // Fetch details in batches
+        for (let i = 0; i < allIds.length; i += batchSize) {
+            const chunk = allIds.slice(i, i + batchSize);
+            const detailedEmails = await Promise.all(
+                chunk.map(async (msg) => {
+                    try {
+                        const msgRes = await fetch(
+                            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+                            { headers: { Authorization: `Bearer ${accessToken}` } }
+                        );
+                        return msgRes.ok ? ((await msgRes.json()) as GmailMessage) : null;
+                    } catch {
+                        return null;
+                    }
+                })
+            );
+
+            const valid: GmailMessage[] = detailedEmails
+                .filter((e): e is GmailMessage => e !== null)
+                .map(e => ({ ...e, _accountId: accountEmail }));
+
+            const isDone = i + batchSize >= allIds.length;
+            onBatch(valid, nextToken, isDone);
+        }
+    } catch (error) {
+        console.error('Error in progressive email fetch', error);
+        onBatch([], null, true);
+    }
+}
+
 // ── Message parsing ────────────────────────────────────────────────────────
 
 function findHtmlPart(part: GmailPayloadPart): string | null {
@@ -308,6 +388,43 @@ export function parseGmailToNexaroMessage(gmailMsg: GmailMessage, accountEmail?:
 
 // ── Send email ─────────────────────────────────────────────────────────────
 
+/** Represents a file attachment for outgoing emails. */
+export interface EmailAttachment {
+    filename: string;
+    mimeType: string;
+    /** Base64-encoded content (standard Base64, NOT URL-safe). */
+    base64Data: string;
+    size: number;
+}
+
+/** Max attachment size: 25 MB (Gmail limit). */
+export const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024;
+
+/** Reads a File into an EmailAttachment. Rejects if file exceeds size limit. */
+export function fileToAttachment(file: File): Promise<EmailAttachment> {
+    return new Promise((resolve, reject) => {
+        if (file.size > MAX_ATTACHMENT_SIZE) {
+            reject(new Error(`Datei "${file.name}" ist zu groß (max. 25 MB).`));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const arrayBuffer = reader.result as ArrayBuffer;
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = "";
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            resolve({
+                filename: file.name,
+                mimeType: file.type || "application/octet-stream",
+                base64Data: btoa(binary),
+                size: file.size,
+            });
+        };
+        reader.onerror = () => reject(new Error(`Fehler beim Lesen von "${file.name}".`));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
 /**
  * Sends an email (or reply) via the Gmail API.
  *
@@ -326,7 +443,8 @@ export async function sendEmail(
     references?: string,
     threadId?: string,
     cc?: string,
-    bcc?: string
+    bcc?: string,
+    attachments?: EmailAttachment[],
 ): Promise<unknown> {
     const accessToken = await getValidAccessToken(uid, accountEmail);
     if (!accessToken)
@@ -334,20 +452,68 @@ export async function sendEmail(
             "Kein Zugriff auf Gmail. Bitte verbinde dein Konto in den Einstellungen erneut."
         );
 
-    const emailLines: string[] = [];
-    emailLines.push(`To: ${to}`);
-    if (cc) emailLines.push(`Cc: ${cc}`);
-    if (bcc) emailLines.push(`Bcc: ${bcc}`);
-    emailLines.push('Content-Type: text/plain; charset="UTF-8"');
-    emailLines.push("MIME-Version: 1.0");
-    if (inReplyTo) emailLines.push(`In-Reply-To: ${inReplyTo}`);
-    if (references) emailLines.push(`References: ${references}`);
     const base64Subject = btoa(unescape(encodeURIComponent(subject)));
-    emailLines.push(`Subject: =?utf-8?B?${base64Subject}?=`);
-    emailLines.push("");
-    emailLines.push(body);
+    const hasAttachments = attachments && attachments.length > 0;
 
-    const raw = emailLines.join("\r\n");
+    let raw: string;
+
+    if (!hasAttachments) {
+        // Simple plain-text message
+        const emailLines: string[] = [];
+        emailLines.push(`To: ${to}`);
+        if (cc) emailLines.push(`Cc: ${cc}`);
+        if (bcc) emailLines.push(`Bcc: ${bcc}`);
+        emailLines.push('Content-Type: text/plain; charset="UTF-8"');
+        emailLines.push("MIME-Version: 1.0");
+        if (inReplyTo) emailLines.push(`In-Reply-To: ${inReplyTo}`);
+        if (references) emailLines.push(`References: ${references}`);
+        emailLines.push(`Subject: =?utf-8?B?${base64Subject}?=`);
+        emailLines.push("");
+        emailLines.push(body);
+        raw = emailLines.join("\r\n");
+    } else {
+        // Multipart/mixed MIME with attachments
+        const boundary = `nexaro_boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const headerLines: string[] = [];
+        headerLines.push(`To: ${to}`);
+        if (cc) headerLines.push(`Cc: ${cc}`);
+        if (bcc) headerLines.push(`Bcc: ${bcc}`);
+        headerLines.push("MIME-Version: 1.0");
+        if (inReplyTo) headerLines.push(`In-Reply-To: ${inReplyTo}`);
+        if (references) headerLines.push(`References: ${references}`);
+        headerLines.push(`Subject: =?utf-8?B?${base64Subject}?=`);
+        headerLines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+        headerLines.push("");
+
+        // Text body part
+        const textPart = [
+            `--${boundary}`,
+            'Content-Type: text/plain; charset="UTF-8"',
+            "",
+            body,
+        ].join("\r\n");
+
+        // Attachment parts
+        const attachParts = attachments.map(att => {
+            const encodedName = `=?utf-8?B?${btoa(unescape(encodeURIComponent(att.filename)))}?=`;
+            return [
+                `--${boundary}`,
+                `Content-Type: ${att.mimeType}; name="${encodedName}"`,
+                "Content-Transfer-Encoding: base64",
+                `Content-Disposition: attachment; filename="${encodedName}"`,
+                "",
+                att.base64Data,
+            ].join("\r\n");
+        });
+
+        raw = [
+            headerLines.join("\r\n"),
+            textPart,
+            ...attachParts,
+            `--${boundary}--`,
+        ].join("\r\n");
+    }
+
     const base64EncodedEmail = btoa(unescape(encodeURIComponent(raw)))
         .replace(/\+/g, "-")
         .replace(/\//g, "_")

@@ -4,10 +4,24 @@ import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import { ImportanceBadge } from "./importance-badge";
 import { SourceIcon, SOURCE_CONFIG } from "./source-filter";
-import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { sendEmail, archiveEmail, markEmailStatus } from "@/lib/gmail";
+import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff, Paperclip, Image as ImageIcon, FileText, File as FileIcon, ListTodo, Check } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { sendEmail, archiveEmail, markEmailStatus, fileToAttachment, MAX_ATTACHMENT_SIZE, type EmailAttachment } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
+import { addTodo } from "@/lib/todos";
+
+interface ExtractedTodoItem {
+    title: string;
+    priority: "low" | "medium" | "high" | "urgent";
+    deadline: string | null;
+    confidence: number;
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface AIDraftPanelProps {
     message: Message | null;
@@ -31,7 +45,34 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
     const [replyBcc, setReplyBcc] = useState("");
     const [replySubject, setReplySubject] = useState("");
     const [showCcBcc, setShowCcBcc] = useState(false);
+    const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [isExtractingTodos, setIsExtractingTodos] = useState(false);
+    const [extractedTodos, setExtractedTodos] = useState<ExtractedTodoItem[]>([]);
+    const [addedTodoIndices, setAddedTodoIndices] = useState<Set<number>>(new Set());
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const replyFileInputRef = useRef<HTMLInputElement>(null);
+
+    const addFiles = useCallback(async (files: FileList | File[]) => {
+        setDraftError(null);
+        const fileArray = Array.from(files);
+        const totalCurrentSize = attachments.reduce((s, a) => s + a.size, 0);
+        const newTotalSize = totalCurrentSize + fileArray.reduce((s, f) => s + f.size, 0);
+        if (newTotalSize > MAX_ATTACHMENT_SIZE) {
+            setDraftError("Gesamtgröße überschreitet 25 MB. Bitte entferne Anhänge.");
+            return;
+        }
+        try {
+            const newAttachments = await Promise.all(fileArray.map(f => fileToAttachment(f)));
+            setAttachments(prev => [...prev, ...newAttachments]);
+        } catch (err: unknown) {
+            setDraftError(err instanceof Error ? err.message : "Fehler beim Lesen der Datei.");
+        }
+    }, [attachments]);
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
 
     const initReply = (msg: typeof message) => {
         if (!msg) return;
@@ -47,6 +88,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
         setIsReplying(false);
         setDraftError(null);
         setDraftText(message?.ai_draft_response || "");
+        setAttachments([]);
+        setIsDragOver(false);
+        setExtractedTodos([]);
+        setAddedTodoIndices(new Set());
     }, [message?.id, message?.ai_draft_response]);
 
     // Listen for keyboard shortcut 'r' dispatched by the dashboard
@@ -120,7 +165,8 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                 message.rfcMessageId,
                 message.threadId,
                 replyCc.trim() || undefined,
-                replyBcc.trim() || undefined
+                replyBcc.trim() || undefined,
+                attachments.length > 0 ? attachments : undefined
             );
             onClose();
         } catch (e: unknown) {
@@ -192,6 +238,65 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
             setDraftError(`Fehler: ${msg}`);
+        }
+    };
+
+    const handleExtractTodos = async () => {
+        if (!message) return;
+        setIsExtractingTodos(true);
+        setDraftError(null);
+        setExtractedTodos([]);
+        setAddedTodoIndices(new Set());
+        try {
+            const res = await fetch("/api/ai/extract-todos", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    subject: message.subject,
+                    sender: message.sender,
+                    body: message.content,
+                }),
+            });
+            const data = (await res.json()) as { todos?: ExtractedTodoItem[]; error?: string };
+            if (!res.ok) {
+                throw new Error(data.error ?? "Extraktion fehlgeschlagen");
+            }
+            setExtractedTodos(data.todos ?? []);
+            if (!data.todos || data.todos.length === 0) {
+                setDraftError("Keine Aufgaben in dieser Nachricht gefunden.");
+            }
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Fehler bei der Extraktion.";
+            setDraftError(msg);
+        } finally {
+            setIsExtractingTodos(false);
+        }
+    };
+
+    const handleAddExtractedTodo = async (todo: ExtractedTodoItem, index: number) => {
+        if (!auth.currentUser || !message) return;
+        try {
+            await addTodo(auth.currentUser.uid, todo.title, {
+                priority: todo.priority,
+                deadline: todo.deadline ?? undefined,
+                source: "ai_extracted",
+                sourceMessageId: message.id,
+                sourceMessageSubject: message.subject,
+                sourceType: message.source as "gmail" | "slack" | "teams" | "outlook",
+                aiConfidence: todo.confidence,
+            });
+            setAddedTodoIndices(prev => new Set(prev).add(index));
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Fehler beim Speichern.";
+            setDraftError(msg);
+        }
+    };
+
+    const handleAddAllTodos = async () => {
+        for (let i = 0; i < extractedTodos.length; i++) {
+            if (!addedTodoIndices.has(i)) {
+                await handleAddExtractedTodo(extractedTodos[i], i);
+            }
         }
     };
 
@@ -303,12 +408,88 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                                         ? <Eye width="15" height="15" />
                                         : <EyeOff width="15" height="15" />}
                                 </button>
+                                <button
+                                    title="Aufgaben extrahieren"
+                                    disabled={isExtractingTodos}
+                                    className="p-1.5 rounded-sm text-muted-foreground hover:text-primary hover:bg-primary/10 border border-border/50 hover:border-primary/30 transition-all shadow-sm bg-background disabled:opacity-50"
+                                    onClick={handleExtractTodos}
+                                >
+                                    {isExtractingTodos
+                                        ? <Loader2 width="15" height="15" className="animate-spin" />
+                                        : <ListTodo width="15" height="15" />}
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
             </div>
+
+            {/* Extracted Todos Panel */}
+            {extractedTodos.length > 0 && (
+                <div className="flex-shrink-0 border-b border-border/50 px-3 py-2 bg-primary/5">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5">
+                            <ListTodo className="w-3.5 h-3.5 text-primary" />
+                            <span className="text-xs font-semibold text-foreground">
+                                {extractedTodos.length} Aufgabe{extractedTodos.length !== 1 ? "n" : ""} gefunden
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {addedTodoIndices.size < extractedTodos.length && (
+                                <button
+                                    onClick={handleAddAllTodos}
+                                    className="text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors"
+                                >
+                                    Alle hinzufügen
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setExtractedTodos([])}
+                                className="text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                        {extractedTodos.map((todo, idx) => {
+                            const isAdded = addedTodoIndices.has(idx);
+                            return (
+                                <div key={idx} className={cn(
+                                    "flex items-center gap-2 px-2 py-1.5 rounded-md text-xs",
+                                    isAdded ? "bg-primary/10" : "bg-card border border-border/50",
+                                )}>
+                                    <span className={cn(
+                                        "w-2 h-2 rounded-full shrink-0",
+                                        todo.priority === "urgent" ? "bg-destructive" :
+                                        todo.priority === "high" ? "bg-orange-500" :
+                                        todo.priority === "medium" ? "bg-yellow-500" : "bg-muted-foreground/50",
+                                    )} />
+                                    <span className={cn("flex-1 truncate", isAdded && "text-muted-foreground line-through")}>
+                                        {todo.title}
+                                    </span>
+                                    {todo.deadline && (
+                                        <span className="text-[10px] text-muted-foreground shrink-0">
+                                            {new Date(todo.deadline).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                                        </span>
+                                    )}
+                                    {isAdded ? (
+                                        <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    ) : (
+                                        <button
+                                            onClick={() => handleAddExtractedTodo(todo, idx)}
+                                            className="text-[10px] font-semibold text-primary hover:text-primary/80 px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                                        >
+                                            Hinzufügen
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Email Body — flex-1, fills all available space, scrolls independently */}
             <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
@@ -348,8 +529,22 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                 )}
 
                 {/* Full Reply Compose Panel */}
+                {/* Hidden file input for reply attachments */}
+                <input
+                    type="file"
+                    ref={replyFileInputRef}
+                    onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }}
+                    multiple
+                    className="hidden"
+                />
+
                 {isReplying && (
-                    <div className="flex flex-col flex-1 min-h-0">
+                    <div
+                        className={cn("flex flex-col flex-1 min-h-0", isDragOver && "ring-2 ring-primary/50 ring-inset")}
+                        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                        onDragLeave={() => setIsDragOver(false)}
+                        onDrop={(e) => { e.preventDefault(); setIsDragOver(false); if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files); }}
+                    >
                         {/* Reply fields */}
                         <div className="border-b border-border/50 shrink-0">
                             {/* To */}
@@ -424,9 +619,64 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                             />
                         </div>
 
+                        {/* Attachments list */}
+                        {attachments.length > 0 && (
+                            <div className="px-3 py-1.5 space-y-1 max-h-24 overflow-y-auto shrink-0 border-t border-border/30">
+                                {attachments.map((att, idx) => (
+                                    <div key={`${att.filename}-${idx}`} className="flex items-center gap-2 py-0.5 px-2 bg-muted/40 rounded group">
+                                        {att.mimeType.startsWith("image/") ? (
+                                            <ImageIcon className="w-3 h-3 text-primary shrink-0" />
+                                        ) : att.mimeType === "application/pdf" ? (
+                                            <FileText className="w-3 h-3 text-destructive shrink-0" />
+                                        ) : (
+                                            <FileIcon className="w-3 h-3 text-muted-foreground shrink-0" />
+                                        )}
+                                        <span className="text-[11px] text-foreground truncate flex-1">{att.filename}</span>
+                                        <span className="text-[10px] text-muted-foreground shrink-0">{formatBytes(att.size)}</span>
+                                        <button
+                                            onClick={() => removeAttachment(idx)}
+                                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                                        >
+                                            <X className="w-2.5 h-2.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Toolbar */}
                         <div className="flex items-center justify-between px-3 py-2 border-t border-border/50 bg-muted/10 shrink-0">
                             <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => replyFileInputRef.current?.click()}
+                                    className={cn(
+                                        "flex items-center gap-1 rounded-sm border border-border/80 bg-background px-2 py-1.5 text-[11px] font-medium",
+                                        "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm"
+                                    )}
+                                    title="Datei anhängen"
+                                >
+                                    <Paperclip className="h-3 w-3" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const input = document.createElement("input");
+                                        input.type = "file";
+                                        input.accept = "image/*";
+                                        input.multiple = true;
+                                        input.onchange = (e) => {
+                                            const files = (e.target as HTMLInputElement).files;
+                                            if (files) addFiles(files);
+                                        };
+                                        input.click();
+                                    }}
+                                    className={cn(
+                                        "flex items-center gap-1 rounded-sm border border-border/80 bg-background px-2 py-1.5 text-[11px] font-medium",
+                                        "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm"
+                                    )}
+                                    title="Bild anhängen"
+                                >
+                                    <ImageIcon className="h-3 w-3" />
+                                </button>
                                 <button
                                     onClick={handleGenerateDraft}
                                     disabled={isGenerating}
@@ -470,6 +720,11 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                                 >
                                     {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                                     {isSending ? "Senden..." : "Senden"}
+                                    {!isSending && attachments.length > 0 && (
+                                        <span className="ml-0.5 text-[9px] bg-primary-foreground/20 px-1 py-0.5 rounded-full">
+                                            {attachments.length}
+                                        </span>
+                                    )}
                                 </button>
                             </div>
                         </div>

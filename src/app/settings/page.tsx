@@ -11,6 +11,7 @@ import {
     Shield,
     LogOut,
     Mail,
+    Bell,
 } from "lucide-react";
 import { uploadProfilePicture } from "@/lib/storage";
 import { auth } from "@/lib/firebase";
@@ -35,6 +36,7 @@ import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
 import { BillingSection } from "@/components/settings/BillingSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DigestSection } from "@/components/settings/DigestSection";
+import { NotificationsSection } from "@/components/settings/NotificationsSection";
 
 export default function SettingsPage() {
     return (
@@ -58,10 +60,7 @@ function SettingsContent() {
     const [microsoftConnected, setMicrosoftConnected] = useState(false);
     const codeHandledRef = useRef(false);
 
-    // Force light mode on this page
-    useEffect(() => {
-        document.documentElement.classList.remove("dark");
-    }, []);
+    // Respect the user's dark-mode preference (no forced override)
 
     // Load profile data when user becomes available
     useEffect(() => {
@@ -145,7 +144,7 @@ function SettingsContent() {
 
     // Intersection observer for active nav section
     useEffect(() => {
-        const sectionIds = ["Konto", "Dienste", "Abonnement", "Sicherheit"];
+        const sectionIds = ["Konto", "Dienste", "Benachrichtigungen", "Zusammenfassungen", "Abonnement", "Sicherheit"];
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
@@ -336,25 +335,26 @@ function SettingsContent() {
     const NAV_ITEMS = [
         { id: "Konto", icon: <User className="w-4 h-4" /> },
         { id: "Dienste", icon: <LinkIcon className="w-4 h-4" /> },
+        { id: "Benachrichtigungen", icon: <Bell className="w-4 h-4" /> },
         { id: "Zusammenfassungen", icon: <Mail className="w-4 h-4" /> },
         { id: "Abonnement", icon: <CreditCard className="w-4 h-4" /> },
         { id: "Sicherheit", icon: <Shield className="w-4 h-4" /> },
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
             {/* Header */}
-            <header className="h-16 border-b border-slate-200 flex items-center px-6 bg-white/80 backdrop-blur-xl shrink-0 sticky top-0 z-50">
+            <header className="h-16 border-b border-border flex items-center px-6 bg-card/80 backdrop-blur-xl shrink-0 sticky top-0 z-50">
                 <div className="flex items-center justify-between w-full max-w-6xl mx-auto">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => (window.location.href = "/")}
-                            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all duration-300 group"
+                            className="p-2 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-300 group"
                         >
                             <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
                         </button>
                         <div className="flex items-center gap-2.5">
-                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                            <div className="p-1.5 bg-primary/10 text-primary rounded-lg">
                                 <SettingsIcon className="w-5 h-5" />
                             </div>
                             <h1 className="text-xl font-semibold tracking-tight">Einstellungen</h1>
@@ -377,8 +377,8 @@ function SettingsContent() {
                                     className={cn(
                                         "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300",
                                         activeSection === item.id
-                                            ? "bg-white text-slate-900 shadow-sm border border-slate-200"
-                                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                            ? "bg-card text-foreground shadow-sm border border-border"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                     )}
                                 >
                                     {item.icon}
@@ -387,13 +387,13 @@ function SettingsContent() {
                             ))}
                         </div>
 
-                        <div className="pt-6 border-t border-slate-200">
+                        <div className="pt-6 border-t border-border">
                             <button
                                 onClick={async () => {
                                     try { await auth.signOut(); window.location.href = "/login"; }
                                     catch (error) { console.error("Logout error", error); }
                                 }}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-300"
                             >
                                 <LogOut className="w-4 h-4" />
                                 Abmelden
@@ -423,6 +423,7 @@ function SettingsContent() {
                             onDisconnectGmail={handleDisconnectGmail}
                             onDisconnectCalendar={handleDisconnectCalendar}
                         />
+                        <NotificationsSection uid={user?.uid} />
                         <DigestSection uid={user?.uid} userEmail={email} />
                         <BillingSection />
                         <SecuritySection />

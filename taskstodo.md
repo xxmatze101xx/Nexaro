@@ -47,6 +47,25 @@
 
 - ~~UI-P1: Email-Body bekommt zu wenig vertikalen Platz~~ ✅ Detail-Panel in 3 unabhängige Flex-Sektionen aufgeteilt; Body scrollt eigenständig
 
+## Tagesplan CLAUDE.md — In Bearbeitung (2026-03-11)
+
+- ~~SLACK-B1: Slack Channel Messages~~ ✅ Server-side proxy `/api/slack/messages`, User Token für `conversations.history`
+- ~~SLACK-B2: Slack DM Messages~~ ✅ `/api/slack/dms` Route, `im:history` scope, User name resolution
+- ~~SLACK-B3: Slack Send Messages~~ ✅ `/api/slack/send`, `chat.postMessage`, optimistic UI update
+- ~~UI-P1: Popup-Navigation~~ ✅ Toast-Klick navigiert zur Nachricht
+- ~~UI-P2: Popup-Einstellung~~ ✅ Toggle in Settings, Firestore-persistent
+- ~~UI-P3: Settings Design~~ ✅ Alle 7 Settings-Komponenten auf CSS-Token-System umgestellt, Dark Mode funktioniert
+- ~~GMAIL-F1: Progressive Loading 200 Mails~~ ✅ Batch-Fetch mit Streaming-UI, 30s Polling
+- ~~GMAIL-F2: Email Attachments~~ ✅ Alle 3 Compose-Panels mit Drag&Drop, File-Picker, Vorschau, 25MB-Limit, MIME multipart/mixed
+- ~~UI-P5: Todo-Bereich mit KI-Generierung~~ ✅ Firestore CRUD, useTodos Hook, /todos Page, AI Extraction, Sidebar-Link
+- ~~INFRA-F1: Integrations-Brainstorming~~ ✅ `Ergebnisse/integrations-brainstorming.md` erstellt
+- INFRA-F2: Further Integrations Research — ⏳ Noch offen
+- ~~AI-F1: AI Model Analysis~~ ✅ `Ergebnisse/ai-model-analysis.md` erstellt
+- ~~AI-F2: Pricing Strategy~~ ✅ `Ergebnisse/pricing-strategy.md` erstellt
+- ~~UI-P4: Dashboard Widget Concept~~ ✅ `Ergebnisse/dashboard-concept.md` erstellt
+- AI-F3: AI Assistant Concept + Implementation — ⏳ Noch offen
+- FINAL: Setup Guide — ⏳ Noch offen
+
 ## Remaining Phase 6 Polish (not started)
 
 | Task | Notes |

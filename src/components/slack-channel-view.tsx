@@ -109,6 +109,15 @@ export function SlackChannelView({
         fetchMessages();
     }, [fetchMessages]);
 
+    // Auto-poll for new messages every 15 seconds
+    useEffect(() => {
+        if (!channelId) return;
+        const interval = setInterval(() => {
+            fetchMessages();
+        }, 15_000);
+        return () => clearInterval(interval);
+    }, [channelId, fetchMessages]);
+
     const handleSend = async () => {
         if (!input.trim() || sending) return;
         const text = input.trim();

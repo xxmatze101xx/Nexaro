@@ -66,14 +66,14 @@ export function IntegrationsSection({
         <section id="Dienste" className="space-y-6 scroll-mt-28">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Integrations & Workflows</h2>
-                    <p className="text-sm text-slate-500">Optimiere deinen Workflow und verbinde die Tools, die dein Team täglich nutzt.</p>
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">Integrations & Workflows</h2>
+                    <p className="text-sm text-muted-foreground">Optimiere deinen Workflow und verbinde die Tools, die dein Team täglich nutzt.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm transition-all shadow-sm">
-                        <DownloadCloud className="w-4 h-4 text-slate-500" /> Export
+                    <button className="flex items-center gap-2 px-4 py-2 bg-card border border-border text-foreground rounded-xl text-sm font-medium hover:bg-muted hover:border-border hover:shadow-sm transition-all shadow-sm">
+                        <DownloadCloud className="w-4 h-4 text-muted-foreground" /> Export
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 hover:-translate-y-0.5">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-foreground border border-foreground text-background rounded-xl text-sm font-medium hover:bg-foreground/90 transition-all shadow-md shadow-foreground/10 hover:-translate-y-0.5">
                         <Plus className="w-4 h-4" /> Integration erstellen
                     </button>
                 </div>
@@ -81,7 +81,7 @@ export function IntegrationsSection({
 
             {/* Filter Tabs + Search */}
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 py-2">
-                <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/70 border border-slate-200/60 rounded-xl w-fit">
+                <div className="flex flex-wrap items-center gap-1.5 p-1 bg-muted/70 border border-border/60 rounded-xl w-fit">
                     {tabs.map((tab, idx) => (
                         <button
                             key={tab.value}
@@ -89,8 +89,8 @@ export function IntegrationsSection({
                             className={cn(
                                 "px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all",
                                 activeTab === tab.value
-                                    ? "text-slate-900 bg-white shadow-sm border border-slate-200/50"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                                    ? "text-foreground bg-card shadow-sm border border-border/50"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                             )}
                         >
                             {tab.value === "active" && (
@@ -102,27 +102,27 @@ export function IntegrationsSection({
                             {tab.value !== "active" && tab.label}
                         </button>
                     ))}
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
-                    <button className="px-2 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-white/50 rounded-lg transition-all">
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <button className="px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-card/50 rounded-lg transition-all">
                         <Plus className="w-4 h-4" />
                     </button>
                 </div>
 
                 <div className="relative group w-full xl:w-72">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors" />
+                    <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-primary transition-colors" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Integration suchen..."
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
                     />
                 </div>
             </div>
 
             {/* Integration Cards */}
             {visibleIntegrations.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 text-sm">
+                <div className="text-center py-16 text-muted-foreground text-sm">
                     {activeTab === "custom"
                         ? "Custom Workflows kommen bald."
                         : "Keine Integrationen gefunden."}
@@ -135,7 +135,7 @@ export function IntegrationsSection({
                         return (
                             <div
                                 key={integration.id}
-                                className="group relative flex flex-col bg-white rounded-2xl border border-slate-200/80 hover:border-slate-300 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden hover:-translate-y-1"
+                                className="group relative flex flex-col bg-card rounded-2xl border border-border/80 hover:border-border shadow-sm hover:shadow-lg hover:shadow-foreground/5 transition-all duration-300 overflow-hidden hover:-translate-y-1"
                             >
                                 {isConnected && (
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-500" />
@@ -143,7 +143,7 @@ export function IntegrationsSection({
 
                                 <div className="p-6 flex-1 flex flex-col">
                                     <div className="flex items-start justify-between mb-5">
-                                        <div className="w-12 h-12 rounded-[14px] bg-white border border-slate-150 flex items-center justify-center p-2.5 shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
+                                        <div className="w-12 h-12 rounded-[14px] bg-card border border-border flex items-center justify-center p-2.5 shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
                                             <Image
                                                 src={`/ServiceLogos/${integration.id}.svg`}
                                                 alt={integration.name}
@@ -156,32 +156,32 @@ export function IntegrationsSection({
                                             href={`https://${integration.domain}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-900 transition-colors px-2.5 py-1 rounded-full hover:bg-slate-50"
+                                            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1 rounded-full hover:bg-muted"
                                         >
                                             {integration.domain}
                                             <ExternalLink className="w-3.5 h-3.5" />
                                         </a>
                                     </div>
                                     <div className="space-y-2">
-                                        <h3 className="text-base font-semibold tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
+                                        <h3 className="text-base font-semibold tracking-tight text-foreground group-hover:text-primary transition-colors">
                                             {integration.name}
                                         </h3>
-                                        <p className="text-[13px] text-slate-500 leading-relaxed font-normal line-clamp-2">
+                                        <p className="text-[13px] text-muted-foreground leading-relaxed font-normal line-clamp-2">
                                             {integration.description}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3">
+                                <div className="px-6 py-4 border-t border-border bg-muted/30 flex flex-col gap-3">
                                     <div className="flex items-center justify-between">
-                                        <button className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+                                        <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                             <SettingsIcon className="w-4 h-4" /> Verwalten
                                         </button>
 
                                         {(integration.id === "Gmail" || integration.id === "Google Calendar") ? (
                                             <button
                                                 onClick={() => onConnect(integration.id)}
-                                                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                                                className="text-sm font-medium text-primary hover:text-primary-hover transition-colors"
                                                 title="Weiteres Konto verbinden"
                                             >
                                                 + Hinzufügen
@@ -191,8 +191,8 @@ export function IntegrationsSection({
                                                 onClick={() => onConnect(integration.id)}
                                                 className={cn(
                                                     "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full",
-                                                    "focus:outline-none focus:ring-4 focus:ring-slate-900/10 transition-all duration-300",
-                                                    isConnected ? "bg-emerald-500 hover:bg-emerald-600" : "bg-slate-200 hover:bg-slate-300"
+                                                    "focus:outline-none focus:ring-4 focus:ring-foreground/10 transition-all duration-300",
+                                                    isConnected ? "bg-emerald-500 hover:bg-emerald-600" : "bg-muted hover:bg-muted/70"
                                                 )}
                                                 role="switch"
                                                 aria-checked={isConnected}
@@ -211,11 +211,11 @@ export function IntegrationsSection({
                                     {integration.id === "Gmail" && gmailAccounts.length > 0 && (
                                         <div className="mt-2 space-y-2">
                                             {gmailAccounts.map(acc => (
-                                                <div key={acc.email} className="flex items-center justify-between text-sm py-2 border-t border-slate-200/60">
-                                                    <span className="text-slate-700 font-medium truncate pr-2">{acc.email}</span>
+                                                <div key={acc.email} className="flex items-center justify-between text-sm py-2 border-t border-border/60">
+                                                    <span className="text-foreground font-medium truncate pr-2">{acc.email}</span>
                                                     <button
                                                         onClick={() => onDisconnectGmail(acc.email)}
-                                                        className="text-red-500 hover:text-red-700 font-medium whitespace-nowrap"
+                                                        className="text-destructive hover:text-destructive/80 font-medium whitespace-nowrap"
                                                     >
                                                         Trennen
                                                     </button>
@@ -227,17 +227,17 @@ export function IntegrationsSection({
                                     {integration.id === "Google Calendar" && calendarAccounts.length > 0 && (
                                         <div className="mt-2 space-y-2">
                                             {calendarAccounts.map(acc => (
-                                                <div key={acc.email} className="flex items-center justify-between text-sm py-2 border-t border-slate-200/60">
+                                                <div key={acc.email} className="flex items-center justify-between text-sm py-2 border-t border-border/60">
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <span
                                                             className="w-2.5 h-2.5 rounded-full shrink-0"
                                                             style={{ backgroundColor: getAccountColor(acc.email) }}
                                                         />
-                                                        <span className="text-slate-700 font-medium truncate">{acc.email}</span>
+                                                        <span className="text-foreground font-medium truncate">{acc.email}</span>
                                                     </div>
                                                     <button
                                                         onClick={() => onDisconnectCalendar(acc.email)}
-                                                        className="text-red-500 hover:text-red-700 font-medium whitespace-nowrap ml-2"
+                                                        className="text-destructive hover:text-destructive/80 font-medium whitespace-nowrap ml-2"
                                                     >
                                                         Trennen
                                                     </button>

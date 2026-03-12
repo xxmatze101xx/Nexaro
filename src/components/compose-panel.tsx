@@ -1,15 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { sendEmail } from "@/lib/gmail";
-import { Paperclip, Image as ImageIcon, Sparkles, Send, X } from "lucide-react";
+import { sendEmail, fileToAttachment, MAX_ATTACHMENT_SIZE, type EmailAttachment } from "@/lib/gmail";
+import { Paperclip, Image as ImageIcon, Sparkles, Send, X, FileText, File as FileIcon } from "lucide-react";
 
 interface ComposePanelProps {
     uid: string;
     gmailAccounts: { email: string; token: string }[];
     onClose: () => void;
     className?: string;
+}
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isImageFile(mimeType: string): boolean {
+    return mimeType.startsWith("image/");
 }
 
 export function ComposePanel({ uid, gmailAccounts, onClose, className }: ComposePanelProps) {
@@ -20,6 +30,47 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const addFiles = useCallback(async (files: FileList | File[]) => {
+        setError(null);
+        const fileArray = Array.from(files);
+        const totalCurrentSize = attachments.reduce((s, a) => s + a.size, 0);
+        const newTotalSize = totalCurrentSize + fileArray.reduce((s, f) => s + f.size, 0);
+        if (newTotalSize > MAX_ATTACHMENT_SIZE) {
+            setError(`Gesamtgröße überschreitet 25 MB. Bitte entferne Anhänge.`);
+            return;
+        }
+        try {
+            const newAttachments = await Promise.all(fileArray.map(f => fileToAttachment(f)));
+            setAttachments(prev => [...prev, ...newAttachments]);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Fehler beim Lesen der Datei.");
+        }
+    }, [attachments]);
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback(() => {
+        setIsDragOver(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        if (e.dataTransfer.files.length > 0) {
+            addFiles(e.dataTransfer.files);
+        }
+    }, [addFiles]);
 
     const handleSend = async () => {
         if (!to || !subject || !body) {
@@ -35,7 +86,11 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
         setError(null);
 
         try {
-            await sendEmail(uid, fromAccount, to, subject, body);
+            await sendEmail(
+                uid, fromAccount, to, subject, body,
+                undefined, undefined, undefined, undefined, undefined,
+                attachments.length > 0 ? attachments : undefined,
+            );
             setSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -48,7 +103,16 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     };
 
     return (
-        <div className={cn("flex flex-col h-full border-l border-border bg-card", className)}>
+        <div
+            className={cn(
+                "flex flex-col h-full border-l border-border bg-card",
+                isDragOver && "ring-2 ring-primary/50 ring-inset",
+                className,
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20 shrink-0">
                 <div className="flex items-center gap-2">
@@ -140,13 +204,66 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                     />
                 </div>
 
+                {/* Attachments list */}
+                {attachments.length > 0 && (
+                    <div className="px-4 py-2 border-t border-border/50 space-y-1.5 max-h-32 overflow-y-auto shrink-0">
+                        {attachments.map((att, idx) => (
+                            <div key={`${att.filename}-${idx}`} className="flex items-center gap-2 py-1 px-2 bg-muted/40 rounded-lg group">
+                                {isImageFile(att.mimeType) ? (
+                                    <ImageIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                                ) : att.mimeType === "application/pdf" ? (
+                                    <FileText className="w-3.5 h-3.5 text-destructive shrink-0" />
+                                ) : (
+                                    <FileIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                )}
+                                <span className="text-xs text-foreground truncate flex-1">{att.filename}</span>
+                                <span className="text-[10px] text-muted-foreground shrink-0">{formatBytes(att.size)}</span>
+                                <button
+                                    onClick={() => removeAttachment(idx)}
+                                    className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                                    title="Anhang entfernen"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Hidden file input */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }}
+                    multiple
+                    className="hidden"
+                />
+
                 {/* Footer Toolbar */}
                 <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-t border-border shrink-0">
                     <div className="flex items-center gap-1">
-                        <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Datei anhängen (Demnächst)">
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                            title="Datei anhängen"
+                        >
                             <Paperclip className="w-4 h-4" />
                         </button>
-                        <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Bild einfügen (Demnächst)">
+                        <button
+                            onClick={() => {
+                                const input = document.createElement("input");
+                                input.type = "file";
+                                input.accept = "image/*";
+                                input.multiple = true;
+                                input.onchange = (e) => {
+                                    const files = (e.target as HTMLInputElement).files;
+                                    if (files) addFiles(files);
+                                };
+                                input.click();
+                            }}
+                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                            title="Bild anhängen"
+                        >
                             <ImageIcon className="w-4 h-4" />
                         </button>
                         <div className="w-px h-4 bg-border mx-1" />
@@ -178,6 +295,11 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                                 <>
                                     <Send className="w-4 h-4" />
                                     Senden
+                                    {attachments.length > 0 && (
+                                        <span className="ml-1 text-[10px] bg-primary-foreground/20 px-1.5 py-0.5 rounded-full">
+                                            {attachments.length}
+                                        </span>
+                                    )}
                                 </>
                             )}
                         </button>

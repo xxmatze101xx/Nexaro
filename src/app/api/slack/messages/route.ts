@@ -68,7 +68,7 @@ export async function GET(request: Request) {
             `https://slack.com/api/conversations.history?channel=${channelId}&limit=50`,
             { headers: { Authorization: `Bearer ${tok}` } }
         );
-        const data = await histRes.json() as typeof histData;
+        const data = await histRes.json() as { ok: boolean; error?: string; messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }> };
         if (data?.ok) {
             histData = data;
             usedToken = tok;

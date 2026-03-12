@@ -58,21 +58,21 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
     return (
         <section id="Zusammenfassungen" className="scroll-mt-28">
             <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                <div className="p-2 bg-primary/10 text-primary rounded-xl">
                     <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Zusammenfassungen</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">Erhalte regelmäßige E-Mail-Zusammenfassungen deiner wichtigsten Nachrichten.</p>
+                    <h2 className="text-xl font-semibold text-foreground">Zusammenfassungen</h2>
+                    <p className="text-sm text-muted-foreground mt-0.5">Erhalte regelmäßige E-Mail-Zusammenfassungen deiner wichtigsten Nachrichten.</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+            <div className="bg-card rounded-2xl border border-border p-6 space-y-5">
                 {/* Daily toggle */}
                 <label className="flex items-center justify-between gap-4 cursor-pointer">
                     <div>
-                        <p className="text-sm font-semibold text-slate-800">Tägliche Zusammenfassung</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Top-10 wichtigste Nachrichten der letzten 24 Stunden</p>
+                        <p className="text-sm font-semibold text-foreground">Tägliche Zusammenfassung</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Top-10 wichtigste Nachrichten der letzten 24 Stunden</p>
                     </div>
                     <button
                         role="switch"
@@ -80,7 +80,7 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
                         onClick={() => setSettings(prev => ({ ...prev, daily: !prev.daily }))}
                         className={cn(
                             "relative w-11 h-6 rounded-full transition-colors shrink-0",
-                            settings.daily ? "bg-blue-600" : "bg-slate-200"
+                            settings.daily ? "bg-primary" : "bg-muted"
                         )}
                     >
                         <span className={cn(
@@ -93,8 +93,8 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
                 {/* Weekly toggle */}
                 <label className="flex items-center justify-between gap-4 cursor-pointer">
                     <div>
-                        <p className="text-sm font-semibold text-slate-800">Wöchentliche Zusammenfassung</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Jeden Montag — Übersicht der Vorwoche</p>
+                        <p className="text-sm font-semibold text-foreground">Wöchentliche Zusammenfassung</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Jeden Montag — Übersicht der Vorwoche</p>
                     </div>
                     <button
                         role="switch"
@@ -102,7 +102,7 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
                         onClick={() => setSettings(prev => ({ ...prev, weekly: !prev.weekly }))}
                         className={cn(
                             "relative w-11 h-6 rounded-full transition-colors shrink-0",
-                            settings.weekly ? "bg-blue-600" : "bg-slate-200"
+                            settings.weekly ? "bg-primary" : "bg-muted"
                         )}
                     >
                         <span className={cn(
@@ -115,11 +115,11 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
                 {/* Time picker */}
                 <div className="flex items-center gap-4">
                     <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800 mb-1">Versandzeitpunkt</p>
+                        <p className="text-sm font-semibold text-foreground mb-1">Versandzeitpunkt</p>
                         <select
                             value={settings.time}
                             onChange={e => setSettings(prev => ({ ...prev, time: e.target.value }))}
-                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                            className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
                         >
                             {TIME_OPTIONS.map(t => (
                                 <option key={t} value={t}>{t} Uhr</option>
@@ -127,32 +127,32 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
                         </select>
                     </div>
                     <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800 mb-1">Empfänger-E-Mail</p>
+                        <p className="text-sm font-semibold text-foreground mb-1">Empfänger-E-Mail</p>
                         <input
                             type="email"
                             value={settings.email}
                             onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))}
-                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                            className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                     </div>
                 </div>
 
                 {/* Save */}
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-3 pt-2 border-t border-border">
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-                            "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                            "bg-primary text-primary-foreground hover:bg-primary-hover active:scale-95 disabled:opacity-50"
                         )}
                     >
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                         {isSaving ? "Speichern..." : "Einstellungen speichern"}
                     </button>
                     {saved && <span className="text-sm text-emerald-600 font-medium">✓ Gespeichert</span>}
-                    <span className="text-xs text-slate-400 ml-auto">
-                        Manuelle Auslösung: <code className="bg-slate-100 px-1 rounded">/api/digest</code>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                        Manuelle Auslösung: <code className="bg-muted px-1 rounded">/api/digest</code>
                     </span>
                 </div>
             </div>

@@ -5,10 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { type Message } from "@/lib/mock-data";
-import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, unarchiveEmail, starEmail, trashEmail, saveEmailsToCache, subscribeToGmailScores } from "@/lib/gmail";
+import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, fetchEmailsProgressively, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, unarchiveEmail, starEmail, trashEmail, saveEmailsToCache, subscribeToGmailScores } from "@/lib/gmail";
 import { db } from "@/lib/firebase";
-import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
-import type { SlackChannel } from "@/lib/slack";
+import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection, getNotificationSettings, type NotificationSettings } from "@/lib/user";
+import type { SlackChannel, SlackDM } from "@/lib/slack";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -46,7 +46,8 @@ import {
   Plus,
   RefreshCw,
   Pencil,
-  Trash2
+  Trash2,
+  ListTodo
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +77,7 @@ function DashboardContent() {
 
   const [slackConnected, setSlackConnected] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackDMs, setSlackDMs] = useState<SlackDM[]>([]);
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -98,6 +100,10 @@ function DashboardContent() {
   // Guards to prevent false-positive toasts on load-more and initial load
   const isLoadingMoreRef = useRef(false);
   const sessionStartTimestampRef = useRef<number>(Date.now());
+  // Track initial load vs polling refresh — initial loads 200, refreshes load 20
+  const hasInitialLoadRef = useRef(false);
+  // Notification settings from Firestore
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>({ popupEnabled: true, popupGmail: true, popupSlack: true, popupTeams: true });
 
   // Fetch Slack channels via server-side proxy (logs errors in Vercel, avoids CORS/scope issues)
   const loadSlackChannels = useCallback(async () => {
@@ -115,6 +121,25 @@ function DashboardContent() {
       }
     } catch (e: unknown) {
       console.warn("[slack] loadSlackChannels failed:", e instanceof Error ? e.message : String(e));
+    }
+  }, [user]);
+
+  // Fetch Slack DMs via server-side proxy
+  const loadSlackDMs = useCallback(async () => {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/slack/dms", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json() as { dms?: SlackDM[]; error?: string };
+      if (data.dms && data.dms.length > 0) {
+        setSlackDMs(data.dms);
+      } else {
+        console.warn("[slack] dms empty or error:", data.error);
+      }
+    } catch (e: unknown) {
+      console.warn("[slack] loadSlackDMs failed:", e instanceof Error ? e.message : String(e));
     }
   }, [user]);
 
@@ -178,9 +203,13 @@ function DashboardContent() {
     if (!user) return;
     getSlackConnection(user.uid).then(conn => {
       setSlackConnected(!!conn);
-      if (conn) loadSlackChannels();
+      if (conn) {
+        loadSlackChannels();
+        loadSlackDMs();
+      }
     });
     getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
+    getNotificationSettings(user.uid).then(setNotifSettings);
     getGmailAccounts(user.uid).then((accounts) => {
       setGmailAccounts(accounts);
       if (accounts.length > 0) {
@@ -222,7 +251,7 @@ function DashboardContent() {
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);
 
-  // Load Gmail messages
+  // Load Gmail messages — progressive batch loading on first load (200), quick refresh on poll (20)
   useEffect(() => {
     let isMounted = true;
     async function loadGmail() {
@@ -233,33 +262,71 @@ function DashboardContent() {
 
       if (isMounted) setIsRefreshing(true);
       try {
+        // Show cached emails instantly while fresh data loads
         const cached = await getCachedEmails();
-        if (cached && cached.length > 0) {
+        if (cached && cached.length > 0 && isMounted) {
           setGmailMessages(cached.map((msg) => parseGmailToNexaroMessage(msg)));
         }
 
         if (gmailAccounts.length > 0) {
-          const freshResults = await Promise.all(
-            gmailAccounts.map(acc => fetchEmailsPage(user.uid, acc.email, null, 20))
-          );
+          const isInitial = !hasInitialLoadRef.current;
 
-          let newMessages: Message[] = [];
-          freshResults.forEach(result => {
-            if (result && result.messages.length > 0) {
-              newMessages = newMessages.concat(result.messages.map(msg => parseGmailToNexaroMessage(msg)));
+          if (isInitial) {
+            // Progressive load: fetch 200 IDs, then details in batches of 20
+            const collectedRaw: import("@/lib/gmail").GmailMessage[] = [];
+
+            for (const acc of gmailAccounts) {
+              await fetchEmailsProgressively(
+                user.uid,
+                acc.email,
+                null, // all messages
+                200,  // total to fetch
+                20,   // batch size
+                (batchRaw, nextToken, done) => {
+                  if (!isMounted) return;
+                  collectedRaw.push(...batchRaw);
+                  const parsed = collectedRaw.map(m => parseGmailToNexaroMessage(m));
+                  setGmailMessages(parsed);
+
+                  if (nextToken) setInboxNextPageToken(nextToken);
+                  if (done && collectedRaw.length > 0) {
+                    saveEmailsToCache(collectedRaw);
+                  }
+                },
+              );
             }
-          });
+            hasInitialLoadRef.current = true;
+          } else {
+            // Polling refresh: just fetch latest 20 and merge with existing
+            const freshResults = await Promise.all(
+              gmailAccounts.map(acc => fetchEmailsPage(user.uid, acc.email, null, 20))
+            );
 
-          // Capture nextPageToken from first account for inbox pagination
-          const firstToken = freshResults[0]?.nextPageToken ?? null;
-          if (isMounted) setInboxNextPageToken(firstToken);
+            if (!isMounted) return;
 
-          // Save to cache for offline use
-          const allRaw = freshResults.flatMap(r => r?.messages ?? []);
-          if (allRaw.length > 0) await saveEmailsToCache(allRaw);
+            const freshParsed: Message[] = [];
+            freshResults.forEach(result => {
+              if (result?.messages.length) {
+                freshParsed.push(...result.messages.map(m => parseGmailToNexaroMessage(m)));
+              }
+            });
 
-          if (newMessages.length > 0 && isMounted) {
-            setGmailMessages(newMessages);
+            if (freshParsed.length > 0) {
+              setGmailMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const newOnly = freshParsed.filter(m => !existingIds.has(m.id));
+                // Also update any existing messages with fresh data (read/unread status changes)
+                const updated = prev.map(existing => {
+                  const fresh = freshParsed.find(f => f.id === existing.id);
+                  return fresh ?? existing;
+                });
+                return [...newOnly, ...updated];
+              });
+            }
+
+            // Save fresh batch to cache
+            const allRaw = freshResults.flatMap(r => r?.messages ?? []);
+            if (allRaw.length > 0) saveEmailsToCache(allRaw);
           }
         }
       } catch (err) {
@@ -577,25 +644,31 @@ function DashboardContent() {
     }
   };
 
-  // LIVE-01: Gmail polling every 60s to keep inbox fresh without webhooks
+  // LIVE-01: Gmail polling every 30s to keep inbox fresh without webhooks
   useEffect(() => {
     if (!user || gmailAccounts.length === 0) return;
     const interval = setInterval(() => {
       setRefreshCount(prev => prev + 1);
-    }, 60_000);
+    }, 30_000);
     return () => clearInterval(interval);
   }, [user, gmailAccounts]);
 
   // LIVE-02: Detect new messages and show toast notifications
   // Only fires for messages that arrived AFTER the session started and NOT during load-more
+  // Respects notification settings from Firestore (UI-P2)
   useEffect(() => {
     const allIds = new Set(allMessages.map(m => m.id));
-    // Skip: initial load (prevMsgIdsRef is empty) OR load-more operation
-    if (prevMsgIdsRef.current.size > 0 && !isLoadingMoreRef.current) {
-      const newMsgs = allMessages.filter(m =>
-        !prevMsgIdsRef.current.has(m.id) &&
-        new Date(m.timestamp).getTime() > sessionStartTimestampRef.current
-      );
+    // Skip: initial load (prevMsgIdsRef is empty) OR load-more operation OR popups disabled
+    if (prevMsgIdsRef.current.size > 0 && !isLoadingMoreRef.current && notifSettings.popupEnabled) {
+      const newMsgs = allMessages.filter(m => {
+        if (prevMsgIdsRef.current.has(m.id)) return false;
+        if (new Date(m.timestamp).getTime() <= sessionStartTimestampRef.current) return false;
+        // Per-integration filter
+        if (m.source === 'gmail' && !notifSettings.popupGmail) return false;
+        if (m.source === 'slack' && !notifSettings.popupSlack) return false;
+        if (m.source === 'teams' && !notifSettings.popupTeams) return false;
+        return true;
+      });
       if (newMsgs.length > 0) {
         setNewMsgToasts(prev => {
           const next = [...prev, ...newMsgs.map(m => ({ id: m.id + "_toast_" + Date.now(), message: m }))];
@@ -610,10 +683,11 @@ function DashboardContent() {
       }
     }
     prevMsgIdsRef.current = allIds;
-  }, [allMessages]);
+  }, [allMessages, notifSettings]);
 
   const handleRefresh = async () => {
     await clearEmailCache();
+    hasInitialLoadRef.current = false; // force full re-fetch
     setRefreshCount(prev => prev + 1);
   };
 
@@ -644,7 +718,15 @@ function DashboardContent() {
         icon: <Image src="/ServiceLogos/Slack.svg" alt="Slack" width={16} height={16} className="shrink-0" />,
         badge: undefined,
         items: [
-          { name: 'Direktnachrichten', icon: <MessageSquare className="w-4 h-4" />, source: 'slack', folder: 'im' },
+          ...slackDMs.map(dm => ({
+            name: dm.name,
+            icon: dm.is_group
+              ? <MessageSquare className="w-3.5 h-3.5" />
+              : <MessageSquare className="w-3.5 h-3.5" />,
+            source: 'slack',
+            accountId: dm.id,
+            folder: 'dm',
+          })),
           ...slackChannels.map(ch => ({
             name: `#${ch.name}`,
             icon: ch.is_private
@@ -676,7 +758,7 @@ function DashboardContent() {
     }
 
     return [...gmailEntries, ...extra];
-  }, [gmailAccounts, allMessages, slackConnected, slackChannels, microsoftConnected]);
+  }, [gmailAccounts, allMessages, slackConnected, slackChannels, slackDMs, microsoftConnected]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -783,6 +865,10 @@ function DashboardContent() {
           <Link href="/calendar" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/calendar" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
+          </Link>
+          <Link href="/todos" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/todos" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+            <ListTodo className="w-4 h-4 shrink-0" />
+            Aufgaben
           </Link>
 <Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Settings className="w-4 h-4 shrink-0" />
@@ -984,12 +1070,16 @@ function DashboardContent() {
               user={user}
               className="flex-1"
             />
-          ) : selectedSidebarItem?.source === 'slack' && selectedSidebarItem.folder === 'im' ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-              <MessageSquare className="w-10 h-10 opacity-20" />
-              <p className="text-sm font-medium">Wähle einen Kanal aus der Seitenleiste.</p>
-              <p className="text-xs opacity-60">Direktnachrichten-Unterstützung kommt bald.</p>
-            </div>
+          ) : selectedSidebarItem?.source === 'slack' && selectedSidebarItem.folder === 'dm' && selectedSidebarItem.accountId && user ? (
+            <SlackChannelView
+              key={selectedSidebarItem.accountId}
+              channelId={selectedSidebarItem.accountId}
+              channelName={slackDMs.find(d => d.id === selectedSidebarItem.accountId)?.name ?? "DM"}
+              isPrivate={false}
+              isDM={true}
+              user={user}
+              className="flex-1"
+            />
           ) : (
           <>
           {/* ── Gmail Message List ─────────────────────────────────────── */}
@@ -1092,7 +1182,16 @@ function DashboardContent() {
       <NewMessageToast
         toasts={newMsgToasts}
         onDismiss={(id) => setNewMsgToasts(prev => prev.filter(t => t.id !== id))}
-        onOpen={(message) => { handleSelectMessage(message); setNewMsgToasts(prev => prev.filter(t => t.message.id !== message.id)); }}
+        onOpen={(message) => {
+          // Navigate to the correct folder/channel first
+          if (message.source === 'gmail' && message.accountId) {
+            setSelectedSidebarItem({ source: 'gmail', accountId: message.accountId, folder: 'INBOX' });
+          } else if (message.source === 'slack' && message.accountId) {
+            setSelectedSidebarItem({ source: 'slack', accountId: message.accountId, folder: 'channel' });
+          }
+          handleSelectMessage(message);
+          setNewMsgToasts(prev => prev.filter(t => t.message.id !== message.id));
+        }}
       />
     </div>
   );

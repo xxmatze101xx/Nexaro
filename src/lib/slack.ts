@@ -10,6 +10,12 @@ export interface SlackChannel {
     is_member: boolean;
 }
 
+export interface SlackDM {
+    id: string;
+    name: string;
+    is_group: boolean;
+}
+
 /**
  * Fetches all Slack channels (public + private) the user is a member of.
  * Requires scopes: channels:read, groups:read

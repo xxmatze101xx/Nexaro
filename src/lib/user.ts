@@ -291,3 +291,33 @@ export async function disconnectMicrosoft(uid: string) {
     await deleteDoc(ref);
 }
 
+// ── Notification Settings ────────────────────────────────────────────────────
+
+export interface NotificationSettings {
+    popupEnabled: boolean;
+    popupGmail: boolean;
+    popupSlack: boolean;
+    popupTeams: boolean;
+}
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+    popupEnabled: true,
+    popupGmail: true,
+    popupSlack: true,
+    popupTeams: true,
+};
+
+export async function getNotificationSettings(uid: string): Promise<NotificationSettings> {
+    if (!uid) return DEFAULT_NOTIFICATION_SETTINGS;
+    const ref = doc(db, "users", uid, "settings", "notifications");
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return DEFAULT_NOTIFICATION_SETTINGS;
+    return { ...DEFAULT_NOTIFICATION_SETTINGS, ...snap.data() } as NotificationSettings;
+}
+
+export async function saveNotificationSettings(uid: string, settings: Partial<NotificationSettings>) {
+    if (!uid) return;
+    const ref = doc(db, "users", uid, "settings", "notifications");
+    await setDoc(ref, settings, { merge: true });
+}
+

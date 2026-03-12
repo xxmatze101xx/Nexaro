@@ -51,3 +51,17 @@
 |------|--------|-----------|
 | UI-P1 Email-Body Platz | ✅ | `ai-draft-panel.tsx`: 1 großer Scroll-Container → 3 Sektionen: Header (flex-shrink-0), Body (flex-1 overflow-y-auto min-h-[400px]), AI Draft (flex-shrink-0 max-h-[280px] overflow-y-auto) |
 | Bonus: alert() entfernt | ✅ | handleSend, handleArchive, handleToggleRead nutzen jetzt `setDraftError()` statt `alert()` |
+
+## Tagesplan CLAUDE.md — In Bearbeitung (2026-03-11)
+
+| Task | Status | Änderungen |
+|------|--------|-----------|
+| SLACK-B1 Channel Messages | ✅ | `/api/slack/messages` Route, User Token für `conversations.history`, User name resolution |
+| SLACK-B2 DM Messages | ✅ | `/api/slack/dms` Route, `im:history` scope |
+| SLACK-B3 Send Messages | ✅ | `/api/slack/send` Route, `chat.postMessage` mit User Token, optimistic UI |
+| UI-P1 Popup Navigation | ✅ | Toast onClick → `setSelectedMessage()` + Folder-Wechsel |
+| UI-P2 Popup Settings | ✅ | NotificationsSection Toggle, Firestore `users/{uid}/settings/notifications` |
+| UI-P3 Settings Design | ✅ | 7 Komponenten: hardcoded Farben → CSS-Token-System, Dark Mode Fix |
+| GMAIL-F1 Progressive Loading | ✅ | `fetchEmailsProgressively()` 200 IDs → 20er Batches, 30s Polling, `hasInitialLoadRef` |
+| GMAIL-F2 Email Attachments | ✅ | 3 Panels: compose-panel, ai-draft-panel, compose-email-dialog — alle mit Drag&Drop, File Picker, Vorschau, 25MB Limit, MIME multipart/mixed |
+| UI-P5 Todo Feature | ✅ | `src/lib/todos.ts` (types+CRUD), `src/hooks/useTodos.ts` (realtime hook), `src/app/todos/page.tsx` (full UI), `/api/ai/extract-todos` (Gemini extraction), Sidebar "Aufgaben" Link, "Aufgaben extrahieren" Button im Detail-Panel, `Ergebnisse/todo-feature-concept.md` Brainstorming |
