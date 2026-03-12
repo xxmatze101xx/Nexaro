@@ -50,12 +50,20 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ channel: body.channel, text: body.text }),
     });
-    const sendData = await sendRes.json() as { ok: boolean; error?: string };
+    const sendData = await sendRes.json() as { ok: boolean; error?: string; ts?: string; message?: { user?: string; username?: string; text?: string } };
 
     if (!sendData.ok) {
         console.error(`[slack/send] chat.postMessage error=${sendData.error} channel=${body.channel}`);
         return NextResponse.json({ error: sendData.error }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+        ok: true,
+        message: {
+            ts: sendData.ts ?? `${Date.now() / 1000}`,
+            user: sendData.message?.user ?? "self",
+            userName: sendData.message?.username ?? "Du",
+            text: sendData.message?.text ?? body.text,
+        },
+    });
 }

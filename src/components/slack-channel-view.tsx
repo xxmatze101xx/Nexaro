@@ -10,6 +10,7 @@ interface SlackMsg {
     user: string;
     userName: string;
     text: string;
+    optimistic?: boolean;
 }
 
 interface SlackChannelViewProps {
@@ -121,8 +122,24 @@ export function SlackChannelView({
     const handleSend = async () => {
         if (!input.trim() || sending) return;
         const text = input.trim();
+        const optimisticTs = `${Date.now() / 1000}`;
+        const optimisticMessage: SlackMsg = {
+            ts: optimisticTs,
+            user: "self",
+            userName: "Du",
+            text,
+            optimistic: true,
+        };
+
         setInput("");
+        setError(null);
         setSending(true);
+        setMessages(prev => [...prev, optimisticMessage]);
+
+        requestAnimationFrame(() =>
+            bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+        );
+
         try {
             const idToken = await user.getIdToken();
             const res = await fetch("/api/slack/send", {
@@ -130,14 +147,21 @@ export function SlackChannelView({
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
                 body: JSON.stringify({ channel: channelId, text }),
             });
-            const data = await res.json() as { ok?: boolean; error?: string };
+            const data = await res.json() as { ok?: boolean; error?: string; message?: SlackMsg };
             if (data.ok) {
+                setMessages(prev => prev.map(msg => msg.ts === optimisticTs ? { ...(data.message ?? msg), optimistic: false } : msg));
                 await fetchMessages();
             } else {
-                console.error("Slack send error:", data.error);
+                setMessages(prev => prev.filter(msg => msg.ts !== optimisticTs));
+                setError(data.error === "missing_scope"
+                    ? "Fehlende Slack-Berechtigung zum Senden. Bitte Slack neu verbinden (Scope: chat:write)."
+                    : data.error === "not_in_channel"
+                    ? "Du bist nicht in diesem Channel. Bitte trete dem Channel bei und versuche es erneut."
+                    : `Senden fehlgeschlagen: ${data.error ?? "Unbekannter Fehler"}`);
             }
         } catch (e: unknown) {
-            console.error("Send failed:", e);
+            setMessages(prev => prev.filter(msg => msg.ts !== optimisticTs));
+            setError(e instanceof Error ? `Netzwerkfehler beim Senden: ${e.message}` : "Netzwerkfehler beim Senden");
         } finally {
             setSending(false);
         }
@@ -249,7 +273,10 @@ export function SlackChannelView({
                                         </span>
                                     </div>
                                 )}
-                                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                                <p className={cn(
+                                    "text-sm leading-relaxed whitespace-pre-wrap break-words",
+                                    msg.optimistic ? "text-muted-foreground italic" : "text-foreground"
+                                )}>
                                     {renderText(msg.text)}
                                 </p>
                             </div>
