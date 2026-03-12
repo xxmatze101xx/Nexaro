@@ -78,3 +78,6 @@
 
 The Slack OAuth redirect URI in `.env.local` should be `https://nexaro-9j3h.vercel.app/api/slack/callback`.
 You must add this **exact URL** to the Slack app's OAuth redirect URLs at api.slack.com/apps → OAuth & Permissions → Redirect URLs.
+
+- ~~SLACK-B1 Follow-up (Channel history pagination + send UX hardening)~~ ✅ `/api/slack/messages` paginiert jetzt bis zu 1000 Nachrichten; Slack-Send hat optimistisches UI + klare Fehlertexte
+- ~~HOTFIX: Gmail fetch + Slack fetch broken~~ ✅ Gmail account schema-normalisierung (`refresh_token`↔`token`) + Slack Firestore REST Reads/Writes mit `?key=${NEXT_PUBLIC_FIREBASE_API_KEY}` gehärtet

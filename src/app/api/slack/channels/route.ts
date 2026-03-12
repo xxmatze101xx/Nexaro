@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     }
 
     // ── 2. Read Slack token from Firestore ────────────────────────────────────
-    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack`;
+    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack?key=${apiKey}`;
     const fsRes = await fetch(fsUrl, {
         headers: { Authorization: `Bearer ${idToken}` },
     });

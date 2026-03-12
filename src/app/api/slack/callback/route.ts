@@ -42,8 +42,9 @@ export async function GET(request: Request) {
     const clientSecret = process.env.SLACK_CLIENT_SECRET;
     const redirectUri = process.env.SLACK_REDIRECT_URI;
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 
-    if (!clientId || !clientSecret || !redirectUri || !projectId) {
+    if (!clientId || !clientSecret || !redirectUri || !projectId || !apiKey) {
         return NextResponse.redirect(`${appUrl}/settings?slack_error=server_config`);
     }
 
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
         // Write to Firestore via REST API using the user's Firebase ID token as
         // Bearer auth. This satisfies `request.auth != null` security rules —
         // a bare ?key=<webApiKey> is NOT sufficient for auth-protected collections.
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack`;
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack?key=${apiKey}`;
         const firestoreBody = {
             fields: {
                 access_token: { stringValue: tokenData.access_token ?? "" },

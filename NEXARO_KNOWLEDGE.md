@@ -153,3 +153,44 @@ users/{uid}/
 ---
 
 *Letzte Aktualisierung: März 2026*
+
+### 2026-03-12 — Self-Learning (SLACK-B1/B3 Follow-up)
+
+**Was wurde gemacht?**
+- Slack-Channel-History-Fetch von statischem `limit=50` auf Cursor-basierte Pagination umgestellt (`conversations.history` mit `next_cursor`, bis zu 5 Seiten).
+- Slack-Send-Flow erweitert: API gibt now `message.ts/user/userName/text` zurück.
+- UI (`SlackChannelView`) zeigt gesendete Nachricht sofort als optimistischen Eintrag und entfernt/ersetzt diesen je nach API-Ergebnis.
+- Nutzerfreundliche Fehlermeldungen für häufige Slack-Fehler (`missing_scope`, `not_in_channel`) ergänzt.
+
+**Root-Cause**
+- Channel-Ansichten wirkten "leer" oder unvollständig, weil nur die letzten 50 Nachrichten geladen wurden.
+- Send-Fehler waren für Nutzer nicht sichtbar, da nur Logging stattfand.
+
+**Gotchas / Pitfalls**
+- Slack liefert viele Fehler als `{ ok: false, error: ... }` bei HTTP 200; `res.ok` allein reicht nicht.
+- Für robuste UX muss ein optimistischer Eintrag eindeutig identifizierbar sein (`optimisticTs`) und bei Fehler zuverlässig entfernt werden.
+
+**Architektur-Entscheidung**
+- History-Pagination serverseitig in der API-Route zentralisiert, damit UI simpel bleibt und keine Slack-Cursor-Details kennen muss.
+- Optimistisches UI im Client + endgültige Konsistenz durch direktes Re-Fetch nach erfolgreichem Senden.
+
+
+### 2026-03-12 — Self-Learning (HOTFIX Gmail/Slack Fetch)
+
+**Was wurde gemacht?**
+- Gmail-Account-Leser robust gemacht gegen Schema-Drift: Firestore-Daten mit `token` ODER `refresh_token` werden jetzt korrekt akzeptiert.
+- Slack-Firestore-REST Zugriffe (`channels`, `dms`, `messages`, `send`, `callback`) mit `?key=${NEXT_PUBLIC_FIREBASE_API_KEY}` vereinheitlicht.
+- Slack-Load-Effects in `page.tsx` mit vollständigen Dependencies versehen.
+
+**Root-Cause**
+- Gmail Fetch konnte komplett ausfallen, weil Reader/Writer unterschiedliche Feldnamen benutzten (`token` vs `refresh_token`).
+- Slack konnte je nach Runtime/Rules beim Firestore REST Zugriff ohne `?key=` scheitern.
+
+**Gotchas / Pitfalls**
+- OAuth Token-Schema muss stabil sein oder beim Lesen aktiv normalisiert werden (Backwards Compatibility zwingend).
+- Bei Firestore REST sind Bearer-Auth und Web API Key in manchen Setups beide relevant.
+
+**Architektur-Entscheidung**
+- Normalisierung im Reader (`getGmailAccounts`) statt riskanter Einmal-Migration: sofort wirksam, rückwärtskompatibel, deploy-sicher.
+- Einheitlicher Firestore REST URL-Build in allen Slack-Routen, um Environment-abhängige Unterschiede zu eliminieren.
+

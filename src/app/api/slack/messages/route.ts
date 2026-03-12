@@ -22,7 +22,7 @@ async function getSlackToken(idToken: string, projectId: string): Promise<{ user
     if (!uid) return null;
 
     // Read Slack tokens from Firestore
-    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack`;
+    const fsUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/slack?key=${apiKey}`;
     const fsRes = await fetch(fsUrl, { headers: { Authorization: `Bearer ${idToken}` } });
     if (!fsRes.ok) return null;
     const fsData = await fsRes.json() as {
@@ -35,6 +35,43 @@ async function getSlackToken(idToken: string, projectId: string): Promise<{ user
         userToken: fsData.fields?.user_access_token?.stringValue || "",
         botToken:  fsData.fields?.access_token?.stringValue || "",
     };
+}
+
+interface SlackMessage {
+    ts: string;
+    user?: string;
+    text?: string;
+    subtype?: string;
+    username?: string;
+}
+
+async function fetchHistory(token: string, channelId: string): Promise<{ ok: boolean; error?: string; messages: SlackMessage[] }> {
+    let cursor = "";
+    const merged: SlackMessage[] = [];
+
+    for (let i = 0; i < 5; i++) {
+        const params = new URLSearchParams({ channel: channelId, limit: "200" });
+        if (cursor) params.set("cursor", cursor);
+        const histRes = await fetch(`https://slack.com/api/conversations.history?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const histData = await histRes.json() as {
+            ok: boolean;
+            error?: string;
+            messages?: SlackMessage[];
+            response_metadata?: { next_cursor?: string };
+        };
+
+        if (!histData.ok) {
+            return { ok: false, error: histData.error, messages: [] };
+        }
+
+        merged.push(...(histData.messages ?? []));
+        cursor = histData.response_metadata?.next_cursor ?? "";
+        if (!cursor) break;
+    }
+
+    return { ok: true, messages: merged };
 }
 
 export async function GET(request: Request) {
@@ -69,15 +106,11 @@ export async function GET(request: Request) {
     // Try user token first (has member context), fall back to bot token.
     // Filter out empty strings so the loop only runs with real tokens.
     const tokensToTry = [tokens.userToken, tokens.botToken].filter((t): t is string => !!t);
-    let histData: { ok: boolean; error?: string; messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }> } | null = null;
+    let histData: { ok: boolean; error?: string; messages: SlackMessage[] } | null = null;
     let usedToken = "";
 
     for (const tok of tokensToTry) {
-        const histRes = await fetch(
-            `https://slack.com/api/conversations.history?channel=${channelId}&limit=50`,
-            { headers: { Authorization: `Bearer ${tok}` } }
-        );
-        const data = await histRes.json() as { ok: boolean; error?: string; messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }> };
+        const data = await fetchHistory(tok, channelId);
         if (data?.ok) {
             histData = data;
             usedToken = tok;
