@@ -65,3 +65,15 @@
 | GMAIL-F1 Progressive Loading | ✅ | `fetchEmailsProgressively()` 200 IDs → 20er Batches, 30s Polling, `hasInitialLoadRef` |
 | GMAIL-F2 Email Attachments | ✅ | 3 Panels: compose-panel, ai-draft-panel, compose-email-dialog — alle mit Drag&Drop, File Picker, Vorschau, 25MB Limit, MIME multipart/mixed |
 | UI-P5 Todo Feature | ✅ | `src/lib/todos.ts` (types+CRUD), `src/hooks/useTodos.ts` (realtime hook), `src/app/todos/page.tsx` (full UI), `/api/ai/extract-todos` (Gemini extraction), Sidebar "Aufgaben" Link, "Aufgaben extrahieren" Button im Detail-Panel, `Ergebnisse/todo-feature-concept.md` Brainstorming |
+
+## 2026-03-12 — SLACK-B1/B3 Follow-up abgeschlossen
+
+- `src/app/api/slack/messages/route.ts`
+  - `conversations.history` auf Cursor-Pagination erweitert (max 5 Seiten à 200), damit Channel-Historie nicht nach 50 Messages endet.
+  - Token-Fallback-Logik (User-Token → Bot-Token) beibehalten, aber jetzt mit paginierter History-Fetch-Funktion.
+- `src/app/api/slack/send/route.ts`
+  - Send-API liefert jetzt `ts` + Message-Payload zurück, damit UI den optimistischen Eintrag sauber mergen kann.
+- `src/components/slack-channel-view.tsx`
+  - Optimistisches Senden implementiert (lokale Nachricht sofort sichtbar).
+  - Fehlerbehandlung verbessert (`missing_scope`, `not_in_channel`, Netzwerkfehler) mit sichtbarer UI-Fehlermeldung statt nur `console.error`.
+
