@@ -175,22 +175,3 @@ users/{uid}/
 - Optimistisches UI im Client + endgültige Konsistenz durch direktes Re-Fetch nach erfolgreichem Senden.
 
 
-### 2026-03-12 — Self-Learning (HOTFIX Gmail/Slack Fetch)
-
-**Was wurde gemacht?**
-- Gmail-Account-Leser robust gemacht gegen Schema-Drift: Firestore-Daten mit `token` ODER `refresh_token` werden jetzt korrekt akzeptiert.
-- Slack-Firestore-REST Zugriffe (`channels`, `dms`, `messages`, `send`, `callback`) mit `?key=${NEXT_PUBLIC_FIREBASE_API_KEY}` vereinheitlicht.
-- Slack-Load-Effects in `page.tsx` mit vollständigen Dependencies versehen.
-
-**Root-Cause**
-- Gmail Fetch konnte komplett ausfallen, weil Reader/Writer unterschiedliche Feldnamen benutzten (`token` vs `refresh_token`).
-- Slack konnte je nach Runtime/Rules beim Firestore REST Zugriff ohne `?key=` scheitern.
-
-**Gotchas / Pitfalls**
-- OAuth Token-Schema muss stabil sein oder beim Lesen aktiv normalisiert werden (Backwards Compatibility zwingend).
-- Bei Firestore REST sind Bearer-Auth und Web API Key in manchen Setups beide relevant.
-
-**Architektur-Entscheidung**
-- Normalisierung im Reader (`getGmailAccounts`) statt riskanter Einmal-Migration: sofort wirksam, rückwärtskompatibel, deploy-sicher.
-- Einheitlicher Firestore REST URL-Build in allen Slack-Routen, um Environment-abhängige Unterschiede zu eliminieren.
-

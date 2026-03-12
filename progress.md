@@ -78,15 +78,3 @@
   - Fehlerbehandlung verbessert (`missing_scope`, `not_in_channel`, Netzwerkfehler) mit sichtbarer UI-Fehlermeldung statt nur `console.error`.
 
 
-## 2026-03-12 — HOTFIX Gmail/Slack Fetch Stabilität
-
-- `src/lib/user.ts`
-  - Root-Cause gefixt: Gmail wurde unter `accounts[].refresh_token` gespeichert, Reader erwartete jedoch `accounts[].token`.
-  - `getGmailAccounts()` normalisiert jetzt beide Schemata (`token` und `refresh_token`) auf ein konsistentes Rückgabeformat.
-  - `disconnectGmail()` schreibt wieder im persistierten `refresh_token`-Schema, damit Folgelogik stabil bleibt.
-- `src/app/api/slack/{channels,dms,messages,send,callback}/route.ts`
-  - Firestore REST URLs nutzen jetzt konsistent `?key=${NEXT_PUBLIC_FIREBASE_API_KEY}` zusätzlich zum Bearer-Token.
-  - Damit sind Token-Reads/Writes robuster in Deployments mit strikten Firestore REST-Anforderungen.
-- `src/app/page.tsx`
-  - Effect-Dependencies für Slack-Ladevorgänge korrigiert (`loadSlackDMs`, `loadSlackChannels`), um stale closures/race-artige Aussetzer zu vermeiden.
-
