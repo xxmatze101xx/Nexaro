@@ -53,13 +53,22 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "auth_failed", messages: [] }, { status: 401 });
     }
 
+    // If no user token exists, the user connected Slack before user scopes were added.
+    // The bot token alone usually lacks channels:history for member channels.
     if (!tokens.userToken && !tokens.botToken) {
         return NextResponse.json({ error: "no_token", messages: [] }, { status: 400 });
     }
 
+    if (!tokens.userToken && tokens.botToken) {
+        // Bot-only connection — likely an old OAuth without user scopes.
+        // Bot can only read channels it was explicitly invited to.
+        console.warn(`[slack/messages] no user token for channel=${channelId} — user may need to reconnect Slack`);
+    }
+
     // ── Fetch conversation history ───────────────────────────────────────────
-    // Try user token first (has channel context), fall back to bot token
-    const tokensToTry = [tokens.userToken, tokens.botToken].filter(Boolean);
+    // Try user token first (has member context), fall back to bot token.
+    // Filter out empty strings so the loop only runs with real tokens.
+    const tokensToTry = [tokens.userToken, tokens.botToken].filter((t): t is string => !!t);
     let histData: { ok: boolean; error?: string; messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }> } | null = null;
     let usedToken = "";
 

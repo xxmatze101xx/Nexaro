@@ -186,8 +186,12 @@ export function SlackChannelView({
                     <div className="flex items-start gap-2.5 mx-3 my-2 text-sm p-3 bg-destructive/10 text-destructive rounded-lg">
                         <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                         <span>
-                            {error === "missing_scope"
-                                ? "Fehlende Berechtigung. Bitte Slack in den Einstellungen trennen und neu verbinden."
+                            {error === "missing_scope" || error === "no_token" || error === "not_in_channel"
+                                ? "Fehlende Berechtigung oder Token abgelaufen. Bitte Slack in den Einstellungen trennen und neu verbinden, um alle Kanäle lesen zu können."
+                                : error === "channel_not_found"
+                                ? "Kanal nicht gefunden – möglicherweise keine Zugriffsberechtigung."
+                                : error === "auth_failed"
+                                ? "Authentifizierung fehlgeschlagen. Bitte Seite neu laden."
                                 : `Fehler: ${error}`}
                         </span>
                     </div>

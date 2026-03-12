@@ -78,6 +78,8 @@ function DashboardContent() {
   const [slackConnected, setSlackConnected] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
   const [slackDMs, setSlackDMs] = useState<SlackDM[]>([]);
+  // True when Slack is connected but the token lacks user scopes (needs reconnect)
+  const [slackNeedsReconnect, setSlackNeedsReconnect] = useState(false);
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -116,6 +118,11 @@ function DashboardContent() {
       const data = await res.json() as { channels?: SlackChannel[]; error?: string; needed_scope?: string; token_type?: string };
       if (data.channels && data.channels.length > 0) {
         setSlackChannels(data.channels);
+        setSlackNeedsReconnect(false);
+      } else if (data.error === "missing_scope" || data.error === "not_authed" || data.error === "invalid_auth") {
+        // Old bot-only token without user scopes — user must reconnect
+        console.warn("[slack] channels scope error — user needs to reconnect:", data.error, data.needed_scope ?? "");
+        setSlackNeedsReconnect(true);
       } else {
         console.warn("[slack] channels empty or error:", data.error, data.needed_scope ?? "", data.token_type ?? "");
       }
@@ -712,12 +719,21 @@ function DashboardContent() {
     const extra = [];
 
     if (slackConnected) {
+      const reconnectItems = slackNeedsReconnect ? [{
+        name: '⚠ Neu verbinden',
+        icon: <RefreshCw className="w-3.5 h-3.5 text-amber-500" />,
+        source: 'slack',
+        accountId: 'reconnect',
+        folder: 'reconnect',
+      }] : [];
+
       extra.push({
         id: 'slack',
         name: 'Slack',
         icon: <Image src="/ServiceLogos/Slack.svg" alt="Slack" width={16} height={16} className="shrink-0" />,
-        badge: undefined,
+        badge: slackNeedsReconnect ? 1 : undefined,
         items: [
+          ...reconnectItems,
           ...slackDMs.map(dm => ({
             name: dm.name,
             icon: dm.is_group
@@ -758,7 +774,7 @@ function DashboardContent() {
     }
 
     return [...gmailEntries, ...extra];
-  }, [gmailAccounts, allMessages, slackConnected, slackChannels, slackDMs, microsoftConnected]);
+  }, [gmailAccounts, allMessages, slackConnected, slackChannels, slackDMs, slackNeedsReconnect, microsoftConnected]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -905,7 +921,13 @@ function DashboardContent() {
                     return (
                       <button
                         key={item.name}
-                        onClick={() => setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder })}
+                        onClick={() => {
+                          if (item.folder === 'reconnect') {
+                            window.location.href = '/settings';
+                          } else {
+                            setSelectedSidebarItem({ source: item.source ?? '', accountId: item.accountId, folder: item.folder });
+                          }
+                        }}
                         className={cn(
                           "w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors",
                           isActive
