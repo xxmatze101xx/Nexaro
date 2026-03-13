@@ -1,0 +1,104 @@
+# CodexTagesplan — Vollanalyse Codebase (Stand: 13.03.2026)
+
+> Ziel: Vollständige Bestandsaufnahme der aktuell sichtbaren Fehler, Risiken und unvollständig implementierten Bereiche in Nexaro.
+> Methodik: statische Analyse + Lint + Build-Check.
+
+---
+
+## 🔴 Kritische Fehler (brechen Build oder CI)
+
+### 1) `npm run lint` schlägt fehl (9 Errors)
+- **Status:** Reproduzierbar
+- **Impact:** CI/Qualitäts-Gate blockiert; Merge-Risiko hoch.
+- **Hauptursachen:**
+  - Verbotene `any`-Typen in API-Routen und Kalender-Lib.
+  - Regelverstoß `react-hooks/set-state-in-effect` in `useTodos`.
+- **Betroffene Dateien:**
+  - `src/app/api/calendar/exchange/route.ts`
+  - `src/app/api/calendar/refresh/route.ts`
+  - `src/app/api/gmail/exchange/route.ts`
+  - `src/app/api/gmail/refresh/route.ts`
+  - `src/lib/calendar.ts`
+  - `src/hooks/useTodos.ts`
+
+### 2) `npm run build` schlägt fehl (`auth/invalid-api-key`)
+- **Status:** Reproduzierbar
+- **Impact:** Produktions-Build stoppt beim Prerendern (`/_not-found`).
+- **Root-Cause-Indikator:** Firebase wird serverseitig initialisiert, obwohl notwendige Env-Werte fehlen/ungültig sind.
+- **Betroffene Datei:**
+  - `src/lib/firebase.ts` (initialisiert `getAuth`/`getFirestore` direkt beim Modul-Import)
+
+---
+
+## 🟠 Funktional unvollständig / inkonsistent implementiert
+
+### 3) Mark-as-read nur für Gmail vollständig, für Non-Gmail unvollständig
+- **Status:** Offen (explizit als TODO markiert)
+- **Impact:** Inkonsistenter Read-Status zwischen UI und Persistenz (z. B. Slack/andere Quellen).
+- **Betroffene Datei:**
+  - `src/app/page.tsx`
+- **Hinweis im Code:**
+  - `// TODO: Make API call to mark as read in Firestore for non-Gmail messages`
+
+### 4) Integrationen teils nur UI-seitig vorhanden, Backend nicht implementiert
+- **Status:** Teilweise implementiert
+- **Impact:** User kann Integrationen sehen, aber bei Auswahl nur Hinweisdialog statt Funktion.
+- **Betroffene Datei:**
+  - `src/app/settings/page.tsx`
+- **Symptom:** Für nicht angebundene Provider erscheint `"<integration> Integration ist noch nicht implementiert."`.
+
+### 5) Custom-Integrations-Tab als Platzhalter
+- **Status:** Nicht implementiert
+- **Impact:** Leerer Zustand ohne Funktionalität trotz sichtbarer Option.
+- **Betroffene Datei:**
+  - `src/components/settings/IntegrationsSection.tsx`
+- **Symptom:** `activeTab === "custom"` setzt Liste auf leer (Placeholder-Verhalten).
+
+---
+
+## 🟡 Qualitäts-/Wartungsprobleme (nicht sofort blocker, aber riskant)
+
+### 6) Hohe Anzahl ESLint-Warnungen (23 Warnings)
+- **Status:** Offen
+- **Impact:** Erhöht technisches Risiko (ungenutzter Code, Hook-Dependencies, UX-Inkonsistenzen).
+- **Muster:**
+  - viele ungenutzte Imports/Variablen
+  - fehlende Hook-Dependencies (`react-hooks/exhaustive-deps`)
+- **Beispiele:**
+  - `src/app/page.tsx`
+  - `src/app/calendar/page.tsx`
+  - `src/app/todos/page.tsx`
+  - `src/components/message-card.tsx`
+  - `src/components/settings/IntegrationsSection.tsx`
+
+### 7) Fehlerbehandlung in OAuth-Routen mit `any`
+- **Status:** Funktioniert teilweise, aber type-unsafe
+- **Impact:** Schwerer wartbar, Fehlerpfade nicht sauber typisiert.
+- **Betroffene Dateien:**
+  - `src/app/api/gmail/exchange/route.ts`
+  - `src/app/api/gmail/refresh/route.ts`
+  - `src/app/api/calendar/exchange/route.ts`
+  - `src/app/api/calendar/refresh/route.ts`
+
+---
+
+## 📌 Priorisierte Umsetzungsreihenfolge (Empfehlung)
+
+1. **Build reparieren** (`auth/invalid-api-key`) in `src/lib/firebase.ts` und serverseitige Initialisierung absichern.
+2. **Lint-Errors auf 0 bringen** (`any` entfernen, `useTodos`-Hook korrigieren).
+3. **Non-Gmail Mark-as-read End-to-End implementieren** (`src/app/page.tsx` + Persistenz).
+4. **Integrations-Matrix bereinigen** (nicht implementierte Integrationen klar feature-flaggen oder implementieren).
+5. **Warnings abbauen** (v. a. Hook-Dependencies und ungenutzte Artefakte).
+
+---
+
+## ✅ Durchgeführte Analyse-Checks
+
+- `rg -n "TODO|FIXME|HACK|XXX|not implemented|throw new Error" src --glob '!src/node_modules/**'`
+- `rg -n "TODO|coming soon|placeholder|mock|dummy|not available|nicht verfügbar|noch nicht|unimplemented|No messages found|no-op" src --glob '!src/node_modules/**'`
+- `npm run lint`
+- `npm run build`
+
+---
+
+*Erstellt von Codex am 13.03.2026.*
