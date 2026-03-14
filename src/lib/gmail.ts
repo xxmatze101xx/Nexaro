@@ -1,22 +1,12 @@
 import { getGmailRefreshToken } from "./user";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
+import { normalizeGmail, type GmailHeader, type GmailPayloadPart } from "./normalizers";
 
 const DB_NAME = "nexaro_gmail_cache";
 const STORE_NAME = "emails";
 
 // ── Types ──────────────────────────────────────────────────────────────────
-
-interface GmailHeader {
-    name: string;
-    value: string;
-}
-
-interface GmailPayloadPart {
-    mimeType: string;
-    body?: { data?: string };
-    parts?: GmailPayloadPart[];
-}
 
 export interface GmailMessage {
     id: string;
@@ -209,100 +199,31 @@ export async function fetchRecentEmailsAndCache(
 
 // ── Message parsing ────────────────────────────────────────────────────────
 
-function findHtmlPart(part: GmailPayloadPart): string | null {
-    if (!part) return null;
-
-    if (part.mimeType === "text/html" && part.body?.data) {
-        return part.body.data;
-    }
-
-    if (part.parts && Array.isArray(part.parts)) {
-        for (const subPart of part.parts) {
-            const html = findHtmlPart(subPart);
-            if (html) return html;
-        }
-    }
-
-    return null;
-}
-
-function decodeBase64URL(base64UrlStr: string): string {
-    if (!base64UrlStr) return "";
-    try {
-        const base64 = base64UrlStr.replace(/-/g, "+").replace(/_/g, "/");
-        return decodeURIComponent(escape(atob(base64)));
-    } catch (e) {
-        console.error("Failed to decode email body", e);
-        return "";
-    }
-}
-
 /**
  * Parses a raw Gmail API message into Nexaro's internal Message format.
+ * Delegates normalization to the shared normalizeGmail() layer so all
+ * integrations produce a consistent UnifiedMessage before reaching the UI.
  */
 export function parseGmailToNexaroMessage(gmailMsg: GmailMessage, accountEmail?: string) {
-    const actualAccountEmail = accountEmail ?? gmailMsg._accountId ?? "Unknown";
-    const headers = gmailMsg.payload?.headers ?? [];
-
-    const header = (name: string) =>
-        headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? "";
-
-    const subject = header("subject") || "(Kein Betreff)";
-    const rawSender = header("from") || "Unbekannt";
-    const rfcMessageId = header("message-id").trim();
-
-    let sender = rawSender;
-    let senderEmail = "";
-    const match = rawSender.match(/(.*?)<(.*?)>/);
-    if (match) {
-        sender = match[1].replace(/"/g, "").trim() || match[2];
-        senderEmail = match[2].trim();
-    } else if (rawSender.includes("@")) {
-        senderEmail = rawSender.trim();
-    }
-
-    const snippet = gmailMsg.snippet ?? "";
-    const htmlData = gmailMsg.payload ? findHtmlPart(gmailMsg.payload as GmailPayloadPart) : null;
-    const htmlContent = htmlData ? decodeBase64URL(htmlData) : null;
-
-    // Base heuristic score (0–10). Python pipeline overwrites via Firestore overlay.
-    let importance = 3.0;
-    if (gmailMsg.labelIds?.includes("IMPORTANT")) importance = 7.5;
-    if (gmailMsg.labelIds?.includes("STARRED")) importance = 9.0;
-    if (importance === 3.0) {
-        const subj = subject.toLowerCase();
-        const from = senderEmail.toLowerCase();
-        if (/urgent|wichtig|asap|dringend|frist|deadline/.test(subj)) importance = 6.0;
-        else if (/invoice|rechnung|vertrag|contract|payment|zahlung/.test(subj)) importance = 5.5;
-        else if (/newsletter|unsubscribe|promo|sale|angebot/.test(subj + " " + from)) importance = 1.5;
-        else if (/meeting|termin|kalender|calendar|einladung|invite/.test(subj)) importance = 5.0;
-        else {
-            const hash = gmailMsg.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-            importance = Math.max(1.0, 3.0 + ((hash % 11) - 5) * 0.2);
-        }
-    }
-
+    const unified = normalizeGmail(gmailMsg, accountEmail);
+    const m = unified.metadata;
     return {
-        id: gmailMsg.id,
-        source: "gmail" as const,
-        accountId: actualAccountEmail,
-        external_id: gmailMsg.id,
-        threadId: gmailMsg.threadId ?? "",
-        rfcMessageId,
-        sender,
-        senderEmail,
-        subject,
-        content: snippet,
-        htmlContent,
-        timestamp: header("date")
-            ? new Date(header("date")).toISOString()
-            : new Date().toISOString(),
-        importance_score: importance,
-        status: (gmailMsg.labelIds?.includes("UNREAD") ? "unread" : "read") as
-            | "unread"
-            | "read",
-        ai_draft_response: null as string | null,
-        labels: gmailMsg.labelIds ?? [],
+        id: unified.id,
+        source: unified.source,
+        accountId: m.accountId ?? "",
+        external_id: m.external_id ?? unified.id,
+        threadId: unified.threadId,
+        rfcMessageId: m.rfcMessageId ?? "",
+        sender: unified.sender,
+        senderEmail: m.senderEmail ?? "",
+        subject: m.subject ?? "(Kein Betreff)",
+        content: unified.preview,
+        htmlContent: m.htmlContent ?? null,
+        timestamp: unified.timestamp,
+        importance_score: m.importance_score ?? 3.0,
+        status: (m.status ?? "read") as "unread" | "read" | "replied" | "archived",
+        ai_draft_response: m.ai_draft_response ?? null,
+        labels: m.labels ?? [],
     };
 }
 
