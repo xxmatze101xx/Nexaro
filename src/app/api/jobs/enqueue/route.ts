@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { enqueueJob } from "@/lib/jobs";
 import { logger } from "@/lib/logger";
+import { auditForStorage } from "@/lib/privacy";
 import type { JobType } from "@/lib/jobs";
 
 /**
@@ -68,6 +69,11 @@ export async function POST(request: Request) {
     }
 
     try {
+        // Privacy audit: job inputs may contain full message bodies (acceptable for
+        // ephemeral processing), but log any sensitive fields so violations are visible.
+        // The process route clears input from Firestore after completion.
+        auditForStorage(body.input, `jobs/enqueue/${body.type}`);
+
         const job = await enqueueJob(uid, body.type as JobType, body.input, idToken);
         logger.info("jobs/enqueue", "Job enqueued", { uid, jobId: job.id, type: job.type });
         return NextResponse.json({ jobId: job.id, status: job.status });

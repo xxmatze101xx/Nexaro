@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getJob, patchJob, listPendingJobs } from "@/lib/jobs";
 import { logger } from "@/lib/logger";
+import { sanitizeJobPayload, auditForStorage } from "@/lib/privacy";
 import type { Job, JobType } from "@/lib/jobs";
 
 /**
@@ -276,24 +277,29 @@ export async function POST(request: Request) {
     logger.info("jobs/process", "Job started", { uid, jobId: job.id, type: job.type, attempt: job.retryCount + 1 });
 
     try {
-        const output = await runJobProcessor(job);
+        const rawOutput = await runJobProcessor(job);
         const completedAt = new Date().toISOString();
 
+        // Privacy: sanitize output before persisting — output must never contain full bodies.
+        const safeOutput = sanitizeJobPayload(rawOutput, `jobs/${job.id}/output`);
+
+        // Privacy: clear the job input from Firestore after successful processing.
+        // Inputs contain full message bodies which must not be permanently stored.
         await patchJob(
             uid,
             job.id,
-            { status: "completed", output, completedAt, error: null },
+            { status: "completed", output: safeOutput, input: {}, completedAt, error: null },
             idToken,
         );
 
-        logger.info("jobs/process", "Job completed", {
+        logger.info("jobs/process", "Job completed — input cleared for privacy", {
             uid,
             jobId: job.id,
             type: job.type,
             durationMs: Date.now() - new Date(startedAt).getTime(),
         });
 
-        return NextResponse.json({ jobId: job.id, status: "completed", output });
+        return NextResponse.json({ jobId: job.id, status: "completed", output: safeOutput });
 
     } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);

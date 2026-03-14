@@ -6,6 +6,7 @@
 
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { auditForStorage } from "@/lib/privacy";
 import type { SyncState, SyncService } from "./types";
 
 /**
@@ -37,6 +38,8 @@ export async function saveSyncState(
 ): Promise<void> {
     if (!uid) return;
     try {
+        // Privacy guard: sync state must never contain message bodies.
+        auditForStorage(state, `users/${uid}/sync/${state.service}`);
         const ref = doc(db, "users", uid, "sync", state.service);
         await setDoc(ref, { ...state, updatedAt: serverTimestamp() }, { merge: true });
     } catch (e: unknown) {
