@@ -40,6 +40,8 @@ async function getSlackToken(idToken: string, projectId: string): Promise<{ user
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const channelId = searchParams.get("channel");
+    const oldest = searchParams.get("oldest");   // incremental sync cursor (unix ts string)
+    const limitParam = searchParams.get("limit");
     const authHeader  = request.headers.get("Authorization");
     const idToken = authHeader?.slice(7);
 
@@ -59,8 +61,14 @@ export async function GET(request: Request) {
     }
 
     // ── Fetch conversation history ───────────────────────────────────────────
+    const historyParams = new URLSearchParams({
+        channel: channelId,
+        limit: limitParam ?? "50",
+    });
+    if (oldest) historyParams.set("oldest", oldest);
+
     const histRes = await fetch(
-        `https://slack.com/api/conversations.history?channel=${channelId}&limit=50`,
+        `https://slack.com/api/conversations.history?${historyParams.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
     );
     const histData = await histRes.json() as {

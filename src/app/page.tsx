@@ -9,6 +9,8 @@ import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, parseGmail
 import { db } from "@/lib/firebase";
 import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
 import type { SlackChannel } from "@/lib/slack";
+import { useSyncEngine } from "@/hooks/useSyncEngine";
+import type { UnifiedMessage } from "@/lib/normalizers/types";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -98,6 +100,14 @@ function DashboardContent() {
   // Guards to prevent false-positive toasts on load-more and initial load
   const isLoadingMoreRef = useRef(false);
   const sessionStartTimestampRef = useRef<number>(Date.now());
+
+  // ── Sync Engine: background polling for Gmail + Slack ─────────────────────
+  const { syncedMessages, triggerSync } = useSyncEngine({
+    user,
+    gmailAccounts,
+    slackConnected,
+    slackChannels,
+  });
 
   // Fetch Slack channels via server-side proxy (logs errors in Vercel, avoids CORS/scope issues)
   const loadSlackChannels = useCallback(async () => {
@@ -307,17 +317,39 @@ function DashboardContent() {
     return () => { isMounted = false; };
   }, [selectedSidebarItem?.folder, selectedSidebarItem?.accountId, user, gmailAccounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Converts a UnifiedMessage from the sync engine into the UI's Message shape. */
+  const unifiedToMessage = useCallback((u: UnifiedMessage): Message => ({
+    id: u.id,
+    source: u.source as Message["source"],
+    external_id: u.metadata.external_id ?? u.id,
+    threadId: u.threadId,
+    rfcMessageId: u.metadata.rfcMessageId ?? "",
+    sender: u.sender,
+    senderEmail: u.metadata.senderEmail ?? "",
+    subject: u.metadata.subject ?? "(Kein Betreff)",
+    content: u.preview,
+    htmlContent: u.metadata.htmlContent ?? null,
+    timestamp: u.timestamp,
+    importance_score: u.metadata.importance_score ?? 3.0,
+    status: (u.metadata.status ?? "unread") as Message["status"],
+    ai_draft_response: u.metadata.ai_draft_response ?? null,
+    labels: u.metadata.labels ?? [],
+    accountId: u.metadata.accountId ?? u.metadata.channelId ?? "",
+  }), []);
+
   const allMessages = useMemo(() => {
     // Overlay Python pipeline scores on Gmail messages where available
     const scoredGmail = gmailMessages.map(m => {
       const pipelineScore = firestoreGmailScores[m.external_id];
       return pipelineScore !== undefined ? { ...m, importance_score: pipelineScore } : m;
     });
-    const combined = [...messages, ...scoredGmail];
+    // Convert background-synced messages to the UI Message shape
+    const syncMessages = Array.from(syncedMessages.values()).map(unifiedToMessage);
+    const combined = [...messages, ...scoredGmail, ...syncMessages];
     const uniqueMap = new Map<string, Message>();
     combined.forEach(m => uniqueMap.set(m.id, m));
     return Array.from(uniqueMap.values());
-  }, [messages, gmailMessages, firestoreGmailScores]);
+  }, [messages, gmailMessages, firestoreGmailScores, syncedMessages, unifiedToMessage]);
 
 
 
@@ -615,6 +647,7 @@ function DashboardContent() {
   const handleRefresh = async () => {
     await clearEmailCache();
     setRefreshCount(prev => prev + 1);
+    triggerSync();
   };
 
   const ACCOUNTS = useMemo(() => {
