@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getJob, patchJob, listPendingJobs } from "@/lib/jobs";
 import { logger } from "@/lib/logger";
 import { sanitizeJobPayload, auditForStorage } from "@/lib/privacy";
+import { getFlags, isFeatureEnabled } from "@/lib/flags";
 import type { Job, JobType } from "@/lib/jobs";
 
 /**
@@ -271,6 +272,27 @@ export async function POST(request: Request) {
     }
 
     const startedAt = new Date().toISOString();
+
+    // Feature flag checks — abort early if the feature is disabled
+    const flags = await getFlags(uid, idToken);
+
+    if (job.type === "embedding_generation" && !isFeatureEnabled("predictive_intelligence_enabled", flags)) {
+        await patchJob(uid, job.id, { status: "failed", error: "feature_disabled:predictive_intelligence_enabled" }, idToken);
+        logger.warn("jobs/process", "Job blocked by feature flag", { jobId: job.id, type: job.type, flag: "predictive_intelligence_enabled" });
+        return NextResponse.json({ error: "feature_disabled", flag: "predictive_intelligence_enabled" }, { status: 403 });
+    }
+
+    if (job.type === "decision_detection" && !isFeatureEnabled("decision_dashboard_enabled", flags)) {
+        await patchJob(uid, job.id, { status: "failed", error: "feature_disabled:decision_dashboard_enabled" }, idToken);
+        logger.warn("jobs/process", "Job blocked by feature flag", { jobId: job.id, type: job.type, flag: "decision_dashboard_enabled" });
+        return NextResponse.json({ error: "feature_disabled", flag: "decision_dashboard_enabled" }, { status: 403 });
+    }
+
+    if ((job.type === "thread_summary" || job.type === "action_extraction") && !isFeatureEnabled("ai_agent_enabled", flags)) {
+        await patchJob(uid, job.id, { status: "failed", error: "feature_disabled:ai_agent_enabled" }, idToken);
+        logger.warn("jobs/process", "Job blocked by feature flag", { jobId: job.id, type: job.type, flag: "ai_agent_enabled" });
+        return NextResponse.json({ error: "feature_disabled", flag: "ai_agent_enabled" }, { status: 403 });
+    }
 
     // Mark as running
     await patchJob(uid, job.id, { status: "running", startedAt }, idToken);
