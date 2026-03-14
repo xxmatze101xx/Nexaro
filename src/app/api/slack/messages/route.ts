@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/slack/messages?channel=<channelId>
@@ -78,9 +79,11 @@ export async function GET(request: Request) {
     };
 
     if (!histData.ok) {
-        console.error(`[slack/messages] conversations.history error=${histData.error} channel=${channelId}`);
+        logger.error("slack/messages", "conversations.history failed", { error: histData.error, channel: channelId });
         return NextResponse.json({ error: histData.error, messages: [] });
     }
+
+    logger.info("slack/messages", "Messages fetched", { channel: channelId, count: (histData.messages ?? []).length });
 
     // Reverse to chronological order; skip subtypes (join/leave events)
     const raw = (histData.messages ?? [])

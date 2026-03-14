@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/slack/channels
@@ -33,13 +34,13 @@ export async function GET(request: Request) {
         }
     );
     if (!verifyRes.ok) {
-        console.error(`[slack/channels] token verify failed: ${verifyRes.status}`);
+        logger.warn("slack/channels", "Token verification failed", { status: verifyRes.status });
         return NextResponse.json({ error: "token_verify_failed", channels: [] }, { status: 401 });
     }
     const verifyData = await verifyRes.json() as { users?: Array<{ localId: string }> };
     const uid = verifyData.users?.[0]?.localId;
     if (!uid) {
-        console.error("[slack/channels] uid not found in verify response");
+        logger.warn("slack/channels", "UID not found in verify response");
         return NextResponse.json({ error: "uid_not_found", channels: [] }, { status: 401 });
     }
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "slack_not_connected", channels: [] });
     }
     if (!fsRes.ok) {
-        console.error(`[slack/channels] Firestore read failed: status=${fsRes.status}`);
+        logger.error("slack/channels", "Firestore token read failed", { status: fsRes.status });
         return NextResponse.json({ error: "firestore_error", channels: [] }, { status: 500 });
     }
 
@@ -69,11 +70,11 @@ export async function GET(request: Request) {
     const tokenType = userToken ? "user(xoxp)" : "bot(xoxb)";
 
     if (!token) {
-        console.error("[slack/channels] no token in Firestore document");
+        logger.error("slack/channels", "No token in Firestore document", { uid });
         return NextResponse.json({ error: "no_token", channels: [] });
     }
 
-    console.log(`[slack/channels] uid=${uid} using token_type=${tokenType}`);
+    logger.info("slack/channels", "Fetching channels", { uid, tokenType });
 
     // ── 3. Call Slack conversations.list ─────────────────────────────────────
     const slackRes = await fetch(
@@ -88,11 +89,11 @@ export async function GET(request: Request) {
     };
 
     if (!slackData.ok) {
-        console.error(
-            `[slack/channels] Slack API error: ${slackData.error}` +
-            (slackData.needed ? ` (needs scope: ${slackData.needed})` : "") +
-            ` token_type=${tokenType}`
-        );
+        logger.error("slack/channels", "Slack API error", {
+            error: slackData.error,
+            neededScope: slackData.needed,
+            tokenType,
+        });
         return NextResponse.json({
             error: slackData.error,
             needed_scope: slackData.needed,
@@ -104,9 +105,7 @@ export async function GET(request: Request) {
     const allChannels = slackData.channels ?? [];
     const memberChannels = allChannels.filter(c => c.is_member);
 
-    console.log(
-        `[slack/channels] total=${allChannels.length} member=${memberChannels.length} token_type=${tokenType}`
-    );
+    logger.info("slack/channels", "Channels fetched", { total: allChannels.length, member: memberChannels.length, tokenType });
 
     const sorted = memberChannels
         .map(c => ({ id: c.id, name: c.name, is_private: c.is_private, is_member: c.is_member }))

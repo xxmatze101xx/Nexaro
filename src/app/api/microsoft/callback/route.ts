@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/microsoft/callback?code=<auth_code>&state=<uid>
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
         };
 
         if (!tokenData.access_token) {
-            console.error("Microsoft token exchange failed:", tokenData.error_description);
+            logger.error("microsoft/callback", "Token exchange failed", { error: tokenData.error, description: tokenData.error_description });
             return NextResponse.redirect(
                 `${appUrl}/settings?microsoft_error=${tokenData.error ?? "exchange_failed"}`
             );
@@ -88,16 +89,23 @@ export async function GET(request: Request) {
             },
         };
 
-        await fetch(firestoreUrl, {
+        const fsRes = await fetch(firestoreUrl, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(firestoreBody),
         });
 
+        if (!fsRes.ok) {
+            const errText = await fsRes.text().catch(() => "(unreadable)");
+            logger.error("microsoft/callback", "Firestore token write failed", { status: fsRes.status, body: errText.slice(0, 300) });
+            return NextResponse.redirect(`${appUrl}/settings?microsoft_error=token_storage_failed`);
+        }
+
+        logger.info("microsoft/callback", "Token stored successfully", { uid, email: profile.mail ?? "?" });
         return NextResponse.redirect(`${appUrl}/settings?microsoft_connected=true`);
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "unknown";
-        console.error("Microsoft callback error:", msg);
+        logger.error("microsoft/callback", "Unexpected error", { error: msg });
         return NextResponse.redirect(`${appUrl}/settings?microsoft_error=server_error`);
     }
 }

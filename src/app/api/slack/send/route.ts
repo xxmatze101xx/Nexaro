@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/slack/send
@@ -53,9 +54,11 @@ export async function POST(request: Request) {
     const sendData = await sendRes.json() as { ok: boolean; error?: string };
 
     if (!sendData.ok) {
-        console.error(`[slack/send] chat.postMessage error=${sendData.error} channel=${body.channel}`);
+        logger.error("slack/send", "chat.postMessage failed", { error: sendData.error, channel: body.channel });
         return NextResponse.json({ error: sendData.error }, { status: 500 });
     }
+
+    logger.info("slack/send", "Message sent", { channel: body.channel });
 
     return NextResponse.json({ ok: true });
 }

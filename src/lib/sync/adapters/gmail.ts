@@ -11,6 +11,7 @@ import { getValidAccessToken } from "@/lib/gmail";
 import { normalizeGmail } from "@/lib/normalizers";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import type { GmailSyncCredentials, SyncMode, SyncResult, SyncState } from "../types";
+import { rateLimitedFetch } from "../rate-limiter";
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const BATCH_SIZE = 10;
@@ -36,7 +37,8 @@ async function fetchMessageDetail(
     accountEmail: string,
 ): Promise<UnifiedMessage | null> {
     try {
-        const res = await fetch(
+        const res = await rateLimitedFetch(
+            "gmail",
             `${GMAIL_API}/messages/${id}?format=full`,
             { headers: { Authorization: `Bearer ${accessToken}` } },
         );
@@ -80,7 +82,8 @@ export async function syncGmail(
 
     // ── Incremental sync via history.list ─────────────────────────────────────
     if (mode === "incremental" && state?.historyId) {
-        const response = await fetch(
+        const response = await rateLimitedFetch(
+            "gmail",
             `${GMAIL_API}/history?startHistoryId=${state.historyId}&historyTypes=messageAdded&labelId=INBOX`,
             { headers: { Authorization: `Bearer ${accessToken}` } },
         );
@@ -109,7 +112,8 @@ export async function syncGmail(
     }
 
     // ── Initial sync: fetch last 50 inbox messages ────────────────────────────
-    const listResponse = await fetch(
+    const listResponse = await rateLimitedFetch(
+        "gmail",
         `${GMAIL_API}/messages?maxResults=50&labelIds=INBOX`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
     );
@@ -122,7 +126,8 @@ export async function syncGmail(
     const messages = await fetchBatch(accessToken, ids, email);
 
     // Record current historyId for future incremental syncs
-    const profileResponse = await fetch(
+    const profileResponse = await rateLimitedFetch(
+        "gmail",
         `${GMAIL_API}/profile`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
     );

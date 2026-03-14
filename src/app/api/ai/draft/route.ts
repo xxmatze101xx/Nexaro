@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 interface DraftRequestBody {
     subject?: string;
@@ -72,7 +73,7 @@ ${body.body}`;
 
         if (!groqRes.ok) {
             const errText = await groqRes.text();
-            console.error("Groq API error:", errText);
+            logger.error("ai/draft", "Groq API error", { status: groqRes.status, body: errText.slice(0, 300) });
             return NextResponse.json(
                 { error: "AI generation failed. Please try again." },
                 { status: 502 }
@@ -86,15 +87,17 @@ ${body.body}`;
         const draft = groqData.choices?.[0]?.message?.content?.trim() ?? "";
 
         if (!draft) {
+            logger.warn("ai/draft", "Groq returned empty response");
             return NextResponse.json(
                 { error: "AI returned an empty response." },
                 { status: 502 }
             );
         }
 
+        logger.info("ai/draft", "Draft generated", { subject: body.subject ?? "(none)", length: draft.length });
         return NextResponse.json({ draft });
     } catch (err: unknown) {
-        console.error("Error calling Groq API:", err);
+        logger.error("ai/draft", "Unexpected error calling Groq API", { error: err instanceof Error ? err.message : String(err) });
         return NextResponse.json({ error: "Internal server error." }, { status: 500 });
     }
 }

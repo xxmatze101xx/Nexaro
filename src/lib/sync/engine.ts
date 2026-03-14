@@ -7,8 +7,10 @@
  */
 
 import { getSyncState, saveSyncState } from "./state";
+import { logger } from "../logger";
 import { syncGmail } from "./adapters/gmail";
 import { syncSlack } from "./adapters/slack";
+import { RateLimitError } from "./rate-limiter";
 import type {
     GmailSyncCredentials,
     SlackSyncCredentials,
@@ -29,6 +31,9 @@ async function withRetry<T>(
         try {
             return await fn();
         } catch (err) {
+            // RateLimitError means per-request retries are exhausted — don't pile on more retries.
+            if (err instanceof RateLimitError) throw err;
+
             lastError = err;
             if (attempt < maxRetries) {
                 await new Promise(resolve =>
@@ -51,6 +56,8 @@ export class SyncEngine {
 
         await saveSyncState(uid, { service: "gmail", status: "syncing" });
 
+        logger.info("sync/gmail", "Starting sync", { uid, mode });
+
         try {
             const result = await withRetry(() => syncGmail(creds, mode, state));
 
@@ -63,11 +70,13 @@ export class SyncEngine {
                 ...result.nextState,
             });
 
+            logger.info("sync/gmail", "Sync complete", { uid, mode, added: result.added });
             return { service: "gmail", ...result };
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : String(err);
             const errorCount = (state?.errorCount ?? 0) + 1;
 
+            logger.error("sync/gmail", "Sync failed", { uid, mode, error: errorMsg, errorCount });
             await saveSyncState(uid, {
                 service: "gmail",
                 status: "error",
@@ -96,6 +105,8 @@ export class SyncEngine {
 
         await saveSyncState(uid, { service: "slack", status: "syncing" });
 
+        logger.info("sync/slack", "Starting sync", { uid, mode });
+
         try {
             const result = await withRetry(() => syncSlack(creds, mode, state));
 
@@ -108,11 +119,13 @@ export class SyncEngine {
                 ...result.nextState,
             });
 
+            logger.info("sync/slack", "Sync complete", { uid, mode, added: result.added });
             return { service: "slack", ...result };
         } catch (err: unknown) {
             const errorMsg = err instanceof Error ? err.message : String(err);
             const errorCount = (state?.errorCount ?? 0) + 1;
 
+            logger.error("sync/slack", "Sync failed", { uid, mode, error: errorMsg, errorCount });
             await saveSyncState(uid, {
                 service: "slack",
                 status: "error",

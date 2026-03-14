@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/slack/callback?code=<auth_code>&state=<uid>:<idToken>
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     }
 
     if (!idToken) {
-        console.error("Slack callback: missing Firebase ID token in state — cannot authenticate Firestore write");
+        logger.error("slack/callback", "Missing Firebase ID token in state — cannot authenticate Firestore write");
         return NextResponse.redirect(`${appUrl}/settings?slack_error=missing_auth_token`);
     }
 
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
         };
 
         if (!tokenData.ok) {
-            console.error("Slack token exchange failed:", tokenData.error);
+            logger.error("slack/callback", "Token exchange failed", { error: tokenData.error });
             return NextResponse.redirect(`${appUrl}/settings?slack_error=${tokenData.error ?? "exchange_failed"}`);
         }
 
@@ -101,15 +102,15 @@ export async function GET(request: Request) {
 
         if (!fsRes.ok) {
             const errText = await fsRes.text().catch(() => "(unreadable)");
-            console.error(`Slack token Firestore write failed: status=${fsRes.status} body=${errText.slice(0, 300)}`);
+            logger.error("slack/callback", "Firestore token write failed", { status: fsRes.status, body: errText.slice(0, 300) });
             return NextResponse.redirect(`${appUrl}/settings?slack_error=token_storage_failed`);
         }
 
-        console.log(`Slack token stored successfully for uid=${uid} team=${tokenData.team?.name ?? "?"}`);
+        logger.info("slack/callback", "Token stored successfully", { uid, team: tokenData.team?.name ?? "?" });
         return NextResponse.redirect(`${appUrl}/settings?slack_connected=true`);
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "unknown";
-        console.error("Slack callback error:", msg);
+        logger.error("slack/callback", "Unexpected error", { error: msg });
         return NextResponse.redirect(`${appUrl}/settings?slack_error=server_error`);
     }
 }

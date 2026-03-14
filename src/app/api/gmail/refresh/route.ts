@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
     try {
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
         const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
         if (!clientId || !clientSecret) {
-            console.error("Missing Google OAuth credentials in environment variables.");
+            logger.error("gmail/refresh", "Missing Google OAuth credentials in environment variables");
             return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
         }
 
@@ -29,19 +30,25 @@ export async function POST(request: Request) {
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            access_token?: string;
+            expires_in?: number;
+            error?: string;
+            error_description?: string;
+        };
 
         if (!response.ok) {
-            console.error("Token refresh failed:", data);
-            return NextResponse.json({ error: data.error_description || "Token refresh failed" }, { status: response.status });
+            logger.error("gmail/refresh", "Token refresh failed", { status: response.status, error: data.error, description: data.error_description });
+            return NextResponse.json({ error: data.error_description ?? "Token refresh failed" }, { status: response.status });
         }
 
+        logger.info("gmail/refresh", "Token refreshed successfully");
         return NextResponse.json({
             access_token: data.access_token,
             expires_in: data.expires_in,
         });
-    } catch (error: any) {
-        console.error("Error refreshing token:", error);
+    } catch (err: unknown) {
+        logger.error("gmail/refresh", "Unexpected error refreshing token", { error: err instanceof Error ? err.message : String(err) });
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

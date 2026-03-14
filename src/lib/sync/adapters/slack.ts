@@ -9,6 +9,7 @@
 import { normalizeSlack } from "@/lib/normalizers";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import type { SlackSyncCredentials, SyncMode, SyncResult, SyncState } from "../types";
+import { rateLimitedFetch } from "../rate-limiter";
 
 interface SlackApiMessage {
     ts: string;
@@ -31,7 +32,7 @@ async function fetchChannelMessages(
     url.searchParams.set("channel", channelId);
     if (oldest) url.searchParams.set("oldest", oldest);
 
-    const res = await fetch(url.toString(), {
+    const res = await rateLimitedFetch("slack", url.toString(), {
         headers: { Authorization: `Bearer ${idToken}` },
     });
     if (!res.ok) {
