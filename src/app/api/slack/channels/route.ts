@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { REQUIRED_SCOPES, checkMissingScopes } from "@/lib/oauth-scopes";
 
 /**
  * GET /api/slack/channels
@@ -61,6 +62,7 @@ export async function GET(request: Request) {
         fields?: {
             user_access_token?: { stringValue: string };
             access_token?: { stringValue: string };
+            granted_user_scopes?: { stringValue: string };
         };
     };
 
@@ -72,6 +74,16 @@ export async function GET(request: Request) {
     if (!token) {
         logger.error("slack/channels", "No token in Firestore document", { uid });
         return NextResponse.json({ error: "no_token", channels: [] });
+    }
+
+    // Scope validation: only if granted scopes were recorded (tokens stored after this feature was deployed)
+    const grantedUserScopes = fsData.fields?.granted_user_scopes?.stringValue ?? "";
+    if (grantedUserScopes) {
+        const missingScopes = checkMissingScopes(grantedUserScopes, REQUIRED_SCOPES.slack_user);
+        if (missingScopes.length > 0) {
+            logger.warn("slack/channels", "Token missing required user scopes", { missingScopes });
+            return NextResponse.json({ error: "scope_upgrade_required", missingScopes, channels: [] }, { status: 403 });
+        }
     }
 
     logger.info("slack/channels", "Fetching channels", { uid, tokenType });

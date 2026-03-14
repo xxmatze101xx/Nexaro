@@ -9,4 +9,5 @@ export type {
     SyncResult,
     GmailSyncCredentials,
     SlackSyncCredentials,
+    TeamsSyncCredentials,
 } from "./types";

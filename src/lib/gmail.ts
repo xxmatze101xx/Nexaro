@@ -229,6 +229,22 @@ export function parseGmailToNexaroMessage(gmailMsg: GmailMessage, accountEmail?:
 
 // ── Send email ─────────────────────────────────────────────────────────────
 
+export interface EmailAttachment {
+    filename: string;
+    mimeType: string;
+    /** Standard base64-encoded file content (not URL-safe) */
+    data: string;
+}
+
+/** Wraps base64 data in 76-char lines as required by MIME spec. */
+function wrapBase64(data: string): string {
+    const lines: string[] = [];
+    for (let i = 0; i < data.length; i += 76) {
+        lines.push(data.slice(i, i + 76));
+    }
+    return lines.join("\r\n");
+}
+
 /**
  * Sends an email (or reply) via the Gmail API.
  *
@@ -236,6 +252,8 @@ export function parseGmailToNexaroMessage(gmailMsg: GmailMessage, accountEmail?:
  *  - inReplyTo / references: the RFC Message-ID header of the original email
  *    (e.g. "<xxxx@mail.gmail.com>"), NOT the Gmail message ID.
  *  - threadId: the Gmail threadId so Gmail places the reply in the same thread.
+ *
+ * For replies with attachments, pass the attachments array with base64-encoded file data.
  */
 export async function sendEmail(
     uid: string,
@@ -247,28 +265,69 @@ export async function sendEmail(
     references?: string,
     threadId?: string,
     cc?: string,
-    bcc?: string
-): Promise<unknown> {
+    bcc?: string,
+    attachments?: EmailAttachment[]
+): Promise<{ id: string; threadId: string; labelIds: string[] }> {
     const accessToken = await getValidAccessToken(uid, accountEmail);
     if (!accessToken)
         throw new Error(
             "Kein Zugriff auf Gmail. Bitte verbinde dein Konto in den Einstellungen erneut."
         );
 
-    const emailLines: string[] = [];
-    emailLines.push(`To: ${to}`);
-    if (cc) emailLines.push(`Cc: ${cc}`);
-    if (bcc) emailLines.push(`Bcc: ${bcc}`);
-    emailLines.push('Content-Type: text/plain; charset="UTF-8"');
-    emailLines.push("MIME-Version: 1.0");
-    if (inReplyTo) emailLines.push(`In-Reply-To: ${inReplyTo}`);
-    if (references) emailLines.push(`References: ${references}`);
-    const base64Subject = btoa(unescape(encodeURIComponent(subject)));
-    emailLines.push(`Subject: =?utf-8?B?${base64Subject}?=`);
-    emailLines.push("");
-    emailLines.push(body);
+    const encodedSubject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+    const hasAttachments = attachments && attachments.length > 0;
 
-    const raw = emailLines.join("\r\n");
+    let raw: string;
+
+    if (hasAttachments) {
+        const boundary = `nexaro_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+        const headerLines = [
+            `To: ${to}`,
+            ...(cc ? [`Cc: ${cc}`] : []),
+            ...(bcc ? [`Bcc: ${bcc}`] : []),
+            "MIME-Version: 1.0",
+            ...(inReplyTo ? [`In-Reply-To: ${inReplyTo}`] : []),
+            ...(references ? [`References: ${references}`] : []),
+            `Subject: ${encodedSubject}`,
+            `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        ].join("\r\n");
+
+        const textPart = [
+            `--${boundary}`,
+            "Content-Type: text/plain; charset=UTF-8",
+            "Content-Transfer-Encoding: 7bit",
+            "",
+            body,
+        ].join("\r\n");
+
+        const attachmentParts = attachments.map(att =>
+            [
+                `--${boundary}`,
+                `Content-Type: ${att.mimeType}; name="${att.filename}"`,
+                "Content-Transfer-Encoding: base64",
+                `Content-Disposition: attachment; filename="${att.filename}"`,
+                "",
+                wrapBase64(att.data),
+            ].join("\r\n")
+        );
+
+        raw = [headerLines, "", textPart, ...attachmentParts, `--${boundary}--`].join("\r\n");
+    } else {
+        raw = [
+            `To: ${to}`,
+            ...(cc ? [`Cc: ${cc}`] : []),
+            ...(bcc ? [`Bcc: ${bcc}`] : []),
+            'Content-Type: text/plain; charset="UTF-8"',
+            "MIME-Version: 1.0",
+            ...(inReplyTo ? [`In-Reply-To: ${inReplyTo}`] : []),
+            ...(references ? [`References: ${references}`] : []),
+            `Subject: ${encodedSubject}`,
+            "",
+            body,
+        ].join("\r\n");
+    }
+
     const base64EncodedEmail = btoa(unescape(encodeURIComponent(raw)))
         .replace(/\+/g, "-")
         .replace(/\//g, "_")
@@ -291,7 +350,7 @@ export async function sendEmail(
         console.error("Error sending email", errText);
         throw new Error("Fehler beim Senden der E-Mail.");
     }
-    return res.json();
+    return res.json() as Promise<{ id: string; threadId: string; labelIds: string[] }>;
 }
 
 // ── Archive email ──────────────────────────────────────────────────────────

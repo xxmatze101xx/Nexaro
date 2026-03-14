@@ -7,7 +7,7 @@ import type { UnifiedMessage } from "@/lib/normalizers/types";
 
 export type SyncMode = "initial" | "incremental";
 export type SyncStatus = "idle" | "syncing" | "error";
-export type SyncService = "gmail" | "slack";
+export type SyncService = "gmail" | "slack" | "teams";
 
 /**
  * Persisted to Firestore: users/{uid}/sync/{service}
@@ -43,4 +43,12 @@ export interface SlackSyncCredentials {
     uid: string;
     idToken: string;
     channelIds: string[];
+    /** Optional map of channelId → display name, used to populate message subjects */
+    channelNames?: Record<string, string>;
+}
+
+export interface TeamsSyncCredentials {
+    uid: string;
+    /** Firebase ID token used to authenticate the /api/microsoft/teams proxy */
+    idToken: string;
 }

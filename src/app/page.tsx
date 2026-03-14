@@ -101,12 +101,13 @@ function DashboardContent() {
   const isLoadingMoreRef = useRef(false);
   const sessionStartTimestampRef = useRef<number>(Date.now());
 
-  // ── Sync Engine: background polling for Gmail + Slack ─────────────────────
+  // ── Sync Engine: background polling for Gmail + Slack + Teams ────────────
   const { syncedMessages, triggerSync } = useSyncEngine({
     user,
     gmailAccounts,
     slackConnected,
     slackChannels,
+    microsoftConnected,
   });
 
   // Fetch Slack channels via server-side proxy (logs errors in Vercel, avoids CORS/scope issues)
@@ -1109,6 +1110,12 @@ function DashboardContent() {
               onStatusChanged={(msg, newStatus) => {
                 setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
                 setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
+              }}
+              onReplied={(msg) => {
+                const newStatus = "replied" as const;
+                setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
+                setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
+                showToast("Antwort gesendet", "✉️");
               }}
               className="flex-1"
             />

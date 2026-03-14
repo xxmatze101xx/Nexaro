@@ -24,6 +24,7 @@ const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 export interface SyncEngineStatus {
     gmail: SyncStatus;
     slack: SyncStatus;
+    teams: SyncStatus;
 }
 
 export interface UseSyncEngineResult {
@@ -40,6 +41,7 @@ interface SyncEngineOptions {
     gmailAccounts: { email: string; token: string }[];
     slackConnected: boolean;
     slackChannels: SlackChannel[];
+    microsoftConnected: boolean;
 }
 
 export function useSyncEngine({
@@ -47,9 +49,10 @@ export function useSyncEngine({
     gmailAccounts,
     slackConnected,
     slackChannels,
+    microsoftConnected,
 }: SyncEngineOptions): UseSyncEngineResult {
     const [syncedMessages, setSyncedMessages] = useState<Map<string, UnifiedMessage>>(new Map());
-    const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>({ gmail: "idle", slack: "idle" });
+    const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>({ gmail: "idle", slack: "idle", teams: "idle" });
     const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
 
     // Track whether initial sync has been triggered to avoid redundant calls
@@ -100,10 +103,12 @@ export function useSyncEngine({
             try {
                 const idToken = await user.getIdToken();
                 const channelIds = slackChannels.map(ch => ch.id);
+                const channelNames = Object.fromEntries(slackChannels.map(ch => [ch.id, ch.name]));
                 const slackResult = await syncEngine.syncSlack(user.uid, {
                     uid: user.uid,
                     idToken,
                     channelIds,
+                    channelNames,
                 });
                 results.push(slackResult);
 
@@ -116,24 +121,44 @@ export function useSyncEngine({
             }
         }
 
+        // ── Microsoft Teams ────────────────────────────────────────────────────
+        if (microsoftConnected) {
+            setSyncStatus(prev => ({ ...prev, teams: "syncing" }));
+            try {
+                const idToken = await user.getIdToken();
+                const teamsResult = await syncEngine.syncTeams(user.uid, {
+                    uid: user.uid,
+                    idToken,
+                });
+                results.push(teamsResult);
+
+                const hasError = teamsResult.errors.length > 0 && teamsResult.added === 0;
+                setSyncStatus(prev => ({ ...prev, teams: hasError ? "error" : "idle" }));
+                mergeMessages(teamsResult.messages);
+            } catch (e: unknown) {
+                console.warn("[useSyncEngine] Teams sync failed:", e instanceof Error ? e.message : String(e));
+                setSyncStatus(prev => ({ ...prev, teams: "error" }));
+            }
+        }
+
         if (results.length > 0) {
             setLastSyncAt(new Date().toISOString());
         }
 
         isSyncingRef.current = false;
-    }, [user, gmailAccounts, slackConnected, slackChannels, mergeMessages]);
+    }, [user, gmailAccounts, slackConnected, slackChannels, microsoftConnected, mergeMessages]);
 
     // ── Initial sync when credentials first become available ──────────────────
     useEffect(() => {
         if (!user) return;
 
-        const key = `${user.uid}_${gmailAccounts.map(a => a.email).join(",")}_${slackChannels.map(c => c.id).join(",")}`;
+        const key = `${user.uid}_${gmailAccounts.map(a => a.email).join(",")}_${slackChannels.map(c => c.id).join(",")}_ms${microsoftConnected ? 1 : 0}`;
         if (initialSyncDoneRef.current.has(key)) return;
-        if (gmailAccounts.length === 0 && !slackConnected) return;
+        if (gmailAccounts.length === 0 && !slackConnected && !microsoftConnected) return;
 
         initialSyncDoneRef.current.add(key);
         runSync();
-    }, [user, gmailAccounts, slackConnected, slackChannels, runSync]);
+    }, [user, gmailAccounts, slackConnected, slackChannels, microsoftConnected, runSync]);
 
     // ── Polling: incremental sync every 2 minutes ─────────────────────────────
     useEffect(() => {

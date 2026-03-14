@@ -73,6 +73,7 @@ export function SlackChannelView({
     const [messages, setMessages] = useState<SlackMsg[]>([]);
     const [loading, setLoading]   = useState(false);
     const [error, setError]       = useState<string | null>(null);
+    const [scopeUpgradeRequired, setScopeUpgradeRequired] = useState(false);
     const [input, setInput]       = useState("");
     const [sending, setSending]   = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -81,13 +82,16 @@ export function SlackChannelView({
         if (!channelId) return;
         setLoading(true);
         setError(null);
+        setScopeUpgradeRequired(false);
         try {
             const idToken = await user.getIdToken();
             const res = await fetch(`/api/slack/messages?channel=${encodeURIComponent(channelId)}`, {
                 headers: { Authorization: `Bearer ${idToken}` },
             });
             const data = await res.json() as { messages?: SlackMsg[]; error?: string };
-            if (data.messages) {
+            if (data.error === "scope_upgrade_required") {
+                setScopeUpgradeRequired(true);
+            } else if (data.messages) {
                 setMessages(data.messages);
                 // Scroll to bottom after render
                 requestAnimationFrame(() =>
@@ -102,6 +106,11 @@ export function SlackChannelView({
             setLoading(false);
         }
     }, [channelId, user]);
+
+    const handleReauth = async () => {
+        const idToken = await user.getIdToken();
+        window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
+    };
 
     useEffect(() => {
         setMessages([]);
@@ -170,6 +179,21 @@ export function SlackChannelView({
                 {loading && messages.length === 0 && (
                     <div className="flex items-center justify-center h-full">
                         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                )}
+
+                {scopeUpgradeRequired && !loading && (
+                    <div className="flex items-start gap-2.5 mx-3 my-2 text-sm p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg border border-amber-500/20">
+                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                        <div className="flex flex-col gap-1.5">
+                            <span>Slack-Verbindung benötigt zusätzliche Berechtigungen.</span>
+                            <button
+                                onClick={handleReauth}
+                                className="self-start text-xs font-semibold underline underline-offset-2 hover:opacity-80 transition-opacity"
+                            >
+                                Neu verbinden →
+                            </button>
+                        </div>
                     </div>
                 )}
 

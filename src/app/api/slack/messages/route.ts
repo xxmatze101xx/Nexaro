@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { REQUIRED_SCOPES, checkMissingScopes } from "@/lib/oauth-scopes";
 
 /**
  * GET /api/slack/messages?channel=<channelId>
@@ -9,7 +10,12 @@ import { logger } from "@/lib/logger";
  * Uses the user token (xoxp-) for accurate member/permission context.
  */
 
-async function getSlackToken(idToken: string, projectId: string): Promise<{ userToken: string; botToken: string } | null> {
+async function getSlackToken(idToken: string, projectId: string): Promise<{
+    userToken: string;
+    botToken: string;
+    grantedBotScopes: string;
+    grantedUserScopes: string;
+} | null> {
     const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 
     // Verify ID token → uid
@@ -30,11 +36,15 @@ async function getSlackToken(idToken: string, projectId: string): Promise<{ user
         fields?: {
             user_access_token?: { stringValue: string };
             access_token?: { stringValue: string };
+            granted_bot_scopes?: { stringValue: string };
+            granted_user_scopes?: { stringValue: string };
         };
     };
     return {
         userToken: fsData.fields?.user_access_token?.stringValue || "",
         botToken:  fsData.fields?.access_token?.stringValue || "",
+        grantedBotScopes: fsData.fields?.granted_bot_scopes?.stringValue ?? "",
+        grantedUserScopes: fsData.fields?.granted_user_scopes?.stringValue ?? "",
     };
 }
 
@@ -56,8 +66,22 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "auth_failed", messages: [] }, { status: 401 });
     }
 
-    const token = tokens.userToken || tokens.botToken;
-    if (!token) {
+    // Scope validation: only if granted scopes were recorded (tokens stored after this feature was deployed)
+    if (tokens.grantedBotScopes) {
+        const missingScopes = checkMissingScopes(tokens.grantedBotScopes, REQUIRED_SCOPES.slack_bot);
+        if (missingScopes.length > 0) {
+            logger.warn("slack/messages", "Token missing required bot scopes", { missingScopes });
+            return NextResponse.json({ error: "scope_upgrade_required", missingScopes, messages: [] }, { status: 403 });
+        }
+    }
+
+    // Use bot token for conversations.history — it carries channels:history/groups:history/im:history scopes.
+    // User token (xoxp-) only has channels:read, groups:read etc. — NOT the history scopes.
+    // Use user token for users.info — it carries users:read scope.
+    const historyToken = tokens.botToken || tokens.userToken;
+    const usersToken   = tokens.userToken || tokens.botToken;
+
+    if (!historyToken) {
         return NextResponse.json({ error: "no_token", messages: [] }, { status: 400 });
     }
 
@@ -70,7 +94,7 @@ export async function GET(request: Request) {
 
     const histRes = await fetch(
         `https://slack.com/api/conversations.history?${historyParams.toString()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${historyToken}` } }
     );
     const histData = await histRes.json() as {
         ok: boolean;
@@ -98,7 +122,7 @@ export async function GET(request: Request) {
         uniqueUsers.slice(0, 15).map(async userId => {
             try {
                 const uRes = await fetch(`https://slack.com/api/users.info?user=${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${usersToken}` },
                 });
                 const uData = await uRes.json() as {
                     ok: boolean;

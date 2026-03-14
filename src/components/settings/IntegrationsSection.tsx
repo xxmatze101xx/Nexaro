@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { DownloadCloud, Plus, Search, ExternalLink, Settings as SettingsIcon } from "lucide-react";
+import { DownloadCloud, Plus, Search, ExternalLink, Settings as SettingsIcon, AlertTriangle } from "lucide-react";
 import { getAccountColor } from "@/lib/calendar";
 import type { CalendarAccount } from "@/lib/user";
 
@@ -20,6 +20,7 @@ interface IntegrationsSectionProps {
     integrations: Integration[];
     gmailAccounts: { email: string; token: string }[];
     calendarAccounts: CalendarAccount[];
+    slackScopeUpgradeRequired?: boolean;
     onConnect: (integrationId: string) => void;
     onDisconnectGmail: (email: string) => void;
     onDisconnectCalendar: (email: string) => void;
@@ -31,6 +32,7 @@ export function IntegrationsSection({
     integrations,
     gmailAccounts,
     calendarAccounts,
+    slackScopeUpgradeRequired = false,
     onConnect,
     onDisconnectGmail,
     onDisconnectCalendar,
@@ -140,6 +142,9 @@ export function IntegrationsSection({
                                 {isConnected && (
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-500" />
                                 )}
+                                {integration.id === "Slack" && slackScopeUpgradeRequired && (
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-amber-500" />
+                                )}
 
                                 <div className="p-6 flex-1 flex flex-col">
                                     <div className="flex items-start justify-between mb-5">
@@ -163,9 +168,17 @@ export function IntegrationsSection({
                                         </a>
                                     </div>
                                     <div className="space-y-2">
-                                        <h3 className="text-base font-semibold tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
-                                            {integration.name}
-                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-semibold tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
+                                                {integration.name}
+                                            </h3>
+                                            {integration.id === "Slack" && slackScopeUpgradeRequired && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">
+                                                    <AlertTriangle className="w-3 h-3" />
+                                                    Neu verbinden
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-[13px] text-slate-500 leading-relaxed font-normal line-clamp-2">
                                             {integration.description}
                                         </p>

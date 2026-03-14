@@ -9,3 +9,4 @@
 export * from "./types";
 export * from "./gmail";
 export * from "./slack";
+export * from "./teams";

@@ -36,6 +36,7 @@ const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     gmail: { maxConcurrent: 5, maxRetries: 4, baseBackoffMs: 500 },
     slack: { maxConcurrent: 3, maxRetries: 4, baseBackoffMs: 1000 },
     microsoft: { maxConcurrent: 3, maxRetries: 4, baseBackoffMs: 500 },
+    teams: { maxConcurrent: 3, maxRetries: 4, baseBackoffMs: 500 },
     ai: { maxConcurrent: 2, maxRetries: 3, baseBackoffMs: 2000 },
 };
 

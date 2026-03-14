@@ -40,6 +40,8 @@ export function normalizeSlack(raw: SlackRawMessage): UnifiedMessage {
         timestamp = new Date().toISOString();
     }
 
+    const channelLabel = raw.channel_name ? `#${raw.channel_name}` : raw.channel_id ? `#${raw.channel_id}` : "Slack";
+
     return {
         id,
         source: "slack",
@@ -48,6 +50,7 @@ export function normalizeSlack(raw: SlackRawMessage): UnifiedMessage {
         threadId: raw.thread_ts ?? raw.ts,
         preview: (raw.text ?? "").trim(),
         metadata: {
+            subject: channelLabel,
             external_id: id,
             channelId: raw.channel_id,
             channelName: raw.channel_name,

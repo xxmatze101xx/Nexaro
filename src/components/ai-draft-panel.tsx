@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import { ImportanceBadge } from "./importance-badge";
 import { SourceIcon, SOURCE_CONFIG } from "./source-filter";
-import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff } from "lucide-react";
+import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff, Paperclip } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { sendEmail, archiveEmail, markEmailStatus } from "@/lib/gmail";
+import { sendEmail, archiveEmail, markEmailStatus, type EmailAttachment } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
 
 interface AIDraftPanelProps {
@@ -14,13 +14,15 @@ interface AIDraftPanelProps {
     onClose: () => void;
     onArchived?: (message: Message) => void;
     onStatusChanged?: (message: Message, status: "read" | "unread") => void;
+    onReplied?: (message: Message) => void;
     className?: string;
 }
 
-export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, className }: AIDraftPanelProps) {
+export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, onReplied, className }: AIDraftPanelProps) {
     const [draftText, setDraftText] = useState(message?.ai_draft_response || "");
     const [copied, setCopied] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [sendSuccess, setSendSuccess] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isReplying, setIsReplying] = useState(false);
@@ -31,6 +33,9 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
     const [replyBcc, setReplyBcc] = useState("");
     const [replySubject, setReplySubject] = useState("");
     const [showCcBcc, setShowCcBcc] = useState(false);
+    // Attachments
+    const [attachments, setAttachments] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const initReply = (msg: typeof message) => {
@@ -46,6 +51,8 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
     useEffect(() => {
         setIsReplying(false);
         setDraftError(null);
+        setSendSuccess(false);
+        setAttachments([]);
         setDraftText(message?.ai_draft_response || "");
     }, [message?.id, message?.ai_draft_response]);
 
@@ -99,6 +106,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
             setDraftError("Senden ist derzeit nur für verbundene Gmail-Konten implementiert.");
             return;
         }
+        if (!message.accountId) {
+            setDraftError("Kein Gmail-Konto für diese Nachricht gefunden.");
+            return;
+        }
         if (!replyTo.trim()) {
             setDraftError("Bitte gib einen Empfänger an.");
             return;
@@ -109,20 +120,49 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
         }
 
         setIsSending(true);
+        setDraftError(null);
         try {
+            // Convert File objects to base64 EmailAttachments
+            const encodedAttachments: EmailAttachment[] = await Promise.all(
+                attachments.map(
+                    (file) =>
+                        new Promise<EmailAttachment>((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const result = reader.result as string;
+                                // result is "data:mimeType;base64,BASE64DATA"
+                                const base64 = result.split(",")[1] ?? "";
+                                resolve({ filename: file.name, mimeType: file.type || "application/octet-stream", data: base64 });
+                            };
+                            reader.onerror = () => reject(reader.error);
+                            reader.readAsDataURL(file);
+                        })
+                )
+            );
+
             await sendEmail(
                 auth.currentUser.uid,
-                message.accountId ?? "",
+                message.accountId,
                 replyTo.trim(),
                 replySubject,
                 draftText,
-                message.rfcMessageId,
-                message.rfcMessageId,
+                message.rfcMessageId || undefined,
+                message.rfcMessageId || undefined,
                 message.threadId,
                 replyCc.trim() || undefined,
-                replyBcc.trim() || undefined
+                replyBcc.trim() || undefined,
+                encodedAttachments.length > 0 ? encodedAttachments : undefined
             );
-            onClose();
+
+            // Optimistic feedback: show success state, notify parent, then reset reply area
+            setSendSuccess(true);
+            onReplied?.(message);
+            setTimeout(() => {
+                setSendSuccess(false);
+                setIsReplying(false);
+                setAttachments([]);
+                setDraftText(message.ai_draft_response || "");
+            }, 2000);
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
             setDraftError(`Fehler beim Senden: ${msg}`);
@@ -424,12 +464,30 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                             />
                         </div>
 
+                        {/* Attachment list */}
+                        {attachments.length > 0 && (
+                            <div className="px-3 pb-1 flex flex-wrap gap-1.5">
+                                {attachments.map((file, idx) => (
+                                    <div key={idx} className="flex items-center gap-1 rounded-sm border border-border/60 bg-muted/40 px-2 py-1 text-[10px] font-medium text-foreground max-w-[180px]">
+                                        <Paperclip className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                                        <span className="truncate">{file.name}</span>
+                                        <button
+                                            onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                            className="shrink-0 ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                                        >
+                                            <X className="h-2.5 w-2.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Toolbar */}
                         <div className="flex items-center justify-between px-3 py-2 border-t border-border/50 bg-muted/10 shrink-0">
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={handleGenerateDraft}
-                                    disabled={isGenerating}
+                                    disabled={isGenerating || sendSuccess}
                                     className={cn(
                                         "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
                                         "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
@@ -443,34 +501,71 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, cl
                                 </button>
                                 <button
                                     onClick={handleCopy}
+                                    disabled={sendSuccess}
                                     className={cn(
                                         "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
-                                        "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm"
+                                        "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm",
+                                        "disabled:opacity-50 disabled:pointer-events-none"
                                     )}
                                 >
                                     {copied ? <CheckCheck className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
                                     {copied ? "Kopiert" : "Kopieren"}
                                 </button>
+                                {/* Hidden file input */}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const files = Array.from(e.target.files ?? []);
+                                        setAttachments(prev => [...prev, ...files]);
+                                        // Reset so same file can be re-added
+                                        e.target.value = "";
+                                    }}
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={sendSuccess}
+                                    className={cn(
+                                        "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
+                                        "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm",
+                                        "disabled:opacity-50 disabled:pointer-events-none"
+                                    )}
+                                    title="Datei anhängen"
+                                >
+                                    <Paperclip className="h-3 w-3" />
+                                    {attachments.length > 0 ? `${attachments.length}` : ""}
+                                </button>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setIsReplying(false)}
-                                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                    Abbrechen
-                                </button>
-                                <button
-                                    onClick={handleSend}
-                                    disabled={isSending}
-                                    className={cn(
-                                        "flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[11px] font-semibold transition-all",
-                                        "bg-primary text-primary-foreground hover:bg-primary/90",
-                                        "shadow-sm active:translate-y-[1px] disabled:opacity-50 disabled:pointer-events-none"
-                                    )}
-                                >
-                                    {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                                    {isSending ? "Senden..." : "Senden"}
-                                </button>
+                                {sendSuccess ? (
+                                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                        <CheckCheck className="h-3 w-3" />
+                                        Gesendet!
+                                    </span>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => { setIsReplying(false); setAttachments([]); }}
+                                            className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                        >
+                                            Abbrechen
+                                        </button>
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={isSending}
+                                            className={cn(
+                                                "flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[11px] font-semibold transition-all",
+                                                "bg-primary text-primary-foreground hover:bg-primary/90",
+                                                "shadow-sm active:translate-y-[1px] disabled:opacity-50 disabled:pointer-events-none"
+                                            )}
+                                        >
+                                            {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                            {isSending ? "Senden..." : "Senden"}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

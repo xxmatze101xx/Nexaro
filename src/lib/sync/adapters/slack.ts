@@ -47,7 +47,7 @@ export async function syncSlack(
     mode: SyncMode,
     state: SyncState | null,
 ): Promise<Omit<SyncResult, "service">> {
-    const { idToken, channelIds } = creds;
+    const { idToken, channelIds, channelNames = {} } = creds;
     const messages: UnifiedMessage[] = [];
     const errors: string[] = [];
     const channelCursors: Record<string, string> = {
@@ -71,6 +71,7 @@ export async function syncSlack(
                 sender_name: raw.userName,
                 text: raw.text,
                 channel_id: channelId,
+                channel_name: channelNames[channelId],
             });
             messages.push(unified);
 

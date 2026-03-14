@@ -65,9 +65,10 @@ export async function GET(request: Request) {
             ok: boolean;
             error?: string;
             access_token?: string;
+            scope?: string;
             bot_user_id?: string;
             team?: { id?: string; name?: string };
-            authed_user?: { id?: string; access_token?: string };
+            authed_user?: { id?: string; access_token?: string; scope?: string };
         };
 
         if (!tokenData.ok) {
@@ -87,6 +88,8 @@ export async function GET(request: Request) {
                 team_name: { stringValue: tokenData.team?.name ?? "" },
                 user_id: { stringValue: tokenData.authed_user?.id ?? "" },
                 user_access_token: { stringValue: tokenData.authed_user?.access_token ?? "" },
+                granted_bot_scopes: { stringValue: tokenData.scope ?? "" },
+                granted_user_scopes: { stringValue: tokenData.authed_user?.scope ?? "" },
                 connected_at: { stringValue: new Date().toISOString() },
             },
         };

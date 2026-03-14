@@ -10,10 +10,12 @@ import { getSyncState, saveSyncState } from "./state";
 import { logger } from "../logger";
 import { syncGmail } from "./adapters/gmail";
 import { syncSlack } from "./adapters/slack";
+import { syncTeams } from "./adapters/teams";
 import { RateLimitError } from "./rate-limiter";
 import type {
     GmailSyncCredentials,
     SlackSyncCredentials,
+    TeamsSyncCredentials,
     SyncMode,
     SyncResult,
     SyncState,
@@ -144,9 +146,58 @@ export class SyncEngine {
     }
 
     /**
+     * Sync Microsoft Teams DMs and group chats for the connected account.
+     * Automatically chooses initial vs incremental based on stored chat cursors.
+     */
+    async syncTeams(uid: string, creds: TeamsSyncCredentials): Promise<SyncResult> {
+        const state = await getSyncState(uid, "teams");
+        const hasCursors = Object.keys(state?.channelCursors ?? {}).length > 0;
+        const mode: SyncMode = hasCursors ? "incremental" : "initial";
+
+        await saveSyncState(uid, { service: "teams", status: "syncing" });
+
+        logger.info("sync/teams", "Starting sync", { uid, mode });
+
+        try {
+            const result = await withRetry(() => syncTeams(creds, mode, state));
+
+            await saveSyncState(uid, {
+                service: "teams",
+                status: "idle",
+                lastSyncAt: new Date().toISOString(),
+                errorCount: 0,
+                lastError: null,
+                ...result.nextState,
+            });
+
+            logger.info("sync/teams", "Sync complete", { uid, mode, added: result.added });
+            return { service: "teams", ...result };
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            const errorCount = (state?.errorCount ?? 0) + 1;
+
+            logger.error("sync/teams", "Sync failed", { uid, mode, error: errorMsg, errorCount });
+            await saveSyncState(uid, {
+                service: "teams",
+                status: "error",
+                errorCount,
+                lastError: errorMsg,
+            });
+
+            return {
+                service: "teams",
+                added: 0,
+                messages: [],
+                nextState: {},
+                errors: [errorMsg],
+            };
+        }
+    }
+
+    /**
      * Read the current sync state for a service without triggering a sync.
      */
-    async getState(uid: string, service: "gmail" | "slack"): Promise<SyncState | null> {
+    async getState(uid: string, service: "gmail" | "slack" | "teams"): Promise<SyncState | null> {
         return getSyncState(uid, service);
     }
 }

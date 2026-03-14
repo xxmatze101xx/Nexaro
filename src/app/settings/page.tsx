@@ -56,6 +56,7 @@ function SettingsContent() {
     const [gmailAccounts, setGmailAccounts] = useState<{ email: string; token: string }[]>([]);
     const [calendarAccounts, setCalendarAccounts] = useState<CalendarAccount[]>([]);
     const [slackConnected, setSlackConnected] = useState(false);
+    const [slackScopeUpgradeRequired, setSlackScopeUpgradeRequired] = useState(false);
     const [microsoftConnected, setMicrosoftConnected] = useState(false);
     const codeHandledRef = useRef(false);
 
@@ -121,10 +122,29 @@ function SettingsContent() {
                 // If all retries fail but optimistic param was set, keep optimistic state
             };
 
+            const checkSlackScopes = async () => {
+                try {
+                    const idToken = await user.getIdToken();
+                    const res = await fetch("/api/slack/check-scopes", {
+                        headers: { Authorization: `Bearer ${idToken}` },
+                    });
+                    if (res.ok) {
+                        const data = await res.json() as { needsUpgrade?: boolean };
+                        setSlackScopeUpgradeRequired(data.needsUpgrade === true);
+                    }
+                } catch {
+                    // ignore — scope check is best-effort
+                }
+            };
+
             if (slackConnectedParam === "true") {
                 verifyWithRetry(() => getSlackConnection(user.uid), setSlackConnected);
+                checkSlackScopes();
             } else {
-                getSlackConnection(user.uid).then(conn => setSlackConnected(!!conn));
+                getSlackConnection(user.uid).then(conn => {
+                    setSlackConnected(!!conn);
+                    if (conn) checkSlackScopes();
+                });
             }
 
             if (microsoftConnectedParam === "true") {
@@ -420,6 +440,7 @@ function SettingsContent() {
                             integrations={integrations}
                             gmailAccounts={gmailAccounts}
                             calendarAccounts={calendarAccounts}
+                            slackScopeUpgradeRequired={slackScopeUpgradeRequired}
                             onConnect={handleConnectProvider}
                             onDisconnectGmail={handleDisconnectGmail}
                             onDisconnectCalendar={handleDisconnectCalendar}

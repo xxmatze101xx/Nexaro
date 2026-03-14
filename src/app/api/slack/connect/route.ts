@@ -39,12 +39,17 @@ export async function GET(request: Request) {
     // User scopes — CRITICAL: conversations.list with is_member reflects the USER,
     // not the bot. Without user_scope, is_member is always false for the bot,
     // and every channel gets filtered out.
+    // channels:history / groups:history / im:history are included so the user token
+    // can also read message history (bot token is the primary path, user token is fallback).
     const userScopes = [
         "channels:read",    // list public channels user is in
         "groups:read",      // list private channels user is in
         "im:read",          // list DMs
         "mpim:read",        // list group DMs
         "users:read",       // resolve user IDs to names
+        "channels:history", // read message history in public channels
+        "groups:history",   // read message history in private channels
+        "im:history",       // read DM history
     ].join(",");
 
     // Encode uid and Firebase ID token together in state — the callback needs
