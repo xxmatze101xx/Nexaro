@@ -190,10 +190,16 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
         if (!message) return;
         setIsGenerating(true);
         setDraftError(null);
+        // If this is a regeneration (draft already exists), record interaction signal
+        const isRegeneration = draftText.trim().length > 0;
         try {
+            const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+
             const res = await fetch("/api/ai/draft", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers,
                 body: JSON.stringify({
                     subject: message.subject,
                     sender: message.sender,
@@ -215,6 +221,15 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                 setIsReplying(true);
             }
             setTimeout(() => textareaRef.current?.focus(), 50);
+
+            // Record regeneration signal for user memory (fire-and-forget)
+            if (isRegeneration && idToken) {
+                void fetch("/api/user/memory", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                    body: JSON.stringify({ regenerated: true }),
+                }).catch(() => undefined);
+            }
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : "AI-Draft nicht verfügbar: Unbekannter Fehler.";
             setDraftError(msg);

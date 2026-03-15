@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
-import { buildDraftReplySystemPrompt, buildDraftReplyUserPrompt } from "@/lib/ai/prompts";
+import { readUserMemory, formatMemoryForPrompt } from "@/lib/user-memory";
+
+const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
+
+async function verifyIdToken(idToken: string): Promise<string | null> {
+    const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { users?: Array<{ localId: string }> };
+    return data.users?.[0]?.localId ?? null;
+}
 
 interface DraftRequestBody {
     subject?: string;
@@ -11,8 +27,10 @@ interface DraftRequestBody {
 
 /**
  * POST /api/ai/draft
+ * Authorization: Bearer <firebase_id_token>  (optional — enables memory injection)
  *
  * Generates a reply draft using the Groq API (llama-3.3-70b-versatile).
+ * If authenticated, reads user memory to personalize tone and length.
  * Body: { subject?, sender?, senderEmail?, body }
  * Response: { draft: string }
  */
@@ -25,15 +43,26 @@ export async function POST(request: Request) {
         );
     }
 
-    let body: DraftRequestBody;
+    let draftBody: DraftRequestBody;
     try {
-        body = (await request.json()) as DraftRequestBody;
+        draftBody = (await request.json()) as DraftRequestBody;
     } catch {
         return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    if (!body.body?.trim()) {
+    if (!draftBody.body?.trim()) {
         return NextResponse.json({ error: "Message body is required." }, { status: 400 });
+    }
+
+    // Load user memory if authenticated (best-effort — no failure if missing)
+    const idToken = request.headers.get("Authorization")?.slice(7);
+    let memoryHints = "";
+    if (idToken) {
+        const uid = await verifyIdToken(idToken);
+        if (uid) {
+            const memory = await readUserMemory(uid, idToken);
+            memoryHints = formatMemoryForPrompt(memory);
+        }
     }
 
     const systemPrompt = `You are a busy executive assistant. Write a concise, professional reply to the email the user provides.
@@ -43,16 +72,16 @@ Rules:
 - Tone: professional yet friendly.
 - Do NOT include a subject line or greeting header — start directly with the reply text.
 - Do NOT add "Best regards" or a signature at the end.
-- Keep it under 400 characters if possible.`;
+- Keep it under 400 characters if possible.${memoryHints}`;
 
-    const from = body.senderEmail
-        ? `${body.sender ?? ""} <${body.senderEmail}>`.trim()
-        : (body.sender ?? "Unknown");
+    const from = draftBody.senderEmail
+        ? `${draftBody.sender ?? ""} <${draftBody.senderEmail}>`.trim()
+        : (draftBody.sender ?? "Unknown");
 
     const userPrompt = `From: ${from}
-Subject: ${body.subject ?? "(no subject)"}
+Subject: ${draftBody.subject ?? "(no subject)"}
 
-${body.body}`;
+${draftBody.body}`;
 
     try {
         const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -95,7 +124,11 @@ ${body.body}`;
             );
         }
 
-        logger.info("ai/draft", "Draft generated", { subject: body.subject ?? "(none)", length: draft.length });
+        logger.info("ai/draft", "Draft generated", {
+            subject: draftBody.subject ?? "(none)",
+            length: draft.length,
+            memoryInjected: memoryHints.length > 0,
+        });
         return NextResponse.json({ draft });
     } catch (err: unknown) {
         logger.error("ai/draft", "Unexpected error calling Groq API", { error: err instanceof Error ? err.message : String(err) });
