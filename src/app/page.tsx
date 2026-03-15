@@ -14,6 +14,7 @@ import type { UnifiedMessage } from "@/lib/normalizers/types";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { MessageCard } from "@/components/message-card";
 import { ComposePanel } from "@/components/compose-panel";
 import { AIDraftPanel } from "@/components/ai-draft-panel";
@@ -1064,16 +1065,17 @@ function DashboardContent() {
               ) : (
                 <>
                   {filteredMessages.map((message) => (
-                    <MessageCard
-                      key={message.id}
-                      message={message}
-                      isSelected={selectedMessage?.id === message.id}
-                      onSelect={handleSelectMessage}
-                      onArchive={handleArchive}
-                      onToggleRead={handleToggleRead}
-                      onStar={handleStar}
-                      onDelete={handleDelete}
-                    />
+                    <ErrorBoundary key={message.id}>
+                      <MessageCard
+                        message={message}
+                        isSelected={selectedMessage?.id === message.id}
+                        onSelect={handleSelectMessage}
+                        onArchive={handleArchive}
+                        onToggleRead={handleToggleRead}
+                        onStar={handleStar}
+                        onDelete={handleDelete}
+                      />
+                    </ErrorBoundary>
                   ))}
                   {/* Load More */}
                   {(selectedSidebarItem?.folder && selectedSidebarItem.folder !== 'INBOX' ? folderPageToken : inboxNextPageToken) && (
@@ -1095,6 +1097,7 @@ function DashboardContent() {
           </div>
 
           {/* Detail / Compose Panel */}
+          <ErrorBoundary>
           {isComposing ? (
             <ComposePanel
               uid={user?.uid || ""}
@@ -1120,6 +1123,7 @@ function DashboardContent() {
               className="flex-1"
             />
           )}
+          </ErrorBoundary>
           </>
           )}{/* end Slack/Gmail conditional */}
         </div>
