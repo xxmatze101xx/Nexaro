@@ -13,8 +13,8 @@ import {
   ChevronRight,
   RefreshCw,
   HardDrive,
-  ExternalLink,
 } from "lucide-react";
+import type { PreviewFile } from "@/components/files-preview";
 
 interface DriveFile {
   id: string;
@@ -53,7 +53,13 @@ function formatBytes(sizeStr: string | undefined): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FilesDrive({ userId }: { userId: string }) {
+interface FilesDriveProps {
+  userId: string;
+  onSelect: (file: PreviewFile) => void;
+  selectedFile: PreviewFile | null;
+}
+
+export function FilesDrive({ userId, onSelect, selectedFile }: FilesDriveProps) {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -103,8 +109,14 @@ export function FilesDrive({ userId }: { userId: string }) {
   const handleItemClick = (file: DriveFile) => {
     if (file.mimeType === "application/vnd.google-apps.folder") {
       setBreadcrumb((prev) => [...prev, { id: file.id, name: file.name }]);
-    } else if (file.webViewLink) {
-      window.open(file.webViewLink, "_blank");
+    } else {
+      onSelect({
+        name: file.name,
+        mimeType: file.mimeType,
+        driveId: file.id,
+        webUrl: file.webViewLink,
+        source: "drive",
+      });
     }
   };
 
@@ -182,34 +194,39 @@ export function FilesDrive({ userId }: { userId: string }) {
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {files.map((file) => (
-              <button
-                key={file.id}
-                onClick={() => handleItemClick(file)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors text-left group"
-              >
-                <div className="shrink-0">{getDriveIcon(file.mimeType)}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground truncate">{file.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {file.modifiedTime && (
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(file.modifiedTime).toLocaleDateString()}
-                      </span>
-                    )}
-                    {file.size && (
-                      <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
-                    )}
+            {files.map((file) => {
+              const isSelected = selectedFile?.driveId === file.id;
+              return (
+                <button
+                  key={file.id}
+                  onClick={() => handleItemClick(file)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left border-l-2",
+                    isSelected
+                      ? "bg-primary/10 border-primary"
+                      : "hover:bg-muted/40 border-transparent"
+                  )}
+                >
+                  <div className="shrink-0">{getDriveIcon(file.mimeType)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground truncate">{file.name}</p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      {file.modifiedTime && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(file.modifiedTime).toLocaleDateString()}
+                        </span>
+                      )}
+                      {file.size && (
+                        <span className="text-xs text-muted-foreground">{formatBytes(file.size)}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {file.mimeType !== "application/vnd.google-apps.folder" && file.webViewLink && (
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                )}
-                {file.mimeType === "application/vnd.google-apps.folder" && (
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                )}
-              </button>
-            ))}
+                  {file.mimeType === "application/vnd.google-apps.folder" && (
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

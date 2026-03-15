@@ -6,6 +6,7 @@ import { FilesAttachments } from "@/components/files-attachments";
 import { FilesDrive } from "@/components/files-drive";
 import { FilesOneDrive } from "@/components/files-onedrive";
 import { FilesUploads } from "@/components/files-uploads";
+import { FilesPreview, type PreviewFile } from "@/components/files-preview";
 
 type Tab = "attachments" | "drive" | "onedrive" | "uploads";
 
@@ -16,6 +17,12 @@ interface FilesPanelProps {
 
 export function FilesPanel({ userId, className }: FilesPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("attachments");
+  const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setPreviewFile(null);
+  };
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "attachments", label: "Attachments" },
@@ -31,7 +38,7 @@ export function FilesPanel({ userId, className }: FilesPanelProps) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={cn(
               "px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
               activeTab === tab.id
@@ -44,12 +51,32 @@ export function FilesPanel({ userId, className }: FilesPanelProps) {
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === "attachments" && <FilesAttachments userId={userId} />}
-        {activeTab === "drive" && <FilesDrive userId={userId} />}
-        {activeTab === "onedrive" && <FilesOneDrive userId={userId} />}
-        {activeTab === "uploads" && <FilesUploads userId={userId} />}
+      {/* Split: file list + preview */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* File list — shrinks to fixed width when preview is open */}
+        <div className={cn("flex flex-col overflow-hidden transition-all", previewFile ? "w-[380px] shrink-0 border-r border-border" : "flex-1")}>
+          {activeTab === "attachments" && (
+            <FilesAttachments userId={userId} onSelect={setPreviewFile} selectedFile={previewFile} />
+          )}
+          {activeTab === "drive" && (
+            <FilesDrive userId={userId} onSelect={setPreviewFile} selectedFile={previewFile} />
+          )}
+          {activeTab === "onedrive" && (
+            <FilesOneDrive userId={userId} onSelect={setPreviewFile} selectedFile={previewFile} />
+          )}
+          {activeTab === "uploads" && (
+            <FilesUploads userId={userId} onSelect={setPreviewFile} selectedFile={previewFile} />
+          )}
+        </div>
+
+        {/* Preview panel */}
+        {previewFile && (
+          <FilesPreview
+            file={previewFile}
+            onClose={() => setPreviewFile(null)}
+            className="flex-1"
+          />
+        )}
       </div>
     </div>
   );

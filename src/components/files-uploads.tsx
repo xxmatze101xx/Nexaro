@@ -20,6 +20,7 @@ import {
   RefreshCw,
   FolderOpen,
 } from "lucide-react";
+import type { PreviewFile } from "@/components/files-preview";
 
 interface UploadedFile {
   name: string;
@@ -37,7 +38,13 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FilesUploads({ userId }: { userId: string }) {
+interface FilesUploadsProps {
+  userId: string;
+  onSelect: (file: PreviewFile) => void;
+  selectedFile: PreviewFile | null;
+}
+
+export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -165,10 +172,18 @@ export function FilesUploads({ userId }: { userId: string }) {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {files.map((file) => (
+            {files.map((file) => {
+              const isSelected = selectedFile?.url === file.downloadUrl;
+              return (
               <div
                 key={file.fullPath}
-                className="group relative flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-muted/40 transition-all"
+                onClick={() => onSelect({ name: file.name, mimeType: file.contentType, url: file.downloadUrl, source: "upload" })}
+                className={cn(
+                  "group relative flex flex-col items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                  isSelected
+                    ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                    : "border-border hover:border-primary/40 hover:bg-muted/40"
+                )}
               >
                 {/* Preview / icon */}
                 {file.contentType.startsWith("image/") ? (
@@ -199,13 +214,14 @@ export function FilesUploads({ userId }: { userId: string }) {
                     href={file.downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                     className="p-1 rounded bg-background border border-border text-muted-foreground hover:text-foreground"
                     title="Download"
                   >
                     <Download className="w-3 h-3" />
                   </a>
                   <button
-                    onClick={() => handleDelete(file.fullPath)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(file.fullPath); }}
                     disabled={deletingPath === file.fullPath}
                     className="p-1 rounded bg-background border border-border text-muted-foreground hover:text-destructive"
                     title="Delete"
@@ -218,7 +234,8 @@ export function FilesUploads({ userId }: { userId: string }) {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -13,8 +13,8 @@ import {
   ChevronRight,
   RefreshCw,
   Cloud,
-  ExternalLink,
 } from "lucide-react";
+import type { PreviewFile } from "@/components/files-preview";
 
 interface OneDriveItem {
   id: string;
@@ -47,7 +47,13 @@ function formatBytes(bytes: number | undefined): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FilesOneDrive({ userId }: { userId: string }) {
+interface FilesOneDriveProps {
+  userId: string;
+  onSelect: (file: PreviewFile) => void;
+  selectedFile: PreviewFile | null;
+}
+
+export function FilesOneDrive({ userId, onSelect, selectedFile }: FilesOneDriveProps) {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OneDriveItem[]>([]);
@@ -97,8 +103,13 @@ export function FilesOneDrive({ userId }: { userId: string }) {
   const handleItemClick = (item: OneDriveItem) => {
     if (item.folder) {
       setBreadcrumb((prev) => [...prev, { id: item.id, name: item.name }]);
-    } else if (item.webUrl) {
-      window.open(item.webUrl, "_blank");
+    } else {
+      onSelect({
+        name: item.name,
+        mimeType: item.file?.mimeType ?? "",
+        webUrl: item.webUrl,
+        source: "onedrive",
+      });
     }
   };
 
@@ -176,11 +187,18 @@ export function FilesOneDrive({ userId }: { userId: string }) {
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {items.map((item) => (
+            {items.map((item) => {
+              const isSelected = selectedFile?.webUrl === item.webUrl && !item.folder;
+              return (
               <button
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors text-left group"
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left border-l-2",
+                  isSelected
+                    ? "bg-primary/10 border-primary"
+                    : "hover:bg-muted/40 border-transparent"
+                )}
               >
                 <div className="shrink-0">{getOneDriveIcon(item)}</div>
                 <div className="flex-1 min-w-0">
@@ -199,14 +217,12 @@ export function FilesOneDrive({ userId }: { userId: string }) {
                     )}
                   </div>
                 </div>
-                {!item.folder && item.webUrl && (
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                )}
                 {item.folder && (
                   <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 )}
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

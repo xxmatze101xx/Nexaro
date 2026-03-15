@@ -8,10 +8,10 @@ import {
   FileText,
   Image as ImageIcon,
   File,
-  Download,
   RefreshCw,
   Paperclip,
 } from "lucide-react";
+import type { PreviewFile } from "@/components/files-preview";
 
 interface Attachment {
   filename: string;
@@ -32,14 +32,16 @@ interface MessageDoc {
 
 type FilterType = "all" | "pdf" | "images" | "docs" | "other";
 
+interface FilesAttachmentsProps {
+  userId: string;
+  onSelect: (file: PreviewFile) => void;
+  selectedFile: PreviewFile | null;
+}
+
 function getFileIcon(mimeType: string) {
   if (mimeType.startsWith("image/")) return <ImageIcon className="w-4 h-4 text-blue-500" />;
   if (mimeType === "application/pdf") return <FileText className="w-4 h-4 text-red-500" />;
-  if (
-    mimeType.includes("word") ||
-    mimeType.includes("document") ||
-    mimeType.includes("text/")
-  )
+  if (mimeType.includes("word") || mimeType.includes("document") || mimeType.startsWith("text/"))
     return <FileText className="w-4 h-4 text-blue-600" />;
   return <File className="w-4 h-4 text-muted-foreground" />;
 }
@@ -83,7 +85,7 @@ const SOURCE_COLORS: Record<string, string> = {
   outlook: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
 };
 
-export function FilesAttachments({ userId }: { userId: string }) {
+export function FilesAttachments({ userId, onSelect, selectedFile }: FilesAttachmentsProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -132,6 +134,15 @@ export function FilesAttachments({ userId }: { userId: string }) {
     { id: "other", label: "Other" },
   ];
 
+  const handleClick = (att: Attachment) => {
+    onSelect({
+      name: att.filename,
+      mimeType: att.mimeType,
+      url: att.url,
+      source: "attachment",
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Filter chips */}
@@ -167,44 +178,42 @@ export function FilesAttachments({ userId }: { userId: string }) {
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {filtered.map((att, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors group"
-              >
-                <div className="shrink-0">{getFileIcon(att.mimeType)}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{att.filename}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {att.source && (
-                      <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", SOURCE_COLORS[att.source] ?? "bg-muted text-muted-foreground")}>
-                        {att.source}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground truncate">{att.sender}</span>
-                    {att.date && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {new Date(att.date).toLocaleDateString()}
-                      </span>
-                    )}
-                    {att.size > 0 && (
-                      <span className="text-xs text-muted-foreground shrink-0">{formatBytes(att.size)}</span>
-                    )}
+            {filtered.map((att, i) => {
+              const isSelected = selectedFile?.name === att.filename && selectedFile?.url === att.url;
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleClick(att)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 transition-colors text-left",
+                    isSelected
+                      ? "bg-primary/10 border-l-2 border-primary"
+                      : "hover:bg-muted/40 border-l-2 border-transparent"
+                  )}
+                >
+                  <div className="shrink-0">{getFileIcon(att.mimeType)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{att.filename}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {att.source && (
+                        <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", SOURCE_COLORS[att.source] ?? "bg-muted text-muted-foreground")}>
+                          {att.source}
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground truncate">{att.sender}</span>
+                      {att.date && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {new Date(att.date).toLocaleDateString()}
+                        </span>
+                      )}
+                      {att.size > 0 && (
+                        <span className="text-xs text-muted-foreground shrink-0">{formatBytes(att.size)}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {att.url && (
-                  <a
-                    href={att.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-                    title="Download / Open"
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
-                )}
-              </div>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
