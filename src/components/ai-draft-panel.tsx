@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import { ImportanceBadge } from "./importance-badge";
 import { SourceIcon, SOURCE_CONFIG } from "./source-filter";
+import { AIActionsPanel } from "./ai-actions-panel";
 import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff, Paperclip } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { sendEmail, archiveEmail, markEmailStatus, type EmailAttachment } from "@/lib/gmail";
@@ -373,6 +374,9 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                     </div>
                 </div>
             </div>
+
+            {/* AI Actions — between body and reply compose */}
+            <AIActionsPanel message={message} />
 
             {/* Reply Compose — expands when replying, compact otherwise */}
             <div className={cn(
