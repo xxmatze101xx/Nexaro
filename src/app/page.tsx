@@ -21,6 +21,8 @@ import { ToastContainer } from "@/components/ui/toast";
 import { NewMessageToast } from "@/components/new-message-toast";
 import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
 import { SlackChannelView } from "@/components/slack-channel-view";
+import { MeetingPrepPanel } from "@/components/meeting-prep-panel";
+import { useMeetingPrep } from "@/hooks/useMeetingPrep";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -401,6 +403,14 @@ function DashboardContent() {
 
     return msgs;
   }, [displayMessages, selectedSidebarItem, searchQuery, sortOrder]);
+
+  // ── Meeting Prep: upcoming meetings + AI briefings ───────────────────────
+  const calendarEmails = gmailAccounts.map(acc => acc.email);
+  const { meetings: upcomingMeetings, isLoading: meetingsLoading, generateBriefing } = useMeetingPrep(
+    user?.uid ?? null,
+    calendarEmails,
+    allMessages,
+  );
 
   // Stats
 
@@ -890,6 +900,20 @@ function DashboardContent() {
               Account hinzufügen
             </Link>
           </div>
+
+          {/* ── Meeting Prep Widget ─────────────────────────────────── */}
+          {calendarEmails.length > 0 && (
+            <div className="px-3 pt-4 pb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                Upcoming Meetings
+              </p>
+              <MeetingPrepPanel
+                meetings={upcomingMeetings}
+                isLoading={meetingsLoading}
+                onGenerateBriefing={generateBriefing}
+              />
+            </div>
+          )}
         </div>
 
         {/* Bottom Section */}
