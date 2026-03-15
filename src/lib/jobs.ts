@@ -202,6 +202,45 @@ export async function patchJob(
 }
 
 /**
+ * Delete completed/failed jobs older than olderThanMs milliseconds.
+ * Returns the number of documents deleted.
+ */
+export async function deleteOldJobs(
+    uid: string,
+    idToken: string,
+    olderThanMs: number,
+): Promise<number> {
+    const threshold = new Date(Date.now() - olderThanMs).toISOString();
+
+    const res = await fetch(
+        `${FIRESTORE_BASE}/users/${uid}/jobs?pageSize=300`,
+        { headers: { Authorization: `Bearer ${idToken}` } },
+    );
+    if (!res.ok) return 0;
+
+    const data = (await res.json()) as { documents?: FsDocument[] };
+    const candidates = (data.documents ?? [])
+        .map(docToJob)
+        .filter(
+            j =>
+                (j.status === "completed" || j.status === "failed") &&
+                j.completedAt !== null &&
+                j.completedAt < threshold,
+        );
+
+    await Promise.all(
+        candidates.map(j =>
+            fetch(`${FIRESTORE_BASE}/users/${uid}/jobs/${j.id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${idToken}` },
+            }),
+        ),
+    );
+
+    return candidates.length;
+}
+
+/**
  * List the oldest N pending jobs for a user.
  */
 export async function listPendingJobs(

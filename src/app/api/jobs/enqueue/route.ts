@@ -76,6 +76,13 @@ export async function POST(request: Request) {
 
         const job = await enqueueJob(uid, body.type as JobType, body.input, idToken);
         logger.info("jobs/enqueue", "Job enqueued", { uid, jobId: job.id, type: job.type });
+
+        // Fire-and-forget cleanup to keep the jobs collection lean
+        void fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/jobs/cleanup`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${idToken}` },
+        }).catch(() => undefined);
+
         return NextResponse.json({ jobId: job.id, status: job.status });
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
