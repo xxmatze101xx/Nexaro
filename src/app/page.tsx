@@ -818,6 +818,10 @@ function DashboardContent() {
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
           </Link>
+          <Link href="/decisions" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/decisions" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+            <Zap className="w-4 h-4 shrink-0" />
+            Decisions
+          </Link>
 <Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Settings className="w-4 h-4 shrink-0" />
             Einstellungen
