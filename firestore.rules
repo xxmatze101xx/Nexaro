@@ -1,12 +1,76 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── User document + all subcollections ───────────────────────────────────
+    // Only the authenticated owner can read/write their own user document
+    // and any subcollection beneath it.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      
+
+      // ── Sync state (Sync Engine cursors) ──────────────────────────────────
+      // Path: users/{uid}/sync/{service}  (e.g. gmail, slack, teams, outlook)
+      // Written by the client-side sync engine to persist cursor positions.
+      // Only the authenticated owner may read or write their own sync state.
+      match /sync/{svc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── Synced inbox messages ─────────────────────────────────────────────
+      // Path: users/{uid}/inbox/{msgId}
+      // Stores normalized UnifiedMessage documents synced from integrations.
+      // Only the authenticated owner may read or write their own inbox.
+      match /inbox/{msgId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── OAuth tokens ──────────────────────────────────────────────────────
+      // Path: users/{uid}/tokens/{service}  (e.g. slack, microsoft)
+      // Path: users/{uid}/private/gmail
+      match /tokens/{svc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /private/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── Background jobs ───────────────────────────────────────────────────
+      // Path: users/{uid}/jobs/{jobId}
+      match /jobs/{jobId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── Client logs ───────────────────────────────────────────────────────
+      // Path: users/{uid}/logs/{logId}
+      match /logs/{logId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── User settings ─────────────────────────────────────────────────────
+      // Path: users/{uid}/settings/{doc}
+      match /settings/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // ── Catch-all: any other nested subcollection under users/{uid} ───────
+      // This ensures future subcollections are also protected without
+      // requiring a rules update. Explicit rules above take precedence.
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // ── AI importance scores (Python pipeline) ────────────────────────────────
+    // Path: messages/{msgId}
+    // Top-level collection written by the Python scoring pipeline.
+    // The uid field on each document scopes data to the owner.
+    // Read: only the owner (uid field must match auth.uid).
+    // Write: authenticated users only (Python pipeline writes via service account).
+    match /messages/{msgId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow write: if request.auth != null;
+    }
+
   }
 }
