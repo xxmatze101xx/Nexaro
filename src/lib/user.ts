@@ -110,7 +110,10 @@ export async function getGmailAccounts(uid: string): Promise<{ email: string, to
     if (snap.exists()) {
         const data = snap.data();
         if (data.accounts && Array.isArray(data.accounts)) {
-            return data.accounts;
+            return (data.accounts as { email: string; refresh_token?: string; token?: string }[]).map(a => ({
+                email: a.email,
+                token: a.token ?? a.refresh_token ?? "",
+            }));
         } else if (data.refresh_token) {
             // Support legacy format
             return [{ email: data.profile_email || "Unknown", token: data.refresh_token }];
