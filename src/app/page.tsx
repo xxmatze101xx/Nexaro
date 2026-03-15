@@ -108,6 +108,7 @@ function DashboardContent() {
     slackConnected,
     slackChannels,
     microsoftConnected,
+    enableEmbeddings: true,
   });
 
   // Fetch Slack channels via server-side proxy (logs errors in Vercel, avoids CORS/scope issues)

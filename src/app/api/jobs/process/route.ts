@@ -25,6 +25,7 @@ const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -217,6 +218,44 @@ async function processEmbeddingGeneration(input: Record<string, unknown>): Promi
     return { messageId, embedding, model: data.model ?? "text-embedding-3-small", dimensions: embedding?.length ?? 0 };
 }
 
+// ── Embedding persistence ─────────────────────────────────────────────────────
+
+async function saveEmbedding(
+    uid: string,
+    idToken: string,
+    jobInput: Record<string, unknown>,
+    output: Record<string, unknown>,
+): Promise<void> {
+    const messageId = String(output.messageId ?? jobInput.messageId ?? "");
+    const embedding = output.embedding as number[] | null;
+    if (!messageId || !embedding || embedding.length === 0) return;
+
+    const docId = messageId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    await fetch(`${FIRESTORE_BASE}/users/${uid}/embeddings/${docId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+            fields: {
+                messageId: { stringValue: messageId },
+                source: { stringValue: String(jobInput.source ?? "") },
+                messageTimestamp: { stringValue: String(jobInput.messageTimestamp ?? "") },
+                model: { stringValue: String(output.model ?? "text-embedding-3-small") },
+                dimensions: { integerValue: String(embedding.length) },
+                embeddingJson: { stringValue: JSON.stringify(embedding) },
+                createdAt: { stringValue: new Date().toISOString() },
+            },
+        }),
+    }).catch(e => {
+        logger.warn("jobs/process", "Failed to persist embedding", {
+            messageId,
+            error: e instanceof Error ? e.message : String(e),
+        });
+    });
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 async function runJobProcessor(job: Job): Promise<Record<string, unknown>> {
@@ -320,6 +359,11 @@ export async function POST(request: Request) {
             type: job.type,
             durationMs: Date.now() - new Date(startedAt).getTime(),
         });
+
+        // Persist embedding vector to Firestore (fire-and-forget, original text already cleared)
+        if (job.type === "embedding_generation" && rawOutput.embedding !== null) {
+            void saveEmbedding(uid, idToken, job.input, rawOutput);
+        }
 
         return NextResponse.json({ jobId: job.id, status: "completed", output: safeOutput });
 

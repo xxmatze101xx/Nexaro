@@ -18,6 +18,7 @@ import type { SyncResult, SyncStatus } from "@/lib/sync";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import type { User } from "firebase/auth";
 import type { SlackChannel } from "@/lib/slack";
+import { enqueueEmbeddingJobs } from "@/lib/embeddings";
 
 const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -42,6 +43,8 @@ interface SyncEngineOptions {
     slackConnected: boolean;
     slackChannels: SlackChannel[];
     microsoftConnected: boolean;
+    /** When true, new messages are automatically enqueued for embedding generation */
+    enableEmbeddings?: boolean;
 }
 
 export function useSyncEngine({
@@ -50,6 +53,7 @@ export function useSyncEngine({
     slackConnected,
     slackChannels,
     microsoftConnected,
+    enableEmbeddings = false,
 }: SyncEngineOptions): UseSyncEngineResult {
     const [syncedMessages, setSyncedMessages] = useState<Map<string, UnifiedMessage>>(new Map());
     const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>({ gmail: "idle", slack: "idle", teams: "idle" });
@@ -59,6 +63,8 @@ export function useSyncEngine({
     const initialSyncDoneRef = useRef<Set<string>>(new Set());
     const isSyncingRef = useRef(false);
     const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Track message IDs already enqueued for embedding to avoid duplicates
+    const embeddingEnqueuedRef = useRef<Set<string>>(new Set());
 
     const mergeMessages = useCallback((incoming: UnifiedMessage[]) => {
         if (incoming.length === 0) return;
@@ -67,7 +73,16 @@ export function useSyncEngine({
             incoming.forEach(m => next.set(m.id, m));
             return next;
         });
-    }, []);
+        if (enableEmbeddings && user) {
+            const newMessages = incoming.filter(m => !embeddingEnqueuedRef.current.has(m.id));
+            if (newMessages.length > 0) {
+                newMessages.forEach(m => embeddingEnqueuedRef.current.add(m.id));
+                user.getIdToken()
+                    .then(idToken => { void enqueueEmbeddingJobs(newMessages, user, idToken); })
+                    .catch(() => undefined);
+            }
+        }
+    }, [user, enableEmbeddings]);
 
     const runSync = useCallback(async () => {
         if (!user || isSyncingRef.current) return;
@@ -176,6 +191,7 @@ export function useSyncEngine({
         if (!user) {
             setSyncedMessages(new Map());
             initialSyncDoneRef.current.clear();
+            embeddingEnqueuedRef.current.clear();
         }
     }, [user]);
 

@@ -36,6 +36,7 @@ import { BillingSection } from "@/components/settings/BillingSection";
 import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DigestSection } from "@/components/settings/DigestSection";
 import { FeatureFlagsSection } from "@/components/settings/FeatureFlagsSection";
+import { DataPurgeSection } from "@/components/settings/DataPurgeSection";
 
 export default function SettingsPage() {
     return (
@@ -450,6 +451,7 @@ function SettingsContent() {
                         <FeatureFlagsSection uid={user?.uid} />
                         <BillingSection />
                         <SecuritySection />
+                        <DataPurgeSection user={user} />
                     </div>
                 </div>
             </main>
