@@ -30,6 +30,7 @@ import { useMeetingPrep } from "@/hooks/useMeetingPrep";
 import { DecisionsDashboard } from "@/components/decisions-dashboard";
 import { useDecisions } from "@/hooks/useDecisions";
 import { AIChatPanel } from "@/components/ai-chat-panel";
+import { FilesPanel } from "@/components/files-panel";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -44,6 +45,7 @@ import {
   Mail,
   MailOpen,
   Zap,
+  FolderOpen,
   ChevronRight,
   Send,
   Star,
@@ -101,6 +103,7 @@ function DashboardContent() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showDecisions, setShowDecisions] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
@@ -236,8 +239,10 @@ function DashboardContent() {
     const params = new URLSearchParams(window.location.search);
     const slackOk = params.get("slack_connected") === "true";
     const msOk = params.get("microsoft_connected") === "true";
-    if (!slackOk && !msOk) return;
+    const driveOk = params.get("drive_connected") === "true";
+    if (!slackOk && !msOk && !driveOk) return;
     window.history.replaceState({}, "", "/");
+    if (driveOk) setShowFiles(true);
     // Optimistic updates first — avoids flicker if Firestore hasn't propagated yet
     if (slackOk) setSlackConnected(true);
     if (msOk) setMicrosoftConnected(true);
@@ -872,16 +877,19 @@ function DashboardContent() {
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
           </Link>
-          <Link href="/decisions" onClick={() => { setShowDecisions(false); setShowAIChat(false); }} className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/decisions" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-            <Zap className="w-4 h-4 shrink-0" />
-            Decisions
-          </Link>
+          <button
+            onClick={() => { setShowFiles(v => !v); setShowAIChat(false); setShowDecisions(false); }}
+            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showFiles ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+          >
+            <FolderOpen className="w-4 h-4 shrink-0" />
+            Files
+          </button>
 <Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Settings className="w-4 h-4 shrink-0" />
             Einstellungen
           </Link>
           <button
-            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); }}
+            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); setShowFiles(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showAIChat ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <Bot className="w-4 h-4 shrink-0" />
@@ -1100,8 +1108,10 @@ function DashboardContent() {
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* ── AI Chat ───────────────────────────────────────────────── */}
-          {showAIChat ? (
+          {/* ── Files ─────────────────────────────────────────────────── */}
+          {showFiles ? (
+            <FilesPanel userId={user?.uid ?? ""} className="flex-1" />
+          ) : showAIChat ? (
             <AIChatPanel
                 className="flex-1"
                 allMessages={allMessages}

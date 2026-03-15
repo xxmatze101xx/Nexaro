@@ -32,6 +32,7 @@ export async function GET(request: Request) {
         "Mail.Send",
         "Calendars.Read",
         "Chat.Read",
+        "Files.Read",
     ].join(" ");
 
     const params = new URLSearchParams({
