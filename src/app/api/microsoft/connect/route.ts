@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const uid = searchParams.get("uid");
+    const idToken = searchParams.get("idToken") ?? "";
 
     if (!uid) {
         return NextResponse.json({ error: "Missing uid parameter" }, { status: 400 });
@@ -39,8 +40,9 @@ export async function GET(request: Request) {
         redirect_uri: redirectUri,
         scope: scopes,
         response_mode: "query",
-        // Pass Firebase UID as `state` so we can associate the token on callback
-        state: uid,
+        // Pass Firebase UID + idToken as JSON `state` so the callback can authenticate
+        // the Firestore REST write with Bearer auth (same pattern as Slack).
+        state: JSON.stringify({ uid, idToken }),
     });
 
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`;

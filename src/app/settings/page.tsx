@@ -319,7 +319,8 @@ function SettingsContent() {
                 window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
             }
         } else if (integrationId === "Outlook" || integrationId === "Microsoft Teams") {
-            window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}`;
+            const idToken = await user.getIdToken(/* forceRefresh */ false);
+            window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
         } else {
             alert(`${integrationId} Integration ist noch nicht implementiert.`);
         }

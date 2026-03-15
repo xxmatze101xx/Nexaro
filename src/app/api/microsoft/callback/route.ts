@@ -15,10 +15,22 @@ import { logger } from "@/lib/logger";
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
-    const uid = searchParams.get("state");
+    const rawState = searchParams.get("state") ?? "";
     const error = searchParams.get("error");
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+    // State is JSON-encoded { uid, idToken } (set by /api/microsoft/connect)
+    let uid = "";
+    let idToken = "";
+    try {
+        const parsed = JSON.parse(rawState) as { uid?: string; idToken?: string };
+        uid = parsed.uid ?? "";
+        idToken = parsed.idToken ?? "";
+    } catch {
+        // Legacy: state was plain uid string
+        uid = rawState;
+    }
 
     if (error || !code || !uid) {
         const reason = error ?? "missing_code_or_state";
@@ -71,11 +83,9 @@ export async function GET(request: Request) {
             ? ((await profileRes.json()) as { id?: string; mail?: string; displayName?: string })
             : {};
 
-        // Write to Firestore via REST API
-        // The ?key= param authenticates the request using the Firebase Web API key,
-        // required for Firestore REST writes from server-side code without firebase-admin.
-        const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/microsoft?key=${apiKey}`;
+        // Write to Firestore via REST API using the user's Firebase ID token as Bearer auth.
+        // This satisfies security rules (same pattern as Slack callback).
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/microsoft`;
         const firestoreBody = {
             fields: {
                 access_token: { stringValue: tokenData.access_token },
@@ -91,7 +101,10 @@ export async function GET(request: Request) {
 
         const fsRes = await fetch(firestoreUrl, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+            },
             body: JSON.stringify(firestoreBody),
         });
 
