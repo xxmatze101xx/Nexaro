@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { GlobalErrorHandler } from "@/components/global-error-handler";
 
 export const metadata: Metadata = {
   title: "Nexaro",
@@ -22,6 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen bg-background text-foreground">
+        <GlobalErrorHandler />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
