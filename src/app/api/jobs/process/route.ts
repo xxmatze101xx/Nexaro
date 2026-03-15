@@ -4,6 +4,14 @@ import { logger } from "@/lib/logger";
 import { sanitizeJobPayload, auditForStorage } from "@/lib/privacy";
 import { getFlags, isFeatureEnabled } from "@/lib/flags";
 import type { Job, JobType } from "@/lib/jobs";
+import {
+    THREAD_SUMMARY_SYSTEM,
+    buildThreadSummaryUserPrompt,
+    ACTION_EXTRACTION_SYSTEM,
+    buildActionExtractionUserPrompt,
+    DECISION_DETECTION_SYSTEM,
+    buildDecisionDetectionUserPrompt,
+} from "@/lib/ai/prompts";
 
 /**
  * POST /api/jobs/process
@@ -85,18 +93,9 @@ async function processThreadSummary(input: Record<string, unknown>): Promise<Rec
 
     if (!messages?.length) throw new Error("input.messages array is required");
 
-    const threadText = messages
-        .map((m, i) => `[${i + 1}] From: ${m.from}\n${m.body}`)
-        .join("\n\n---\n\n");
-
     const summary = await callGroq(
-        `You are an executive assistant summarizing email threads for a busy CEO.
-Rules:
-- Write a concise summary (3–5 sentences maximum).
-- Highlight the most important point, any decisions made, and pending action items.
-- Use bullet points only if there are 3+ distinct items.
-- Do NOT include greetings or sign-offs.`,
-        `Subject: ${subject}\n\nThread:\n${threadText}`,
+        THREAD_SUMMARY_SYSTEM,
+        buildThreadSummaryUserPrompt(subject, messages),
         400,
     );
 
@@ -111,13 +110,8 @@ async function processActionExtraction(input: Record<string, unknown>): Promise<
     if (!body.trim()) throw new Error("input.body is required");
 
     const raw = await callGroq(
-        `You are an executive assistant extracting action items from emails for a CEO.
-Rules:
-- Extract ONLY concrete action items (tasks, deadlines, requests) addressed to the recipient.
-- Format: JSON array of strings. Each item is one action, starting with a verb.
-- If there are no action items, return an empty array: []
-- Return ONLY the JSON array, no other text.`,
-        `From: ${sender}\nSubject: ${subject}\n\n${body}`,
+        ACTION_EXTRACTION_SYSTEM,
+        buildActionExtractionUserPrompt(sender, subject, body),
         300,
     );
 
@@ -147,13 +141,8 @@ async function processDecisionDetection(input: Record<string, unknown>): Promise
     if (!body.trim()) throw new Error("input.body is required");
 
     const raw = await callGroq(
-        `You are an executive assistant detecting decisions and commitments in emails.
-Rules:
-- Identify decisions already made, commitments given, or agreements reached in this email.
-- Format: JSON object with { "hasDecision": boolean, "decisions": string[] }
-- Each decision is a concise statement of what was decided/committed.
-- Return ONLY the JSON object, no other text.`,
-        `Subject: ${subject}\n\n${body}`,
+        DECISION_DETECTION_SYSTEM,
+        buildDecisionDetectionUserPrompt(subject, body),
         300,
     );
 

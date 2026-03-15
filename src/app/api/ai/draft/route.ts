@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { buildDraftReplySystemPrompt, buildDraftReplyUserPrompt } from "@/lib/ai/prompts";
 
 interface DraftRequestBody {
     subject?: string;
