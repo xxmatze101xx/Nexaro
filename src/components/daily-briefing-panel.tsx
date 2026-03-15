@@ -1,0 +1,175 @@
+"use client";
+
+/**
+ * DailyBriefingPanel
+ *
+ * Displays the AI-generated daily executive briefing.
+ * Shows a "Generate" button when no briefing exists for today,
+ * a spinner while generating, and structured output when ready.
+ *
+ * Placed in the main content header area of the inbox dashboard.
+ */
+
+interface DailyBriefingPanelProps {
+    briefing: string | null;
+    generatedAt: string | null;
+    isGenerating: boolean;
+    error: string | null;
+    onGenerate: () => void;
+    className?: string;
+}
+
+function BriefingSection({ text }: { text: string }) {
+    const sections = text.split(
+        /\n(?=PRIORITY TOPICS:|PENDING ACTIONS:|KEY CONTEXT:)/,
+    );
+
+    return (
+        <div className="space-y-3">
+            {sections.map((section, i) => {
+                const colonIdx = section.indexOf(":");
+                if (colonIdx === -1) {
+                    return section.trim() ? (
+                        <p key={i} className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                            {section.trim()}
+                        </p>
+                    ) : null;
+                }
+
+                const heading = section.slice(0, colonIdx).trim();
+                const body = section.slice(colonIdx + 1).trim();
+                const lines = body.split("\n").filter(l => l.trim());
+
+                return (
+                    <div key={i}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">
+                            {heading}
+                        </p>
+                        <ul className="space-y-1">
+                            {lines.map((line, j) => (
+                                <li
+                                    key={j}
+                                    className="flex gap-2 text-xs text-gray-700 dark:text-gray-300 leading-relaxed"
+                                >
+                                    <span className="shrink-0 mt-0.5 w-1 h-1 rounded-full bg-blue-400 dark:bg-blue-500 translate-y-[5px]" />
+                                    <span>{line.replace(/^[-•]\s*/, "")}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function GeneratedAt({ iso }: { iso: string }) {
+    const time = new Date(iso).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+    });
+    return (
+        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+            Generated at {time}
+        </span>
+    );
+}
+
+export function DailyBriefingPanel({
+    briefing,
+    generatedAt,
+    isGenerating,
+    error,
+    onGenerate,
+    className = "",
+}: DailyBriefingPanelProps) {
+    const today = new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+    });
+
+    return (
+        <div
+            className={`rounded-xl border border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900 p-4 ${className}`}
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+                <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        Executive Briefing
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{today}</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {generatedAt && <GeneratedAt iso={generatedAt} />}
+                    <button
+                        onClick={onGenerate}
+                        disabled={isGenerating}
+                        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        title={briefing ? "Refresh briefing" : "Generate today's briefing"}
+                    >
+                        {isGenerating ? (
+                            <>
+                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                                    <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                    />
+                                    <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                    />
+                                </svg>
+                                Analyzing…
+                            </>
+                        ) : briefing ? (
+                            "↺ Refresh"
+                        ) : (
+                            "✦ Generate"
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* Content */}
+            {isGenerating && !briefing && (
+                <div className="py-4 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
+                    <div className="flex gap-1">
+                        {[0, 1, 2].map(i => (
+                            <span
+                                key={i}
+                                className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-600 animate-bounce"
+                                style={{ animationDelay: `${i * 0.15}s` }}
+                            />
+                        ))}
+                    </div>
+                    <p className="text-xs">Analyzing your communications…</p>
+                </div>
+            )}
+
+            {error && !isGenerating && (
+                <p className="text-xs text-red-600 dark:text-red-400 py-2">
+                    {error} —{" "}
+                    <button onClick={onGenerate} className="underline hover:no-underline">
+                        retry
+                    </button>
+                </p>
+            )}
+
+            {!briefing && !isGenerating && !error && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 py-2">
+                    Generate your daily executive briefing to get a prioritized summary of today&apos;s communications.
+                </p>
+            )}
+
+            {briefing && <BriefingSection text={briefing} />}
+        </div>
+    );
+}
