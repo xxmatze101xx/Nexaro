@@ -25,15 +25,15 @@ import {
  * Supports retry: if a job fails and retryCount < maxRetries, it remains
  * in "failed" state and can be retried by calling this endpoint again.
  *
- * All AI calls use the GROQ_API_KEY environment variable (llama-3.3-70b-versatile).
- * Embedding generation requires OPENAI_API_KEY (gracefully degrades if absent).
+ * All AI calls use the OPENAI_API_KEY environment variable (gpt-4o-mini).
+ * Embedding generation also requires OPENAI_API_KEY (gracefully degrades if absent).
  */
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
-const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const OPENAI_AI_KEY = process.env.OPENAI_API_KEY ?? "";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODEL = "gpt-4o-mini";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -51,19 +51,19 @@ async function verifyIdToken(idToken: string): Promise<string | null> {
     return data.users?.[0]?.localId ?? null;
 }
 
-// ── Groq helper ───────────────────────────────────────────────────────────────
+// ── OpenAI helper ─────────────────────────────────────────────────────────────
 
-async function callGroq(systemPrompt: string, userPrompt: string, maxTokens = 600): Promise<string> {
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+async function callOpenAI(systemPrompt: string, userPrompt: string, maxTokens = 600): Promise<string> {
+    if (!OPENAI_AI_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
-    const res = await fetch(GROQ_URL, {
+    const res = await fetch(OPENAI_URL, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${GROQ_API_KEY}`,
+            Authorization: `Bearer ${OPENAI_AI_KEY}`,
         },
         body: JSON.stringify({
-            model: GROQ_MODEL,
+            model: OPENAI_MODEL,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
@@ -75,14 +75,14 @@ async function callGroq(systemPrompt: string, userPrompt: string, maxTokens = 60
 
     if (!res.ok) {
         const errText = await res.text().catch(() => "");
-        throw new Error(`Groq API error: ${res.status} ${errText.slice(0, 200)}`);
+        throw new Error(`OpenAI API error: ${res.status} ${errText.slice(0, 200)}`);
     }
 
     const data = (await res.json()) as {
         choices?: { message?: { content?: string } }[];
     };
     const content = data.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!content) throw new Error("Groq returned empty response");
+    if (!content) throw new Error("OpenAI returned empty response");
     return content;
 }
 
@@ -94,7 +94,7 @@ async function processThreadSummary(input: Record<string, unknown>): Promise<Rec
 
     if (!messages?.length) throw new Error("input.messages array is required");
 
-    const summary = await callGroq(
+    const summary = await callOpenAI(
         THREAD_SUMMARY_SYSTEM,
         buildThreadSummaryUserPrompt(subject, messages),
         400,
@@ -110,7 +110,7 @@ async function processActionExtraction(input: Record<string, unknown>): Promise<
 
     if (!body.trim()) throw new Error("input.body is required");
 
-    const raw = await callGroq(
+    const raw = await callOpenAI(
         ACTION_EXTRACTION_SYSTEM,
         buildActionExtractionUserPrompt(sender, subject, body),
         300,
@@ -141,7 +141,7 @@ async function processDecisionDetection(input: Record<string, unknown>): Promise
 
     if (!body.trim()) throw new Error("input.body is required");
 
-    const raw = await callGroq(
+    const raw = await callOpenAI(
         DECISION_DETECTION_SYSTEM,
         buildDecisionDetectionUserPrompt(subject, body),
         300,

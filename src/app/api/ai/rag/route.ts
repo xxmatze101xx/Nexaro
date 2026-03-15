@@ -14,7 +14,7 @@ import { logger } from "@/lib/logger";
  *   2. Fetch stored embeddings from users/{uid}/embeddings
  *   3. Rank by cosine similarity, take top N
  *   4. Use their contextSnippets + metadata as AI context
- *   5. Call Groq (llama-3.3-70b-versatile) with question + context
+ *   5. Call OpenAI (gpt-4o-mini) with question + context
  *   6. Return { answer, sources }
  *
  * Graceful degradation:
@@ -24,7 +24,6 @@ import { logger } from "@/lib/logger";
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 const OPENAI_API_KEY   = process.env.OPENAI_API_KEY ?? "";
-const GROQ_API_KEY     = process.env.GROQ_API_KEY ?? "";
 const FIRESTORE_BASE   = `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 const DEFAULT_LIMIT       = 5;
@@ -214,18 +213,18 @@ Relevant messages from your inbox:
 
 ${context}`;
 
-    if (!GROQ_API_KEY) {
-        return NextResponse.json({ fallback: true, reason: "groq_unavailable" });
+    if (!OPENAI_API_KEY) {
+        return NextResponse.json({ fallback: true, reason: "openai_unavailable" });
     }
 
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const groqRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${GROQ_API_KEY}`,
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "gpt-4o-mini",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
@@ -237,7 +236,7 @@ ${context}`;
 
     if (!groqRes.ok) {
         const errText = await groqRes.text().catch(() => "");
-        logger.error("ai/rag", "Groq API error", { uid, status: groqRes.status, body: errText.slice(0, 200) });
+        logger.error("ai/rag", "OpenAI API error", { uid, status: groqRes.status, body: errText.slice(0, 200) });
         return NextResponse.json({ error: "ai_generation_failed" }, { status: 502 });
     }
 

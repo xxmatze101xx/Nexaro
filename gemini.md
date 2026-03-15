@@ -40,6 +40,8 @@
 *(To be defined)*
 
 ## Maintenance Log
+**[2026-03-15]**: Calendar token refresh caused an infinite loop: `calendarEmails` in `page.tsx` was not memoized, so it was a new array reference every render, causing `useMeetingPrep`'s `useEffect` to fire on every render → each call hit `getCalendarAccessToken` → expired refresh token returned 400 → no backoff was set → immediate retry on next render. → **Action:** (1) Always `useMemo` any array/object passed as a hook dependency in `page.tsx`. (2) In `getCalendarAccessToken`, always write a localStorage backoff key on 400 so the next call skips the API entirely. (3) Use an in-flight deduplication map to prevent N concurrent refreshes for the same email.
+
 **[2026-03-07]**: The "Reply" button inside the email detail view (`ai-draft-panel.tsx`) had an empty click handler, which made it feel broken. -> **Action:** Whenever adding functional UI buttons like "Reply", ensure they have immediate interactive feedback (e.g., revealing and focusing a textarea) so the feature feels complete and functional.
 
 **[2026-03-07]**: Loading events from all calendars (including hidden ones) in Google Calendar API caused severe performance issues. -> **Action:** When fetching from Google Calendar, always filter by `cal.selected` to only load events from active calendars.

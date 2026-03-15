@@ -20,7 +20,7 @@ import { logger } from "@/lib/logger";
  */
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
-const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
 
 interface MessageExcerpt {
     sender: string;
@@ -73,8 +73,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "title_required" }, { status: 400 });
     }
 
-    if (!GROQ_API_KEY) {
-        return NextResponse.json({ error: "GROQ_API_KEY not configured" }, { status: 500 });
+    if (!OPENAI_API_KEY) {
+        return NextResponse.json({ error: "OPENAI_API_KEY not configured" }, { status: 500 });
     }
 
     const meetingTime = new Date(body.startTime).toLocaleString("en-US", {
@@ -122,14 +122,14 @@ RECENT RELEVANT COMMUNICATIONS:
 ${messagesSection}`;
 
     try {
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const groqRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${GROQ_API_KEY}`,
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "gpt-4o-mini",
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPrompt },
@@ -141,7 +141,7 @@ ${messagesSection}`;
 
         if (!groqRes.ok) {
             const errText = await groqRes.text();
-            logger.error("ai/meeting-prep", "Groq API error", {
+            logger.error("ai/meeting-prep", "OpenAI API error", {
                 status: groqRes.status,
                 body: errText.slice(0, 300),
             });

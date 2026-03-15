@@ -435,7 +435,7 @@ function DashboardContent() {
   } = useDailyBriefing(user?.uid ?? null, allMessages);
 
   // ── Meeting Prep: upcoming meetings + AI briefings ───────────────────────
-  const calendarEmails = gmailAccounts.map(acc => acc.email);
+  const calendarEmails = useMemo(() => gmailAccounts.map(acc => acc.email), [gmailAccounts]);
   const { meetings: upcomingMeetings, isLoading: meetingsLoading, generateBriefing: generateMeetingBriefing } = useMeetingPrep(
     user?.uid ?? null,
     calendarEmails,

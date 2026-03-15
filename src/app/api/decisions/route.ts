@@ -9,7 +9,7 @@ import { logger } from "@/lib/logger";
  *   Response: { decisions: Decision[] }
  *
  * POST /api/decisions
- *   Analyzes a batch of messages with Groq to extract decisions,
+ *   Analyzes a batch of messages with OpenAI to extract decisions,
  *   stores each one in Firestore at users/{uid}/decisions/{id},
  *   and returns the extracted decisions.
  *   Body: { messages: Array<{ id, sender, subject, content, source, timestamp }> }
@@ -18,7 +18,7 @@ import { logger } from "@/lib/logger";
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
-const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ interface RawDecision {
 async function extractDecisionsFromMessages(
     messages: InputMessage[],
 ): Promise<Array<RawDecision & { messageIndex: number }>> {
-    if (!GROQ_API_KEY || messages.length === 0) return [];
+    if (!OPENAI_API_KEY || messages.length === 0) return [];
 
     const messageList = messages
         .map(
@@ -170,14 +170,14 @@ NOT decisions:
     const userPrompt = `Analyze these ${messages.length} messages and extract business decisions:\n\n${messageList}`;
 
     try {
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const groqRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${GROQ_API_KEY}`,
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "gpt-4o-mini",
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPrompt },

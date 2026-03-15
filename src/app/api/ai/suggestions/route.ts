@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 /**
  * POST /api/ai/suggestions
  *
- * Generates 3 varied reply suggestions for a message using the Groq API.
+ * Generates 3 varied reply suggestions for a message using the OpenAI API.
  * Each suggestion has a distinct style: concise, balanced, and detailed.
  *
  * Body: { subject?, sender?, senderEmail?, body }
@@ -49,14 +49,14 @@ Rules:
 - Do NOT include a subject line or greeting header.
 - Do NOT add a signature at the end.${memoryHints}`;
 
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "gpt-4o-mini",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: `From: ${from}\nSubject: ${subject}\n\n${body}` },
@@ -75,9 +75,9 @@ Rules:
 }
 
 export async function POST(request: Request) {
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-        return NextResponse.json({ error: "GROQ_API_KEY is not configured." }, { status: 500 });
+        return NextResponse.json({ error: "OPENAI_API_KEY is not configured." }, { status: 500 });
     }
 
     let reqBody: SuggestionsRequestBody;

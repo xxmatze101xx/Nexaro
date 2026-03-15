@@ -45,15 +45,29 @@ export function getAccountColor(email: string): string {
     return accountColorMap.get(email)!;
 }
 
+// In-flight refresh deduplication: one promise per email at a time
+const _refreshInFlight = new Map<string, Promise<string | null>>();
+
 /**
  * Gets a valid access token for the Calendar API, using localStorage cache.
  * Refreshes automatically if expired.
+ *
+ * On a permanent failure (400 – expired/revoked token), sets a 10-minute
+ * backoff in localStorage so subsequent calls return null immediately
+ * without hammering the API.
  */
 export async function getCalendarAccessToken(uid: string, email: string): Promise<string | null> {
     if (typeof window === "undefined") return null;
 
-    const cacheKey = `gcal_access_token_${email}`;
-    const expiryKey = `gcal_token_expiry_${email}`;
+    const cacheKey   = `gcal_access_token_${email}`;
+    const expiryKey  = `gcal_token_expiry_${email}`;
+    const backoffKey = `gcal_refresh_backoff_${email}`;
+
+    // If a previous refresh failed permanently, don't retry until backoff expires
+    const backoffUntil = localStorage.getItem(backoffKey);
+    if (backoffUntil && Date.now() < parseInt(backoffUntil, 10)) {
+        return null;
+    }
 
     const currentToken = localStorage.getItem(cacheKey);
     const expiryStr = localStorage.getItem(expiryKey);
@@ -66,32 +80,47 @@ export async function getCalendarAccessToken(uid: string, email: string): Promis
         }
     }
 
+    // Deduplicate: if a refresh is already in-flight for this email, wait for it
+    const inflight = _refreshInFlight.get(email);
+    if (inflight) return inflight;
+
     // Need to refresh
     const refreshToken = await getCalendarRefreshToken(uid, email);
     if (!refreshToken) return null;
 
-    try {
-        const res = await fetch("/api/calendar/refresh", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-        });
+    const promise = (async (): Promise<string | null> => {
+        try {
+            const res = await fetch("/api/calendar/refresh", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
 
-        if (!res.ok) {
-            console.error("Failed to refresh Calendar token", await res.text());
-            return null;
-        }
+            if (!res.ok) {
+                const errText = await res.text().catch(() => "");
+                console.error("Failed to refresh Calendar token", errText);
+                // Set backoff: 10 min for permanent errors (400), 2 min for transient
+                const backoffMs = res.status === 400 ? 10 * 60 * 1000 : 2 * 60 * 1000;
+                localStorage.setItem(backoffKey, (Date.now() + backoffMs).toString());
+                return null;
+            }
 
-        const data = await res.json();
-        if (data.access_token) {
-            localStorage.setItem(cacheKey, data.access_token);
-            localStorage.setItem(expiryKey, (Date.now() + data.expires_in * 1000).toString());
-            return data.access_token;
+            const data = (await res.json()) as { access_token?: string; expires_in?: number };
+            if (data.access_token) {
+                localStorage.setItem(cacheKey, data.access_token);
+                localStorage.setItem(expiryKey, (Date.now() + (data.expires_in ?? 3600) * 1000).toString());
+                localStorage.removeItem(backoffKey); // clear any prior backoff on success
+                return data.access_token;
+            }
+        } catch (e) {
+            console.error("Error refreshing Calendar token", e);
         }
-    } catch (e) {
-        console.error("Error refreshing Calendar token", e);
-    }
-    return null;
+        return null;
+    })();
+
+    _refreshInFlight.set(email, promise);
+    promise.finally(() => _refreshInFlight.delete(email));
+    return promise;
 }
 
 /**

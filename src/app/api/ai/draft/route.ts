@@ -31,16 +31,16 @@ interface DraftRequestBody {
  * POST /api/ai/draft
  * Authorization: Bearer <firebase_id_token>  (optional — enables memory injection)
  *
- * Generates a reply draft using the Groq API (llama-3.3-70b-versatile).
+ * Generates a reply draft using the OpenAI API (gpt-4o-mini).
  * If authenticated, reads user memory to personalize tone and length.
  * Body: { subject?, sender?, senderEmail?, body }
  * Response: { draft: string }
  */
 export async function POST(request: Request) {
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         return NextResponse.json(
-            { error: "GROQ_API_KEY is not configured." },
+            { error: "OPENAI_API_KEY is not configured." },
             { status: 500 }
         );
     }
@@ -90,14 +90,14 @@ Subject: ${draftBody.subject ?? "(no subject)"}
 ${draftBody.body}`;
 
     try {
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const groqRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "gpt-4o-mini",
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userPrompt },
@@ -109,7 +109,7 @@ ${draftBody.body}`;
 
         if (!groqRes.ok) {
             const errText = await groqRes.text();
-            logger.error("ai/draft", "Groq API error", { status: groqRes.status, body: errText.slice(0, 300) });
+            logger.error("ai/draft", "OpenAI API error", { status: groqRes.status, body: errText.slice(0, 300) });
             return NextResponse.json(
                 { error: "AI generation failed. Please try again." },
                 { status: 502 }
@@ -123,7 +123,7 @@ ${draftBody.body}`;
         const draft = groqData.choices?.[0]?.message?.content?.trim() ?? "";
 
         if (!draft) {
-            logger.warn("ai/draft", "Groq returned empty response");
+            logger.warn("ai/draft", "OpenAI returned empty response");
             return NextResponse.json(
                 { error: "AI returned an empty response." },
                 { status: 502 }
@@ -137,7 +137,7 @@ ${draftBody.body}`;
         });
         return NextResponse.json({ draft });
     } catch (err: unknown) {
-        logger.error("ai/draft", "Unexpected error calling Groq API", { error: err instanceof Error ? err.message : String(err) });
+        logger.error("ai/draft", "Unexpected error calling OpenAI API", { error: err instanceof Error ? err.message : String(err) });
         return NextResponse.json({ error: "Internal server error." }, { status: 500 });
     }
 }
