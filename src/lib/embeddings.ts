@@ -59,6 +59,8 @@ export async function enqueueEmbeddingJobs(
                             messageId: msg.id,
                             source: msg.source,
                             messageTimestamp: msg.timestamp,
+                            subject: msg.metadata?.subject ?? "",
+                            sender: msg.sender,
                         },
                     }),
                 });

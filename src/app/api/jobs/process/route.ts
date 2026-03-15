@@ -242,6 +242,10 @@ async function saveEmbedding(
                 messageId: { stringValue: messageId },
                 source: { stringValue: String(jobInput.source ?? "") },
                 messageTimestamp: { stringValue: String(jobInput.messageTimestamp ?? "") },
+                subject: { stringValue: String(jobInput.subject ?? "") },
+                sender: { stringValue: String(jobInput.sender ?? "") },
+                // Safe 200-char snippet retained for RAG context retrieval (no full body stored)
+                contextSnippet: { stringValue: String(jobInput.text ?? "").slice(0, 200) },
                 model: { stringValue: String(output.model ?? "text-embedding-3-small") },
                 dimensions: { integerValue: String(embedding.length) },
                 embeddingJson: { stringValue: JSON.stringify(embedding) },
