@@ -37,7 +37,8 @@ async function verifyIdToken(idToken: string): Promise<string | null> {
     return data.users?.[0]?.localId ?? null;
 }
 
-async function getGmailRefreshToken(uid: string, email: string, idToken: string): Promise<string | null> {
+/** Get the Gmail refresh token for a user+email from Firestore. */
+async function getRefreshToken(uid: string, email: string, idToken: string): Promise<string | null> {
     const res = await fetch(`${FIRESTORE_BASE}/users/${uid}/private/gmail`, {
         headers: { Authorization: `Bearer ${idToken}` },
     });
@@ -63,10 +64,12 @@ async function getGmailRefreshToken(uid: string, email: string, idToken: string)
     return null;
 }
 
-async function getAccessToken(refreshToken: string): Promise<string | null> {
+/** Exchange refresh token for access token. */
+async function refreshAccessToken(refreshToken: string): Promise<string | null> {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) return null;
+
     const res = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -87,6 +90,47 @@ function encodeEmail(email: string): string {
     return email.replace(/\./g, "_dot_").replace(/@/g, "_at_");
 }
 
+/** Write the email → uid index entry to Firestore using the user's ID token. */
+async function writeEmailIndex(email: string, uid: string, idToken: string): Promise<void> {
+    const docId = encodeEmail(email);
+    await fetch(
+        `${FIRESTORE_BASE}/emailIndex/${docId}?updateMask.fieldPaths=uid&updateMask.fieldPaths=email`,
+        {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+                fields: {
+                    uid: { stringValue: uid },
+                    email: { stringValue: email },
+                },
+            }),
+        },
+    );
+}
+
+/** Update the Gmail sync state with pushActive + watchExpiration using the user's ID token. */
+async function updateGmailSyncState(uid: string, pushActive: boolean, watchExpiration: string, idToken: string): Promise<void> {
+    await fetch(
+        `${FIRESTORE_BASE}/users/${uid}/sync/gmail?updateMask.fieldPaths=pushActive&updateMask.fieldPaths=watchExpiration`,
+        {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+                fields: {
+                    pushActive: { booleanValue: pushActive },
+                    watchExpiration: { stringValue: watchExpiration },
+                },
+            }),
+        },
+    );
+}
+
 export async function POST(request: Request) {
     const idToken = request.headers.get("Authorization")?.slice(7);
     if (!idToken) {
@@ -105,85 +149,60 @@ export async function POST(request: Request) {
     }
 
     if (!GMAIL_PUBSUB_TOPIC) {
-        // Pub/Sub not configured — skip registration gracefully
-        logger.warn("gmail/watch", "GMAIL_PUBSUB_TOPIC not set — skipping push watch");
+        logger.warn("gmail/watch", "GMAIL_PUBSUB_TOPIC not configured — skipping push watch registration");
         return NextResponse.json({ skipped: true, reason: "pubsub_not_configured" });
     }
 
     const uid = await verifyIdToken(idToken);
     if (!uid) {
-        return NextResponse.json({ error: "token_invalid" }, { status: 401 });
+        return NextResponse.json({ error: "token_verify_failed" }, { status: 401 });
     }
 
-    const refreshToken = await getGmailRefreshToken(uid, body.email, idToken);
+    const refreshToken = await getRefreshToken(uid, body.email, idToken);
     if (!refreshToken) {
+        logger.warn("gmail/watch", "No refresh token found", { uid, email: body.email });
         return NextResponse.json({ error: "no_refresh_token" }, { status: 400 });
     }
 
-    const accessToken = await getAccessToken(refreshToken);
+    const accessToken = await refreshAccessToken(refreshToken);
     if (!accessToken) {
-        logger.error("gmail/watch", "Token refresh failed", { uid });
+        logger.error("gmail/watch", "Failed to refresh access token", { uid });
         return NextResponse.json({ error: "token_refresh_failed" }, { status: 500 });
     }
 
     try {
+        // Register Gmail push watch
         const watchRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/watch", {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${accessToken}`,
                 "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({ topicName: GMAIL_PUBSUB_TOPIC, labelIds: ["INBOX"] }),
+            body: JSON.stringify({
+                topicName: GMAIL_PUBSUB_TOPIC,
+                labelIds: ["INBOX"],
+            }),
         });
 
         if (!watchRes.ok) {
-            const err = await watchRes.text().catch(() => "");
-            logger.error("gmail/watch", "Watch registration failed", { uid, status: watchRes.status, err: err.slice(0, 200) });
+            const errBody = await watchRes.text().catch(() => "");
+            logger.error("gmail/watch", "Gmail watch registration failed", { uid, status: watchRes.status, body: errBody.slice(0, 200) });
             return NextResponse.json({ error: "watch_failed" }, { status: 502 });
         }
 
         const watchData = (await watchRes.json()) as { historyId?: string; expiration?: string };
-        const expirationMs = parseInt(watchData.expiration ?? "0", 10);
-        const expirationIso = expirationMs
-            ? new Date(expirationMs).toISOString()
+        const expiration = watchData.expiration
+            ? new Date(Number(watchData.expiration)).toISOString()
             : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
 
-        // Persist push state + email→uid lookup in parallel (best-effort)
+        // Store email → uid index and update sync state (fire both in parallel)
         await Promise.all([
-            // Update Gmail sync state
-            fetch(
-                `${FIRESTORE_BASE}/users/${uid}/sync/gmail` +
-                `?updateMask.fieldPaths=pushActive&updateMask.fieldPaths=watchExpiration`,
-                {
-                    method: "PATCH",
-                    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        fields: {
-                            pushActive: { booleanValue: true },
-                            watchExpiration: { stringValue: expirationIso },
-                        },
-                    }),
-                },
-            ).catch(() => {}),
-            // Write email→uid index
-            fetch(
-                `${FIRESTORE_BASE}/emailIndex/${encodeEmail(body.email!)}` +
-                `?updateMask.fieldPaths=uid&updateMask.fieldPaths=email`,
-                {
-                    method: "PATCH",
-                    headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        fields: {
-                            uid: { stringValue: uid },
-                            email: { stringValue: body.email },
-                        },
-                    }),
-                },
-            ).catch(() => {}),
+            writeEmailIndex(body.email, uid, idToken),
+            updateGmailSyncState(uid, true, expiration, idToken),
         ]);
 
-        logger.info("gmail/watch", "Push watch registered", { uid, email: body.email, expiresAt: expirationIso });
-        return NextResponse.json({ pushActive: true, expiresAt: expirationIso, historyId: watchData.historyId });
+        logger.info("gmail/watch", "Push watch registered", { uid, email: body.email, expiration });
+        return NextResponse.json({ pushActive: true, expiration, historyId: watchData.historyId });
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         logger.error("gmail/watch", "Unexpected error", { error: msg });

@@ -16,16 +16,15 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { syncEngine } from "@/lib/sync";
+import { getSyncState } from "@/lib/sync/state";
 import type { SyncResult, SyncStatus } from "@/lib/sync";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import type { User } from "firebase/auth";
 import type { SlackChannel } from "@/lib/slack";
 import { enqueueEmbeddingJobs } from "@/lib/embeddings";
 
-/** Polling interval when Gmail push is active (fallback). */
-const POLL_INTERVAL_PUSH_MS = 10 * 60 * 1000; // 10 minutes
-/** Polling interval when no push is active. */
-const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes (fallback when push is active: 10 min)
+const POLL_INTERVAL_PUSH_MS = 10 * 60 * 1000; // 10 minutes — reduced polling when Gmail push is active
 
 export interface SyncEngineStatus {
     gmail: SyncStatus;
@@ -72,7 +71,7 @@ export function useSyncEngine({
     // Track which message IDs have already had embedding jobs enqueued this session
     const embeddingEnqueuedRef = useRef<Set<string>>(new Set());
 
-    const mergeAndEmbedMessages = useCallback((incoming: UnifiedMessage[]) => {
+    const mergeMessages = useCallback((incoming: UnifiedMessage[]) => {
         if (incoming.length === 0) return;
         setSyncedMessages(prev => {
             const next = new Map(prev);
@@ -91,7 +90,6 @@ export function useSyncEngine({
             }
         }
 
-        // Keep alias for backward compat in closure below
     }, []);
 
     const runSync = useCallback(async () => {
@@ -104,9 +102,10 @@ export function useSyncEngine({
         if (gmailAccounts.length > 0) {
             setSyncStatus(prev => ({ ...prev, gmail: "syncing" }));
             try {
+                const gmailIdToken = await user.getIdToken();
                 const gmailResults = await Promise.all(
                     gmailAccounts.map(acc =>
-                        syncEngine.syncGmail(user.uid, { uid: user.uid, email: acc.email }),
+                        syncEngine.syncGmail(user.uid, { uid: user.uid, email: acc.email, idToken: gmailIdToken }),
                     ),
                 );
                 gmailResults.forEach(r => results.push(r));
@@ -202,14 +201,21 @@ export function useSyncEngine({
         runSync();
     }, [user, gmailAccounts, slackConnected, slackChannels, microsoftConnected, runSync]);
 
-    // ── Polling: 2-min interval normally, 10-min when Gmail push is active ───────
+    // ── Polling: 2-min interval normally; reduced to 10 min if Gmail push is active ─
     useEffect(() => {
         if (!user) return;
 
-        // Determine polling interval based on push status
-        const hasPush = gmailAccounts.length > 0; // Refine: check pushActive from SyncState if needed
-        const interval = hasPush ? POLL_INTERVAL_PUSH_MS : POLL_INTERVAL_MS;
-        pollTimerRef.current = setInterval(runSync, interval);
+        let interval = POLL_INTERVAL_MS;
+
+        // Check if Gmail push watch is active — if so, use longer fallback interval
+        getSyncState(user.uid, "gmail")
+            .then(state => {
+                if (state?.pushActive) interval = POLL_INTERVAL_PUSH_MS;
+            })
+            .catch(() => undefined)
+            .finally(() => {
+                pollTimerRef.current = setInterval(runSync, interval);
+            });
 
         return () => {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
