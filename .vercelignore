@@ -1,4 +1,4 @@
-firebase-debug.log
+firebase-debug*.log
 .agent/
 .claude/
 tools/
