@@ -154,6 +154,27 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                 encodedAttachments.length > 0 ? encodedAttachments : undefined
             );
 
+            // Record interaction signal for AI memory (best-effort, non-blocking)
+            auth.currentUser?.getIdToken().then(idToken => {
+                const keywords = [message.subject, message.sender].filter(Boolean).join(" ")
+                    .split(/\s+/)
+                    .filter(w => w.length > 4)
+                    .slice(0, 5);
+                fetch("/api/user/memory", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                    body: JSON.stringify({
+                        signal: {
+                            repliedToEmail: message.senderEmail ?? undefined,
+                            engagedTopics: keywords,
+                            draftStyle: {
+                                length: draftText.length < 200 ? "short" : draftText.length < 500 ? "medium" : "long",
+                            },
+                        },
+                    }),
+                }).catch(() => {}); // fire-and-forget
+            }).catch(() => {});
+
             // Optimistic feedback: show success state, notify parent, then reset reply area
             setSendSuccess(true);
             onReplied?.(message);
@@ -191,6 +212,8 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
         setIsGenerating(true);
         setDraftError(null);
         try {
+            // Include idToken so the draft endpoint can inject user memory context
+            const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
             const res = await fetch("/api/ai/draft", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -199,6 +222,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                     sender: message.sender,
                     senderEmail: message.senderEmail,
                     body: message.content,
+                    idToken,
                 }),
             });
             const data = (await res.json()) as { draft?: string; error?: string };

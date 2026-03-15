@@ -1,11 +1,30 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { readUserMemory, formatMemoryForPrompt } from "@/lib/user-memory";
+
+const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
+
+async function verifyIdToken(idToken: string): Promise<string | null> {
+    const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { users?: Array<{ localId: string }> };
+    return data.users?.[0]?.localId ?? null;
+}
 
 interface DraftRequestBody {
     subject?: string;
     sender?: string;
     senderEmail?: string;
     body: string;
+    /** Optional: Firebase ID token for personalizing the draft with user memory */
+    idToken?: string;
 }
 
 /**
@@ -35,6 +54,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Message body is required." }, { status: 400 });
     }
 
+    // Load user memory if idToken provided — personalizes the draft
+    let memoryContext = "";
+    if (body.idToken) {
+        try {
+            const uid = await verifyIdToken(body.idToken);
+            if (uid) {
+                const profile = await readUserMemory(uid, body.idToken);
+                memoryContext = formatMemoryForPrompt(profile);
+            }
+        } catch {
+            // Memory injection is best-effort — don't block draft generation
+        }
+    }
+
     const systemPrompt = `You are a busy executive assistant. Write a concise, professional reply to the email the user provides.
 
 Rules:
@@ -42,7 +75,7 @@ Rules:
 - Tone: professional yet friendly.
 - Do NOT include a subject line or greeting header — start directly with the reply text.
 - Do NOT add "Best regards" or a signature at the end.
-- Keep it under 400 characters if possible.`;
+- Keep it under 400 characters if possible.${memoryContext}`;
 
     const from = body.senderEmail
         ? `${body.sender ?? ""} <${body.senderEmail}>`.trim()
