@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 /**
  * DailyBriefingPanel
  *
@@ -83,6 +85,8 @@ export function DailyBriefingPanel({
     onGenerate,
     className = "",
 }: DailyBriefingPanelProps) {
+    const [collapsed, setCollapsed] = useState(false);
+
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
@@ -94,13 +98,33 @@ export function DailyBriefingPanel({
             className={`rounded-xl border border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900 p-4 ${className}`}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-                <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        Executive Briefing
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{today}</p>
-                </div>
+            <div className={`flex items-center justify-between ${collapsed ? "" : "mb-3"}`}>
+                <button
+                    onClick={() => setCollapsed(c => !c)}
+                    className="flex items-center gap-2 text-left group"
+                    title={collapsed ? "Expand briefing" : "Collapse briefing"}
+                >
+                    <svg
+                        className={`w-3.5 h-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            Executive Briefing
+                        </p>
+                        {collapsed && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{today}</p>
+                        )}
+                        {!collapsed && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{today}</p>
+                        )}
+                    </div>
+                </button>
 
                 <div className="flex items-center gap-2">
                     {generatedAt && <GeneratedAt iso={generatedAt} />}
@@ -138,38 +162,42 @@ export function DailyBriefingPanel({
                 </div>
             </div>
 
-            {/* Content */}
-            {isGenerating && !briefing && (
-                <div className="py-4 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
-                    <div className="flex gap-1">
-                        {[0, 1, 2].map(i => (
-                            <span
-                                key={i}
-                                className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-600 animate-bounce"
-                                style={{ animationDelay: `${i * 0.15}s` }}
-                            />
-                        ))}
-                    </div>
-                    <p className="text-xs">Analyzing your communications…</p>
-                </div>
-            )}
+            {/* Content — hidden when collapsed */}
+            {!collapsed && (
+                <>
+                    {isGenerating && !briefing && (
+                        <div className="py-4 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
+                            <div className="flex gap-1">
+                                {[0, 1, 2].map(i => (
+                                    <span
+                                        key={i}
+                                        className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-600 animate-bounce"
+                                        style={{ animationDelay: `${i * 0.15}s` }}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-xs">Analyzing your communications…</p>
+                        </div>
+                    )}
 
-            {error && !isGenerating && (
-                <p className="text-xs text-red-600 dark:text-red-400 py-2">
-                    {error} —{" "}
-                    <button onClick={onGenerate} className="underline hover:no-underline">
-                        retry
-                    </button>
-                </p>
-            )}
+                    {error && !isGenerating && (
+                        <p className="text-xs text-red-600 dark:text-red-400 py-2">
+                            {error} —{" "}
+                            <button onClick={onGenerate} className="underline hover:no-underline">
+                                retry
+                            </button>
+                        </p>
+                    )}
 
-            {!briefing && !isGenerating && !error && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 py-2">
-                    Generate your daily executive briefing to get a prioritized summary of today&apos;s communications.
-                </p>
-            )}
+                    {!briefing && !isGenerating && !error && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 py-2">
+                            Generate your daily executive briefing to get a prioritized summary of today&apos;s communications.
+                        </p>
+                    )}
 
-            {briefing && <BriefingSection text={briefing} />}
+                    {briefing && <BriefingSection text={briefing} />}
+                </>
+            )}
         </div>
     );
 }
