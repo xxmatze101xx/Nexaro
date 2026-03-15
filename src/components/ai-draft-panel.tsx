@@ -26,6 +26,8 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
     const [sendSuccess, setSendSuccess] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
     const [isReplying, setIsReplying] = useState(false);
     const [draftError, setDraftError] = useState<string | null>(null);
     // Reply compose fields
@@ -55,6 +57,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
         setSendSuccess(false);
         setAttachments([]);
         setDraftText(message?.ai_draft_response || "");
+        setSuggestions([]);
     }, [message?.id, message?.ai_draft_response]);
 
     // Listen for keyboard shortcut 'r' dispatched by the dashboard
@@ -259,6 +262,46 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    const handleLoadSuggestions = async () => {
+        if (!message) return;
+        setIsLoadingSuggestions(true);
+        setDraftError(null);
+        setSuggestions([]);
+        try {
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+            const res = await fetch("/api/ai/suggestions", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    subject: message.subject,
+                    sender: message.sender,
+                    senderEmail: message.senderEmail,
+                    body: message.content,
+                }),
+            });
+            const data = (await res.json()) as { suggestions?: string[]; error?: string };
+            if (!res.ok) throw new Error(data.error ?? "Generation failed");
+            setSuggestions(data.suggestions ?? []);
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Unbekannter Fehler.";
+            setDraftError(msg);
+        } finally {
+            setIsLoadingSuggestions(false);
+        }
+    };
+
+    const handlePickSuggestion = (suggestion: string) => {
+        setDraftText(suggestion);
+        setSuggestions([]);
+        if (!isReplying) {
+            initReply(message!);
+            setIsReplying(true);
+        }
+        setTimeout(() => textareaRef.current?.focus(), 50);
     };
 
     const handleToggleRead = async () => {
@@ -490,6 +533,28 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                             </div>
                         </div>
 
+                        {/* AI Reply Suggestions — shown above textarea when available */}
+                        {suggestions.length > 0 && (
+                            <div className="px-3 pt-2 pb-1 space-y-1.5">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                    Vorschläge — klicken zum Auswählen
+                                </p>
+                                {suggestions.map((s, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => handlePickSuggestion(s)}
+                                        className={cn(
+                                            "w-full text-left text-[11px] leading-relaxed px-3 py-2 rounded-sm border",
+                                            "border-border/60 bg-muted/20 hover:bg-primary/5 hover:border-primary/40",
+                                            "text-foreground transition-all"
+                                        )}
+                                    >
+                                        {s.length > 160 ? s.slice(0, 160) + "…" : s}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Body textarea */}
                         <div className="flex-1 min-h-0 px-3 pt-2 pb-1">
                             <textarea
@@ -528,7 +593,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={handleGenerateDraft}
-                                    disabled={isGenerating || sendSuccess}
+                                    disabled={isGenerating || isLoadingSuggestions || sendSuccess}
                                     className={cn(
                                         "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
                                         "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
@@ -539,6 +604,21 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                                         ? <Loader2 className="h-3 w-3 animate-spin" />
                                         : <Sparkles className="h-3 w-3" />}
                                     {isGenerating ? "Generiere..." : "KI Entwurf"}
+                                </button>
+                                <button
+                                    onClick={handleLoadSuggestions}
+                                    disabled={isGenerating || isLoadingSuggestions || sendSuccess}
+                                    className={cn(
+                                        "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
+                                        "text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
+                                        "disabled:opacity-50 disabled:pointer-events-none"
+                                    )}
+                                    title="3 Vorschläge generieren"
+                                >
+                                    {isLoadingSuggestions
+                                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                                        : <Sparkles className="h-3 w-3" />}
+                                    {isLoadingSuggestions ? "..." : "3 Vorschläge"}
                                 </button>
                                 <button
                                     onClick={handleCopy}
