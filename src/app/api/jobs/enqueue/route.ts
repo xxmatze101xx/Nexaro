@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         logger.info("jobs/enqueue", "Job enqueued", { uid, jobId: job.id, type: job.type });
 
         // Fire-and-forget cleanup — piggybacks on normal usage, no separate cron needed
-        void fetch(`${process.env.NEXTAUTH_URL ?? ""}/api/jobs/cleanup`, {
+        void fetch(`${process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/jobs/cleanup`, {
             method: "POST",
             headers: { Authorization: `Bearer ${idToken}` },
         }).catch(() => undefined);
