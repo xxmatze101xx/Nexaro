@@ -3,7 +3,44 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      
+
+      // Sync engine state — stores cursor/last-synced timestamps per service
+      // Path: users/{uid}/sync/{service}  (e.g. sync/gmail, sync/slack, sync/teams)
+      match /sync/{service} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Synced inbox messages — normalised UnifiedMessage documents written by sync adapters
+      // Path: users/{uid}/inbox/{msgId}
+      match /inbox/{msgId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Background jobs — async AI task queue (thread_summary, action_extraction, etc.)
+      // Path: users/{uid}/jobs/{jobId}
+      match /jobs/{jobId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Client-side error logs written by clientLogger
+      // Path: users/{uid}/logs/{logId}
+      match /logs/{logId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // OAuth tokens for third-party integrations (Slack, Microsoft)
+      // Path: users/{uid}/tokens/{service}
+      match /tokens/{service} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Private subcollection — Gmail tokens and other sensitive credentials
+      // Path: users/{uid}/private/{doc}
+      match /private/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Catch-all for any future subcollections — owner-only
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
