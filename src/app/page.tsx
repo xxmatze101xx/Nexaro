@@ -29,6 +29,7 @@ import { MeetingPrepPanel } from "@/components/meeting-prep-panel";
 import { useMeetingPrep } from "@/hooks/useMeetingPrep";
 import { DecisionsDashboard } from "@/components/decisions-dashboard";
 import { useDecisions } from "@/hooks/useDecisions";
+import { AIChatPanel } from "@/components/ai-chat-panel";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -56,7 +57,8 @@ import {
   Plus,
   RefreshCw,
   Pencil,
-  Trash2
+  Trash2,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -98,6 +100,7 @@ function DashboardContent() {
   const [isComposing, setIsComposing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showDecisions, setShowDecisions] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
@@ -869,7 +872,7 @@ function DashboardContent() {
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
           </Link>
-          <Link href="/decisions" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/decisions" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+          <Link href="/decisions" onClick={() => { setShowDecisions(false); setShowAIChat(false); }} className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/decisions" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Zap className="w-4 h-4 shrink-0" />
             Decisions
           </Link>
@@ -878,16 +881,11 @@ function DashboardContent() {
             Einstellungen
           </Link>
           <button
-            onClick={() => setShowDecisions(v => !v)}
-            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showDecisions ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); }}
+            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showAIChat ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
-            <Zap className="w-4 h-4 shrink-0" />
-            Decisions
-            {decisions.length > 0 && (
-              <span className="ml-auto text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 rounded-full px-1.5 py-0.5">
-                {decisions.length}
-              </span>
-            )}
+            <Bot className="w-4 h-4 shrink-0" />
+            AI Chat
           </button>
         </div>
 
@@ -1102,8 +1100,10 @@ function DashboardContent() {
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* ── Decisions Dashboard ────────────────────────────────────── */}
-          {showDecisions ? (
+          {/* ── AI Chat ───────────────────────────────────────────────── */}
+          {showAIChat ? (
+            <AIChatPanel className="flex-1" />
+          ) : showDecisions ? (
             <div className="flex-1 overflow-y-auto p-6">
               <DecisionsDashboard
                 decisions={decisions}

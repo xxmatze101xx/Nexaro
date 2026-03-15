@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, AlertCircle, RefreshCw, FileText, ListChecks, GitBranch } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, FileText, ListChecks, GitBranch, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useJob, enqueueAndProcess } from "@/hooks/useJob";
 import { auth } from "@/lib/firebase";
@@ -106,6 +106,7 @@ export function AIActionsPanel({ message, className }: AIActionsPanelProps) {
     const [summary, setSummary] = useState<ActionState>(DEFAULT_ACTION);
     const [actions, setActions] = useState<ActionState>(DEFAULT_ACTION);
     const [decisions, setDecisions] = useState<ActionState>(DEFAULT_ACTION);
+    const [isOpen, setIsOpen] = useState(false);
 
     async function run(
         type: "thread_summary" | "action_extraction" | "decision_detection",
@@ -135,35 +136,49 @@ export function AIActionsPanel({ message, className }: AIActionsPanelProps) {
     }
 
     return (
-        <div className={cn("flex flex-col gap-2 p-3 border-t border-border/40", className)}>
-            {/* Section header */}
-            <div className="flex items-center gap-2 mb-0.5">
-                <div className="h-5 w-5 rounded-sm bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
-                    <GitBranch className="h-3 w-3 text-violet-500" />
+        <div className={cn("flex-shrink-0 border-t border-border/40", className)}>
+            {/* Collapsed header — always visible, click to toggle */}
+            <button
+                onClick={() => setIsOpen(v => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/30 transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded-sm bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
+                        <GitBranch className="h-3 w-3 text-violet-500" />
+                    </div>
+                    <h3 className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">
+                        AI Analysis
+                    </h3>
                 </div>
-                <h3 className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">
-                    AI Analysis
-                </h3>
-            </div>
+                <ChevronDown className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+                    isOpen && "rotate-180"
+                )} />
+            </button>
 
-            <ActionBlock
-                label="Summarize Thread"
-                icon={<FileText className="h-3.5 w-3.5" />}
-                state={summary}
-                onRun={() => void run("thread_summary", setSummary)}
-            />
-            <ActionBlock
-                label="Extract Actions"
-                icon={<ListChecks className="h-3.5 w-3.5" />}
-                state={actions}
-                onRun={() => void run("action_extraction", setActions)}
-            />
-            <ActionBlock
-                label="Detect Decisions"
-                icon={<GitBranch className="h-3.5 w-3.5" />}
-                state={decisions}
-                onRun={() => void run("decision_detection", setDecisions)}
-            />
+            {/* Expandable content — own scroll so it can't crush the email body */}
+            {isOpen && (
+                <div className="flex flex-col gap-2 px-3 pb-3 max-h-72 overflow-y-auto">
+                    <ActionBlock
+                        label="Summarize Thread"
+                        icon={<FileText className="h-3.5 w-3.5" />}
+                        state={summary}
+                        onRun={() => void run("thread_summary", setSummary)}
+                    />
+                    <ActionBlock
+                        label="Extract Actions"
+                        icon={<ListChecks className="h-3.5 w-3.5" />}
+                        state={actions}
+                        onRun={() => void run("action_extraction", setActions)}
+                    />
+                    <ActionBlock
+                        label="Detect Decisions"
+                        icon={<GitBranch className="h-3.5 w-3.5" />}
+                        state={decisions}
+                        onRun={() => void run("decision_detection", setDecisions)}
+                    />
+                </div>
+            )}
         </div>
     );
 }
