@@ -8,6 +8,8 @@ interface ChatMessage {
 
 interface ChatRequestBody {
     messages: ChatMessage[];
+    /** Optional live data context injected by the client from enabled integrations */
+    context?: string;
 }
 
 /**
@@ -38,12 +40,16 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "messages array is required." }, { status: 400 });
     }
 
+    const contextSection = body.context?.trim()
+        ? `\n\n---\n## Live Data from User's Integrations\nThe following real data was fetched from the user's connected accounts. Use it to give accurate, personalized answers.\n\n${body.context.trim()}\n---`
+        : "";
+
     const systemMessage: ChatMessage = {
         role: "system",
         content: `You are Nexaro AI, a personal executive assistant embedded in the Nexaro unified inbox.
 You help CEOs manage their communication, prioritize decisions, draft messages, and think through complex topics.
 Be concise, professional, and direct. Format responses with markdown when helpful (bullet points, bold text).
-Today's date: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.`,
+Today's date: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.${contextSection}`,
     };
 
     const messages = [systemMessage, ...body.messages];

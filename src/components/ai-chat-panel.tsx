@@ -10,8 +10,17 @@ import {
     ChevronLeft,
     ChevronRight,
     Loader2,
+    ShieldCheck,
+    X,
+    Mail,
+    Hash,
+    Calendar,
+    Monitor,
+    Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { Message } from "@/lib/mock-data";
+import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,14 +38,39 @@ interface ChatSession {
     updatedAt: number;
 }
 
-// ── Storage helpers (localStorage) ────────────────────────────────────────
+export interface AIChatPermissions {
+    gmail: boolean;
+    slack: boolean;
+    calendar: boolean;
+    teams: boolean;
+    outlook: boolean;
+}
 
-const STORAGE_KEY = "nexaro-ai-chats";
+export interface AIChatConnected {
+    gmail: boolean;
+    slack: boolean;
+    calendar: boolean;
+    teams: boolean;
+    outlook: boolean;
+}
+
+// ── Storage helpers ────────────────────────────────────────────────────────
+
+const SESSIONS_KEY = "nexaro-ai-chats";
+const PERMISSIONS_KEY = "nexaro-ai-permissions";
+
+const DEFAULT_PERMISSIONS: AIChatPermissions = {
+    gmail: false,
+    slack: false,
+    calendar: false,
+    teams: false,
+    outlook: false,
+};
 
 function loadSessions(): ChatSession[] {
     if (typeof window === "undefined") return [];
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(SESSIONS_KEY);
         return raw ? (JSON.parse(raw) as ChatSession[]) : [];
     } catch {
         return [];
@@ -45,7 +79,22 @@ function loadSessions(): ChatSession[] {
 
 function saveSessions(sessions: ChatSession[]) {
     if (typeof window === "undefined") return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+}
+
+function loadPermissions(): AIChatPermissions {
+    if (typeof window === "undefined") return { ...DEFAULT_PERMISSIONS };
+    try {
+        const raw = localStorage.getItem(PERMISSIONS_KEY);
+        return raw ? { ...DEFAULT_PERMISSIONS, ...(JSON.parse(raw) as Partial<AIChatPermissions>) } : { ...DEFAULT_PERMISSIONS };
+    } catch {
+        return { ...DEFAULT_PERMISSIONS };
+    }
+}
+
+function savePermissions(p: AIChatPermissions) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(p));
 }
 
 function makeId() {
@@ -57,7 +106,98 @@ function makeTitleFromMessage(content: string): string {
     return trimmed.length > 40 ? trimmed.slice(0, 40) + "…" : trimmed;
 }
 
-// ── Markdown-lite renderer (no external dep) ──────────────────────────────
+// ── Context builder ────────────────────────────────────────────────────────
+
+function buildContext(
+    permissions: AIChatPermissions,
+    allMessages: Message[],
+    upcomingMeetings: UpcomingMeeting[],
+): string {
+    const sections: string[] = [];
+
+    // Gmail
+    if (permissions.gmail) {
+        const gmailMsgs = allMessages
+            .filter(m => m.source === "gmail")
+            .sort((a, b) => b.importance_score - a.importance_score)
+            .slice(0, 20);
+        if (gmailMsgs.length > 0) {
+            const lines = gmailMsgs.map(m => {
+                const status = m.status === "unread" ? "UNREAD" : "read";
+                const score = Math.round(m.importance_score * 10);
+                const preview = m.content.slice(0, 120).replace(/\n/g, " ");
+                return `- [${status}] [Score: ${score}/100] From: ${m.sender} | Subject: ${m.subject ?? "(no subject)"} | "${preview}…"`;
+            });
+            sections.push(`### Gmail (${gmailMsgs.length} messages, sorted by importance)\n${lines.join("\n")}`);
+        }
+    }
+
+    // Slack
+    if (permissions.slack) {
+        const slackMsgs = allMessages
+            .filter(m => m.source === "slack")
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 15);
+        if (slackMsgs.length > 0) {
+            const lines = slackMsgs.map(m => {
+                const preview = m.content.slice(0, 100).replace(/\n/g, " ");
+                const channel = m.subject ?? m.accountId ?? "unknown";
+                return `- From: ${m.sender} in #${channel} | "${preview}…"`;
+            });
+            sections.push(`### Slack (${slackMsgs.length} recent messages)\n${lines.join("\n")}`);
+        }
+    }
+
+    // Calendar
+    if (permissions.calendar) {
+        const meetings = upcomingMeetings.slice(0, 10);
+        if (meetings.length > 0) {
+            const lines = meetings.map(m => {
+                const ev = m.event;
+                const start = ev.start.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+                const attendees = ev.attendees?.map(a => a.displayName ?? a.email).join(", ") ?? "—";
+                const loc = ev.conferenceLink ? `(Video call)` : ev.location ? `(${ev.location})` : "";
+                return `- ${ev.title} | ${start} ${loc} | Attendees: ${attendees}`;
+            });
+            sections.push(`### Upcoming Calendar Events (${meetings.length})\n${lines.join("\n")}`);
+        }
+    }
+
+    // Teams
+    if (permissions.teams) {
+        const teamsMsgs = allMessages
+            .filter(m => m.source === "teams")
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 15);
+        if (teamsMsgs.length > 0) {
+            const lines = teamsMsgs.map(m => {
+                const preview = m.content.slice(0, 100).replace(/\n/g, " ");
+                return `- From: ${m.sender} | Subject: ${m.subject ?? "—"} | "${preview}…"`;
+            });
+            sections.push(`### Microsoft Teams (${teamsMsgs.length} recent messages)\n${lines.join("\n")}`);
+        }
+    }
+
+    // Outlook
+    if (permissions.outlook) {
+        const outlookMsgs = allMessages
+            .filter(m => m.source === "outlook")
+            .sort((a, b) => b.importance_score - a.importance_score)
+            .slice(0, 15);
+        if (outlookMsgs.length > 0) {
+            const lines = outlookMsgs.map(m => {
+                const status = m.status === "unread" ? "UNREAD" : "read";
+                const preview = m.content.slice(0, 100).replace(/\n/g, " ");
+                return `- [${status}] From: ${m.sender} | Subject: ${m.subject ?? "(no subject)"} | "${preview}…"`;
+            });
+            sections.push(`### Outlook (${outlookMsgs.length} messages)\n${lines.join("\n")}`);
+        }
+    }
+
+    return sections.join("\n\n");
+}
+
+// ── Markdown-lite renderer ────────────────────────────────────────────────
 
 function renderMarkdown(text: string): React.ReactNode[] {
     const lines = text.split("\n");
@@ -67,7 +207,6 @@ function renderMarkdown(text: string): React.ReactNode[] {
     while (i < lines.length) {
         const line = lines[i];
 
-        // Code block
         if (line.startsWith("```")) {
             const codeLines: string[] = [];
             i++;
@@ -84,24 +223,19 @@ function renderMarkdown(text: string): React.ReactNode[] {
             continue;
         }
 
-        // Heading
         if (line.startsWith("### ")) {
             nodes.push(<p key={i} className="font-semibold text-sm mt-3 mb-1">{line.slice(4)}</p>);
-            i++;
-            continue;
+            i++; continue;
         }
         if (line.startsWith("## ")) {
             nodes.push(<p key={i} className="font-semibold text-sm mt-3 mb-1">{line.slice(3)}</p>);
-            i++;
-            continue;
+            i++; continue;
         }
         if (line.startsWith("# ")) {
             nodes.push(<p key={i} className="font-bold text-base mt-3 mb-1">{line.slice(2)}</p>);
-            i++;
-            continue;
+            i++; continue;
         }
 
-        // Bullet
         if (line.startsWith("- ") || line.startsWith("* ")) {
             const items: string[] = [];
             while (i < lines.length && (lines[i].startsWith("- ") || lines[i].startsWith("* "))) {
@@ -110,15 +244,12 @@ function renderMarkdown(text: string): React.ReactNode[] {
             }
             nodes.push(
                 <ul key={i} className="list-disc list-inside space-y-0.5 my-1 text-sm">
-                    {items.map((item, j) => (
-                        <li key={j}>{inlineFormat(item)}</li>
-                    ))}
+                    {items.map((item, j) => <li key={j}>{inlineFormat(item)}</li>)}
                 </ul>,
             );
             continue;
         }
 
-        // Numbered list
         if (/^\d+\.\s/.test(line)) {
             const items: string[] = [];
             while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
@@ -127,27 +258,18 @@ function renderMarkdown(text: string): React.ReactNode[] {
             }
             nodes.push(
                 <ol key={i} className="list-decimal list-inside space-y-0.5 my-1 text-sm">
-                    {items.map((item, j) => (
-                        <li key={j}>{inlineFormat(item)}</li>
-                    ))}
+                    {items.map((item, j) => <li key={j}>{inlineFormat(item)}</li>)}
                 </ol>,
             );
             continue;
         }
 
-        // Empty line
         if (line.trim() === "") {
             nodes.push(<div key={i} className="h-2" />);
-            i++;
-            continue;
+            i++; continue;
         }
 
-        // Normal paragraph
-        nodes.push(
-            <p key={i} className="text-sm leading-relaxed">
-                {inlineFormat(line)}
-            </p>,
-        );
+        nodes.push(<p key={i} className="text-sm leading-relaxed">{inlineFormat(line)}</p>);
         i++;
     }
 
@@ -155,7 +277,6 @@ function renderMarkdown(text: string): React.ReactNode[] {
 }
 
 function inlineFormat(text: string): React.ReactNode {
-    // Bold **text** and `code`
     const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
     return parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
@@ -168,33 +289,186 @@ function inlineFormat(text: string): React.ReactNode {
     });
 }
 
+// ── Permissions Panel ─────────────────────────────────────────────────────
+
+interface IntegrationDef {
+    key: keyof AIChatPermissions;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+}
+
+const INTEGRATIONS: IntegrationDef[] = [
+    {
+        key: "gmail",
+        label: "Gmail",
+        description: "Top 20 emails by importance score (sender, subject, preview)",
+        icon: <Mail className="w-4 h-4 text-red-500" />,
+    },
+    {
+        key: "slack",
+        label: "Slack",
+        description: "15 most recent Slack messages (sender, channel, preview)",
+        icon: <Hash className="w-4 h-4 text-purple-500" />,
+    },
+    {
+        key: "calendar",
+        label: "Google Calendar",
+        description: "Upcoming meetings (title, time, attendees, location)",
+        icon: <Calendar className="w-4 h-4 text-blue-500" />,
+    },
+    {
+        key: "teams",
+        label: "Microsoft Teams",
+        description: "15 most recent Teams messages (sender, subject, preview)",
+        icon: <Monitor className="w-4 h-4 text-indigo-500" />,
+    },
+    {
+        key: "outlook",
+        label: "Outlook",
+        description: "15 most important Outlook emails (sender, subject, preview)",
+        icon: <Inbox className="w-4 h-4 text-blue-600" />,
+    },
+];
+
+interface PermissionsPanelProps {
+    permissions: AIChatPermissions;
+    connected: AIChatConnected;
+    onChange: (key: keyof AIChatPermissions, value: boolean) => void;
+    onClose: () => void;
+}
+
+function PermissionsPanel({ permissions, connected, onChange, onClose }: PermissionsPanelProps) {
+    const enabledCount = Object.values(permissions).filter(Boolean).length;
+
+    return (
+        <div className="absolute inset-0 z-10 bg-background/95 backdrop-blur-sm flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold">Data Access Permissions</span>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4">
+                <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                    Allow the AI to read live data from your connected integrations. Data is only sent
+                    when you send a message and is never stored on our servers.
+                </p>
+
+                <div className="space-y-2">
+                    {INTEGRATIONS.map(integration => {
+                        const isConnected = connected[integration.key];
+                        const isEnabled = permissions[integration.key];
+
+                        return (
+                            <div
+                                key={integration.key}
+                                className={cn(
+                                    "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                                    !isConnected
+                                        ? "border-border/50 opacity-50"
+                                        : isEnabled
+                                            ? "border-primary/30 bg-primary/5"
+                                            : "border-border hover:border-border/80",
+                                )}
+                            >
+                                <div className="mt-0.5 shrink-0">{integration.icon}</div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-sm font-medium">{integration.label}</span>
+                                        {!isConnected ? (
+                                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
+                                                Not connected
+                                            </span>
+                                        ) : (
+                                            <button
+                                                onClick={() => onChange(integration.key, !isEnabled)}
+                                                className={cn(
+                                                    "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+                                                    isEnabled ? "bg-primary" : "bg-muted-foreground/30",
+                                                )}
+                                                role="switch"
+                                                aria-checked={isEnabled}
+                                            >
+                                                <span
+                                                    className={cn(
+                                                        "inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform",
+                                                        isEnabled ? "translate-x-4" : "translate-x-1",
+                                                    )}
+                                                />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{integration.description}</p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-border shrink-0">
+                <p className="text-[11px] text-muted-foreground text-center">
+                    {enabledCount === 0
+                        ? "No integrations enabled — AI has no access to your data"
+                        : `${enabledCount} integration${enabledCount > 1 ? "s" : ""} enabled — data is included with each message`}
+                </p>
+            </div>
+        </div>
+    );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 
 interface AIChatPanelProps {
     className?: string;
+    allMessages?: Message[];
+    upcomingMeetings?: UpcomingMeeting[];
+    connected?: Partial<AIChatConnected>;
 }
 
-export function AIChatPanel({ className }: AIChatPanelProps) {
+export function AIChatPanel({ className, allMessages = [], upcomingMeetings = [], connected = {} }: AIChatPanelProps) {
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [showPermissions, setShowPermissions] = useState(false);
+    const [permissions, setPermissions] = useState<AIChatPermissions>({ ...DEFAULT_PERMISSIONS });
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
+    const resolvedConnected: AIChatConnected = {
+        gmail: connected.gmail ?? false,
+        slack: connected.slack ?? false,
+        calendar: connected.calendar ?? false,
+        teams: connected.teams ?? false,
+        outlook: connected.outlook ?? false,
+    };
+
     // Load from localStorage on mount
     useEffect(() => {
-        const stored = loadSessions();
-        setSessions(stored);
-        if (stored.length > 0) {
-            setActiveId(stored[0].id);
+        const storedSessions = loadSessions();
+        const storedPermissions = loadPermissions();
+        setSessions(storedSessions);
+        setPermissions(storedPermissions);
+        if (storedSessions.length > 0) {
+            setActiveId(storedSessions[0].id);
         }
     }, []);
 
     const activeSession = sessions.find(s => s.id === activeId) ?? null;
 
-    // Scroll to bottom on new messages
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [activeSession?.messages.length]);
@@ -202,6 +476,14 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
     const updateSessions = useCallback((updated: ChatSession[]) => {
         setSessions(updated);
         saveSessions(updated);
+    }, []);
+
+    const handlePermissionChange = useCallback((key: keyof AIChatPermissions, value: boolean) => {
+        setPermissions(prev => {
+            const next = { ...prev, [key]: value };
+            savePermissions(next);
+            return next;
+        });
     }, []);
 
     const createNewChat = useCallback(() => {
@@ -227,6 +509,10 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
         }
     }, [sessions, activeId, updateSessions]);
 
+    const enabledIntegrationCount = Object.values(permissions).filter(
+        (v, i) => v && Object.values(resolvedConnected)[i],
+    ).length;
+
     const sendMessage = useCallback(async () => {
         const trimmed = input.trim();
         if (!trimmed || isLoading) return;
@@ -234,7 +520,6 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
         let sessionId = activeId;
         let currentSessions = [...sessions];
 
-        // Auto-create a new session if none active
         if (!sessionId) {
             const newSession: ChatSession = {
                 id: makeId(),
@@ -249,29 +534,20 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
         }
 
         const userMsg: ChatMessage = { role: "user", content: trimmed, createdAt: Date.now() };
-
         const sessionIdx = currentSessions.findIndex(s => s.id === sessionId);
         if (sessionIdx === -1) return;
 
         const session = currentSessions[sessionIdx];
         const updatedMessages = [...session.messages, userMsg];
+        const newTitle = session.messages.length === 0 ? makeTitleFromMessage(trimmed) : session.title;
 
-        // Update title from first message
-        const newTitle = session.messages.length === 0
-            ? makeTitleFromMessage(trimmed)
-            : session.title;
-
-        const updatedSession: ChatSession = {
-            ...session,
-            title: newTitle,
-            messages: updatedMessages,
-            updatedAt: Date.now(),
-        };
-
-        currentSessions[sessionIdx] = updatedSession;
+        currentSessions[sessionIdx] = { ...session, title: newTitle, messages: updatedMessages, updatedAt: Date.now() };
         updateSessions(currentSessions);
         setInput("");
         setIsLoading(true);
+
+        // Build context from enabled integrations
+        const context = buildContext(permissions, allMessages, upcomingMeetings);
 
         try {
             const res = await fetch("/api/ai/chat", {
@@ -279,11 +555,11 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+                    context: context || undefined,
                 }),
             });
 
             const data = (await res.json()) as { reply?: string; error?: string };
-
             const assistantMsg: ChatMessage = {
                 role: "assistant",
                 content: data.reply ?? data.error ?? "An error occurred.",
@@ -306,10 +582,7 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
             if (latestIdx !== -1) {
                 latestSessions[latestIdx] = {
                     ...latestSessions[latestIdx],
-                    messages: [
-                        ...latestSessions[latestIdx].messages,
-                        { role: "assistant", content: "Failed to connect. Please try again.", createdAt: Date.now() },
-                    ],
+                    messages: [...latestSessions[latestIdx].messages, { role: "assistant", content: "Failed to connect. Please try again.", createdAt: Date.now() }],
                     updatedAt: Date.now(),
                 };
                 updateSessions(latestSessions);
@@ -318,7 +591,7 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
             setIsLoading(false);
             inputRef.current?.focus();
         }
-    }, [input, isLoading, activeId, sessions, updateSessions]);
+    }, [input, isLoading, activeId, sessions, updateSessions, permissions, allMessages, upcomingMeetings]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -328,14 +601,13 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
     };
 
     return (
-        <div className={cn("flex h-full bg-background text-foreground", className)}>
+        <div className={cn("flex h-full bg-background text-foreground relative", className)}>
 
             {/* ── Session Sidebar ──────────────────────────────────────── */}
             <div className={cn(
                 "border-r border-border flex flex-col transition-all duration-200 shrink-0",
                 sidebarOpen ? "w-56" : "w-0 overflow-hidden",
             )}>
-                {/* New chat button */}
                 <div className="p-3 border-b border-border shrink-0">
                     <button
                         onClick={createNewChat}
@@ -346,12 +618,9 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                     </button>
                 </div>
 
-                {/* Sessions list */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
                     {sessions.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-6 px-2">
-                            No chats yet.
-                        </p>
+                        <p className="text-xs text-muted-foreground text-center py-6 px-2">No chats yet.</p>
                     ) : (
                         sessions.map(session => (
                             <div
@@ -392,9 +661,24 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                         {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </button>
                     <Sparkles className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-sm font-semibold">
+                    <span className="text-sm font-semibold flex-1 truncate">
                         {activeSession?.title ?? "AI Chat"}
                     </span>
+
+                    {/* Data access button */}
+                    <button
+                        onClick={() => setShowPermissions(v => !v)}
+                        className={cn(
+                            "flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors",
+                            enabledIntegrationCount > 0
+                                ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                        title="Manage data access"
+                    >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        {enabledIntegrationCount > 0 ? `${enabledIntegrationCount} active` : "Data access"}
+                    </button>
                 </div>
 
                 {/* Messages */}
@@ -410,7 +694,16 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                                     Your executive assistant. Ask about your inbox, draft messages, or think through decisions.
                                 </p>
                             </div>
-                            <div className="flex flex-wrap gap-2 justify-center mt-2">
+                            {enabledIntegrationCount === 0 && (
+                                <button
+                                    onClick={() => setShowPermissions(true)}
+                                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors text-muted-foreground"
+                                >
+                                    <ShieldCheck className="w-3 h-3" />
+                                    Enable data access for personalized answers
+                                </button>
+                            )}
+                            <div className="flex flex-wrap gap-2 justify-center mt-1">
                                 {[
                                     "What are my top priorities today?",
                                     "Summarize my unread emails",
@@ -436,7 +729,6 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                                         msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto",
                                     )}
                                 >
-                                    {/* Avatar */}
                                     <div className={cn(
                                         "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5",
                                         msg.role === "user"
@@ -445,23 +737,17 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                                     )}>
                                         {msg.role === "user" ? "U" : <Sparkles className="w-3.5 h-3.5" />}
                                     </div>
-
-                                    {/* Bubble */}
                                     <div className={cn(
                                         "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                                         msg.role === "user"
                                             ? "bg-primary text-primary-foreground rounded-tr-sm"
                                             : "bg-muted text-foreground rounded-tl-sm",
                                     )}>
-                                        {msg.role === "assistant"
-                                            ? renderMarkdown(msg.content)
-                                            : <p>{msg.content}</p>
-                                        }
+                                        {msg.role === "assistant" ? renderMarkdown(msg.content) : <p>{msg.content}</p>}
                                     </div>
                                 </div>
                             ))}
 
-                            {/* Loading indicator */}
                             {isLoading && (
                                 <div className="flex gap-3 max-w-[85%] mr-auto">
                                     <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center shrink-0 mt-0.5">
@@ -480,6 +766,17 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
 
                 {/* Input */}
                 <div className="p-4 border-t border-border shrink-0">
+                    {enabledIntegrationCount > 0 && (
+                        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                            <span className="text-[10px] text-muted-foreground">Context:</span>
+                            {INTEGRATIONS.filter(i => permissions[i.key] && resolvedConnected[i.key]).map(i => (
+                                <span key={i.key} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                                    {i.icon && React.cloneElement(i.icon as React.ReactElement<{ className?: string }>, { className: "w-2.5 h-2.5" })}
+                                    {i.label}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex gap-2 items-end bg-muted/50 border border-border rounded-xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
                         <textarea
                             ref={inputRef}
@@ -506,6 +803,16 @@ export function AIChatPanel({ className }: AIChatPanelProps) {
                     </p>
                 </div>
             </div>
+
+            {/* ── Permissions overlay ───────────────────────────────────── */}
+            {showPermissions && (
+                <PermissionsPanel
+                    permissions={permissions}
+                    connected={resolvedConnected}
+                    onChange={handlePermissionChange}
+                    onClose={() => setShowPermissions(false)}
+                />
+            )}
         </div>
     );
 }

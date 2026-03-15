@@ -1102,7 +1102,18 @@ function DashboardContent() {
 
           {/* ── AI Chat ───────────────────────────────────────────────── */}
           {showAIChat ? (
-            <AIChatPanel className="flex-1" />
+            <AIChatPanel
+                className="flex-1"
+                allMessages={allMessages}
+                upcomingMeetings={upcomingMeetings}
+                connected={{
+                  gmail: gmailAccounts.length > 0,
+                  slack: slackConnected,
+                  calendar: gmailAccounts.length > 0,
+                  teams: microsoftConnected,
+                  outlook: microsoftConnected,
+                }}
+              />
           ) : showDecisions ? (
             <div className="flex-1 overflow-y-auto p-6">
               <DecisionsDashboard
