@@ -22,6 +22,12 @@ export interface SyncState {
     lastError: string | null;
     /** Gmail only: last known history ID — used with history.list for incremental sync */
     historyId?: string;
+    /** Gmail only: true when a Pub/Sub push watch is active (reduces polling to 10 min fallback) */
+    pushActive?: boolean;
+    /** Gmail only: ISO-8601 expiration of the current Gmail push watch (watches expire every 7 days) */
+    watchExpiration?: string;
+    /** Gmail only: ISO-8601 timestamp of the last Pub/Sub push notification received — triggers immediate client sync */
+    lastPushAt?: string;
     /** Slack only: map of channelId → latest message ts — used as oldest= cursor */
     channelCursors?: Record<string, string>;
 }
@@ -37,6 +43,8 @@ export interface SyncResult {
 export interface GmailSyncCredentials {
     uid: string;
     email: string;
+    /** Firebase ID token — required for server-side Firestore token management */
+    idToken: string;
 }
 
 export interface SlackSyncCredentials {

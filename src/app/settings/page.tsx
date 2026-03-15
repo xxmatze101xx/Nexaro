@@ -213,6 +213,15 @@ function SettingsContent() {
                         localStorage.setItem(`gmail_token_expiry_${newEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
                         if (data.refresh_token) await saveGmailRefreshToken(uid, data.refresh_token, newEmail);
                         setGmailAccounts(await getGmailAccounts(uid));
+                        // Register Gmail push watch (fire-and-forget — polling stays as fallback)
+                        const idToken = await user?.getIdToken();
+                        if (idToken) {
+                            void fetch("/api/gmail/watch", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                                body: JSON.stringify({ email: newEmail }),
+                            }).catch(() => undefined);
+                        }
                     }
                 }
             }
