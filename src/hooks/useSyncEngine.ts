@@ -25,6 +25,7 @@ export interface SyncEngineStatus {
     gmail: SyncStatus;
     slack: SyncStatus;
     teams: SyncStatus;
+    outlook: SyncStatus;
 }
 
 export interface UseSyncEngineResult {
@@ -52,7 +53,7 @@ export function useSyncEngine({
     microsoftConnected,
 }: SyncEngineOptions): UseSyncEngineResult {
     const [syncedMessages, setSyncedMessages] = useState<Map<string, UnifiedMessage>>(new Map());
-    const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>({ gmail: "idle", slack: "idle", teams: "idle" });
+    const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>({ gmail: "idle", slack: "idle", teams: "idle", outlook: "idle" });
     const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
 
     // Track whether initial sync has been triggered to avoid redundant calls
@@ -121,11 +122,12 @@ export function useSyncEngine({
             }
         }
 
-        // ── Microsoft Teams ────────────────────────────────────────────────────
+        // ── Microsoft Teams + Outlook ──────────────────────────────────────────
         if (microsoftConnected) {
+            const idToken = await user.getIdToken();
+
             setSyncStatus(prev => ({ ...prev, teams: "syncing" }));
             try {
-                const idToken = await user.getIdToken();
                 const teamsResult = await syncEngine.syncTeams(user.uid, {
                     uid: user.uid,
                     idToken,
@@ -138,6 +140,22 @@ export function useSyncEngine({
             } catch (e: unknown) {
                 console.warn("[useSyncEngine] Teams sync failed:", e instanceof Error ? e.message : String(e));
                 setSyncStatus(prev => ({ ...prev, teams: "error" }));
+            }
+
+            setSyncStatus(prev => ({ ...prev, outlook: "syncing" }));
+            try {
+                const outlookResult = await syncEngine.syncOutlook(user.uid, {
+                    uid: user.uid,
+                    idToken,
+                });
+                results.push(outlookResult);
+
+                const hasError = outlookResult.errors.length > 0 && outlookResult.added === 0;
+                setSyncStatus(prev => ({ ...prev, outlook: hasError ? "error" : "idle" }));
+                mergeMessages(outlookResult.messages);
+            } catch (e: unknown) {
+                console.warn("[useSyncEngine] Outlook sync failed:", e instanceof Error ? e.message : String(e));
+                setSyncStatus(prev => ({ ...prev, outlook: "error" }));
             }
         }
 

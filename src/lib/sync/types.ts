@@ -7,7 +7,7 @@ import type { UnifiedMessage } from "@/lib/normalizers/types";
 
 export type SyncMode = "initial" | "incremental";
 export type SyncStatus = "idle" | "syncing" | "error";
-export type SyncService = "gmail" | "slack" | "teams";
+export type SyncService = "gmail" | "slack" | "teams" | "outlook";
 
 /**
  * Persisted to Firestore: users/{uid}/sync/{service}
@@ -22,7 +22,7 @@ export interface SyncState {
     lastError: string | null;
     /** Gmail only: last known history ID — used with history.list for incremental sync */
     historyId?: string;
-    /** Slack only: map of channelId → latest message ts — used as oldest= cursor */
+    /** Slack/Teams only: map of channelId/chatId → latest message ts — used as cursor */
     channelCursors?: Record<string, string>;
 }
 
@@ -50,5 +50,11 @@ export interface SlackSyncCredentials {
 export interface TeamsSyncCredentials {
     uid: string;
     /** Firebase ID token used to authenticate the /api/microsoft/teams proxy */
+    idToken: string;
+}
+
+export interface OutlookSyncCredentials {
+    uid: string;
+    /** Firebase ID token used to authenticate the /api/microsoft/outlook proxy */
     idToken: string;
 }

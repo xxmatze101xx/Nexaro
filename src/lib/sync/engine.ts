@@ -11,11 +11,13 @@ import { logger } from "../logger";
 import { syncGmail } from "./adapters/gmail";
 import { syncSlack } from "./adapters/slack";
 import { syncTeams } from "./adapters/teams";
+import { syncOutlook } from "./adapters/outlook";
 import { RateLimitError } from "./rate-limiter";
 import type {
     GmailSyncCredentials,
     SlackSyncCredentials,
     TeamsSyncCredentials,
+    OutlookSyncCredentials,
     SyncMode,
     SyncResult,
     SyncState,
@@ -195,9 +197,57 @@ export class SyncEngine {
     }
 
     /**
+     * Sync Outlook inbox for the connected Microsoft account.
+     * Automatically chooses initial vs incremental based on lastSyncAt cursor.
+     */
+    async syncOutlook(uid: string, creds: OutlookSyncCredentials): Promise<SyncResult> {
+        const state = await getSyncState(uid, "outlook");
+        const mode: SyncMode = state?.lastSyncAt ? "incremental" : "initial";
+
+        await saveSyncState(uid, { service: "outlook", status: "syncing" });
+
+        logger.info("sync/outlook", "Starting sync", { uid, mode });
+
+        try {
+            const result = await withRetry(() => syncOutlook(creds, mode, state));
+
+            await saveSyncState(uid, {
+                service: "outlook",
+                status: "idle",
+                lastSyncAt: new Date().toISOString(),
+                errorCount: 0,
+                lastError: null,
+                ...result.nextState,
+            });
+
+            logger.info("sync/outlook", "Sync complete", { uid, mode, added: result.added });
+            return { service: "outlook", ...result };
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            const errorCount = (state?.errorCount ?? 0) + 1;
+
+            logger.error("sync/outlook", "Sync failed", { uid, mode, error: errorMsg, errorCount });
+            await saveSyncState(uid, {
+                service: "outlook",
+                status: "error",
+                errorCount,
+                lastError: errorMsg,
+            });
+
+            return {
+                service: "outlook",
+                added: 0,
+                messages: [],
+                nextState: {},
+                errors: [errorMsg],
+            };
+        }
+    }
+
+    /**
      * Read the current sync state for a service without triggering a sync.
      */
-    async getState(uid: string, service: "gmail" | "slack" | "teams"): Promise<SyncState | null> {
+    async getState(uid: string, service: "gmail" | "slack" | "teams" | "outlook"): Promise<SyncState | null> {
         return getSyncState(uid, service);
     }
 }
