@@ -436,7 +436,7 @@ function DashboardContent() {
 
   // ── Meeting Prep: upcoming meetings + AI briefings ───────────────────────
   const calendarEmails = gmailAccounts.map(acc => acc.email);
-  const { meetings: upcomingMeetings, isLoading: meetingsLoading, generateBriefing } = useMeetingPrep(
+  const { meetings: upcomingMeetings, isLoading: meetingsLoading, generateBriefing: generateMeetingBriefing } = useMeetingPrep(
     user?.uid ?? null,
     calendarEmails,
     allMessages,
@@ -966,7 +966,7 @@ function DashboardContent() {
               <MeetingPrepPanel
                 meetings={upcomingMeetings}
                 isLoading={meetingsLoading}
-                onGenerateBriefing={generateBriefing}
+                onGenerateBriefing={generateMeetingBriefing}
               />
             </div>
           )}

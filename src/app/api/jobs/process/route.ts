@@ -34,7 +34,6 @@ const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.e
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
-const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
