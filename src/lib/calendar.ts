@@ -1,5 +1,13 @@
 import { getCalendarRefreshToken } from "./user";
 
+export interface CalendarAttendee {
+    email: string;
+    displayName?: string;
+    responseStatus?: "accepted" | "declined" | "tentative" | "needsAction";
+    organizer?: boolean;
+    self?: boolean;
+}
+
 export interface CalendarEvent {
     id: string;
     title: string;
@@ -11,6 +19,9 @@ export interface CalendarEvent {
     color: string;
     location?: string;
     description?: string;
+    attendees?: CalendarAttendee[];
+    organizer?: string;
+    conferenceLink?: string;
 }
 
 // Colour palette — one per account, cycles if more than the palette length
@@ -128,8 +139,15 @@ export async function fetchCalendarEvents(
                 );
                 if (!eventsRes.ok) return [];
                 const eventsData = await eventsRes.json();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return (eventsData.items || []).map((ev: any): CalendarEvent => {
                     const allDay = !!ev.start?.date;
+                    const videoLink: string | undefined =
+                        ev.hangoutLink ??
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (ev.conferenceData?.entryPoints as any[] | undefined)?.find(
+                            (e: { entryPointType?: string }) => e.entryPointType === "video",
+                        )?.uri;
                     return {
                         id: `${email}_${ev.id}`,
                         title: ev.summary || "(Kein Titel)",
@@ -141,6 +159,27 @@ export async function fetchCalendarEvents(
                         color: cal.backgroundColor || color,
                         location: ev.location,
                         description: ev.description,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        attendees: Array.isArray(ev.attendees)
+                            ? (ev.attendees as any[]).map(
+                                  (a: {
+                                      email?: string;
+                                      displayName?: string;
+                                      responseStatus?: string;
+                                      organizer?: boolean;
+                                      self?: boolean;
+                                  }): CalendarAttendee => ({
+                                      email: a.email ?? "",
+                                      displayName: a.displayName,
+                                      responseStatus:
+                                          a.responseStatus as CalendarAttendee["responseStatus"],
+                                      organizer: a.organizer,
+                                      self: a.self,
+                                  }),
+                              )
+                            : undefined,
+                        organizer: ev.organizer?.displayName ?? ev.organizer?.email,
+                        conferenceLink: videoLink,
                     };
                 });
             })

@@ -25,6 +25,8 @@ import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
 import { SlackChannelView } from "@/components/slack-channel-view";
 import { DailyBriefingPanel } from "@/components/daily-briefing-panel";
 import { useDailyBriefing } from "@/hooks/useDailyBriefing";
+import { MeetingPrepPanel } from "@/components/meeting-prep-panel";
+import { useMeetingPrep } from "@/hooks/useMeetingPrep";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -114,6 +116,7 @@ function DashboardContent() {
     slackConnected,
     slackChannels,
     microsoftConnected,
+    enableEmbeddings: true,
   });
 
   // Fetch Slack channels via server-side proxy (logs errors in Vercel, avoids CORS/scope issues)
@@ -427,6 +430,14 @@ function DashboardContent() {
     error: briefingError,
     generate: generateBriefing,
   } = useDailyBriefing(user?.uid ?? null, allMessages);
+
+  // ── Meeting Prep: upcoming meetings + AI briefings ───────────────────────
+  const calendarEmails = gmailAccounts.map(acc => acc.email);
+  const { meetings: upcomingMeetings, isLoading: meetingsLoading, generateBriefing } = useMeetingPrep(
+    user?.uid ?? null,
+    calendarEmails,
+    allMessages,
+  );
 
   // Stats
 
@@ -920,6 +931,20 @@ function DashboardContent() {
               Account hinzufügen
             </Link>
           </div>
+
+          {/* ── Meeting Prep Widget ─────────────────────────────────── */}
+          {calendarEmails.length > 0 && (
+            <div className="px-3 pt-4 pb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                Upcoming Meetings
+              </p>
+              <MeetingPrepPanel
+                meetings={upcomingMeetings}
+                isLoading={meetingsLoading}
+                onGenerateBriefing={generateBriefing}
+              />
+            </div>
+          )}
         </div>
 
         {/* Bottom Section */}

@@ -1,18 +1,7 @@
 import { NextResponse } from "next/server";
-import { readUserMemory, updateUserMemory } from "@/lib/user-memory";
-import type { UserMemory } from "@/lib/user-memory";
+import { readUserMemory, writeUserMemory, recordInteractionSignal } from "@/lib/user-memory";
+import type { MemoryInteractionSignal, UserMemoryProfile } from "@/lib/user-memory";
 import { logger } from "@/lib/logger";
-
-/**
- * GET  /api/user/memory — Returns the authenticated user's stored preferences.
- * POST /api/user/memory — Updates user preferences (increments counters, sets explicit values).
- *
- * POST body:
- *   { regenerated?: boolean }          — user regenerated a draft
- *   { accepted?: boolean }             — user accepted a draft without regeneration
- *   { tone?: "formal"|"professional"|"casual" }
- *   { responseLength?: "short"|"medium"|"long" }
- */
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 
@@ -30,50 +19,65 @@ async function verifyIdToken(idToken: string): Promise<string | null> {
     return data.users?.[0]?.localId ?? null;
 }
 
+/**
+ * GET /api/user/memory
+ * Authorization: Bearer <firebase_id_token>
+ * Returns the current user memory profile.
+ */
 export async function GET(request: Request) {
     const idToken = request.headers.get("Authorization")?.slice(7);
-    if (!idToken) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    if (!idToken) return NextResponse.json({ error: "missing_auth" }, { status: 401 });
 
     const uid = await verifyIdToken(idToken);
-    if (!uid) return NextResponse.json({ error: "token_verify_failed" }, { status: 401 });
+    if (!uid) return NextResponse.json({ error: "auth_failed" }, { status: 401 });
 
-    const memory = await readUserMemory(uid, idToken);
-    return NextResponse.json({ memory: memory ?? {} });
+    const profile = await readUserMemory(uid, idToken);
+    return NextResponse.json({ profile });
 }
 
+/**
+ * POST /api/user/memory
+ * Authorization: Bearer <firebase_id_token>
+ * Body:
+ *   { signal: MemoryInteractionSignal }  — record an interaction, or
+ *   { profile: Partial<UserMemoryProfile> } — explicit preference update
+ *
+ * Returns { profile } with the updated state.
+ */
 export async function POST(request: Request) {
     const idToken = request.headers.get("Authorization")?.slice(7);
-    if (!idToken) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    if (!idToken) return NextResponse.json({ error: "missing_auth" }, { status: 401 });
 
-    let body: {
-        regenerated?: boolean;
-        accepted?: boolean;
-        tone?: UserMemory["tone"];
-        responseLength?: UserMemory["responseLength"];
-    };
+    const uid = await verifyIdToken(idToken);
+    if (!uid) return NextResponse.json({ error: "auth_failed" }, { status: 401 });
+
+    let body: { signal?: MemoryInteractionSignal; profile?: Partial<UserMemoryProfile> };
     try {
         body = (await request.json()) as typeof body;
     } catch {
-        return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+        return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
-    const uid = await verifyIdToken(idToken);
-    if (!uid) return NextResponse.json({ error: "token_verify_failed" }, { status: 401 });
+    try {
+        if (body.signal) {
+            // Record an interaction signal (e.g. reply sent, message engaged)
+            await recordInteractionSignal(uid, idToken, body.signal);
+            logger.info("user/memory", "Interaction signal recorded", { uid });
+        } else if (body.profile) {
+            // Explicit preference update (e.g. user manually sets tone)
+            const current = await readUserMemory(uid, idToken);
+            const updated: UserMemoryProfile = { ...current, ...body.profile, lastUpdated: new Date().toISOString() };
+            await writeUserMemory(uid, idToken, updated);
+            logger.info("user/memory", "Memory profile updated manually", { uid });
+        } else {
+            return NextResponse.json({ error: "Provide either 'signal' or 'profile' in body." }, { status: 400 });
+        }
 
-    const current = await readUserMemory(uid, idToken) ?? {};
-    const updates: Partial<UserMemory> = {};
-
-    if (body.regenerated) {
-        updates.regenerationCount = (current.regenerationCount ?? 0) + 1;
+        const profile = await readUserMemory(uid, idToken);
+        return NextResponse.json({ profile });
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error("user/memory", "Failed to update memory", { uid, error: msg });
+        return NextResponse.json({ error: "Failed to update memory." }, { status: 500 });
     }
-    if (body.accepted) {
-        updates.acceptanceCount = (current.acceptanceCount ?? 0) + 1;
-    }
-    if (body.tone) updates.tone = body.tone;
-    if (body.responseLength) updates.responseLength = body.responseLength;
-
-    await updateUserMemory(uid, idToken, updates);
-    logger.info("user/memory", "Memory updated", { uid, updates: Object.keys(updates) });
-
-    return NextResponse.json({ ok: true });
 }

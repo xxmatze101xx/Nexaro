@@ -23,6 +23,8 @@ interface DraftRequestBody {
     sender?: string;
     senderEmail?: string;
     body: string;
+    /** Optional: Firebase ID token for personalizing the draft with user memory */
+    idToken?: string;
 }
 
 /**
@@ -55,13 +57,17 @@ export async function POST(request: Request) {
     }
 
     // Load user memory if authenticated (best-effort — no failure if missing)
-    const idToken = request.headers.get("Authorization")?.slice(7);
+    const idToken = request.headers.get("Authorization")?.slice(7) ?? draftBody.idToken;
     let memoryHints = "";
     if (idToken) {
-        const uid = await verifyIdToken(idToken);
-        if (uid) {
-            const memory = await readUserMemory(uid, idToken);
-            memoryHints = formatMemoryForPrompt(memory);
+        try {
+            const uid = await verifyIdToken(idToken);
+            if (uid) {
+                const memory = await readUserMemory(uid, idToken);
+                memoryHints = formatMemoryForPrompt(memory);
+            }
+        } catch {
+            // Memory injection is best-effort — don't block draft generation
         }
     }
 

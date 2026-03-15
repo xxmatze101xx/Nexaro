@@ -1,119 +1,183 @@
 /**
  * user-memory.ts — User preference memory for Nexaro AI features.
  *
- * Stores and retrieves learned user preferences to personalize AI-generated
- * content over time. Preferences are inferred from interaction signals
- * (e.g., draft regenerations suggest the previous output was not ideal).
+ * Stores and retrieves user interaction patterns and writing style signals
+ * from Firestore so they can be injected into AI prompts.
  *
- * Storage: users/{uid}/config/memory (single Firestore document per user)
+ * Firestore path: users/{uid}/memory/profile
  *
  * Schema:
- *   tone:              "formal" | "professional" | "casual"
- *   responseLength:    "short" | "medium" | "long"
- *   regenerationCount: number — total draft regenerations (high = pickier user)
- *   acceptanceCount:   number — total drafts accepted without regeneration
- *   updatedAt:         ISO timestamp
+ *   writingStyle: string    — detected style, e.g. "concise, bullet points"
+ *   tone: string            — detected tone, e.g. "professional", "friendly"
+ *   preferredLength: string — "short" | "medium" | "long"
+ *   frequentSenders: string[] — email addresses the user frequently engages with
+ *   interests: string[]     — topics recurring in engaged messages
+ *   lastUpdated: string     — ISO timestamp
  */
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
-const FIREBASE_API_KEY    = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
-export interface UserMemory {
-    tone?: "formal" | "professional" | "casual";
-    responseLength?: "short" | "medium" | "long";
-    regenerationCount?: number;
-    acceptanceCount?: number;
-    updatedAt?: string;
+export interface UserMemoryProfile {
+    writingStyle: string;
+    tone: "professional" | "friendly" | "formal" | "casual";
+    preferredLength: "short" | "medium" | "long";
+    /** Email addresses the user frequently replies to */
+    frequentSenders: string[];
+    /** Topics or keywords recurring in messages the user engages with */
+    interests: string[];
+    lastUpdated: string;
 }
+
+export interface MemoryInteractionSignal {
+    /** Email address of message sender user just replied to */
+    repliedToEmail?: string;
+    /** Keywords or subject from the message that was engaged with */
+    engagedTopics?: string[];
+    /** Style of draft the user accepted (e.g. length / tone of their sent reply) */
+    draftStyle?: {
+        tone?: "professional" | "friendly" | "formal" | "casual";
+        length?: "short" | "medium" | "long";
+    };
+}
+
+const DEFAULT_PROFILE: UserMemoryProfile = {
+    writingStyle: "professional and concise",
+    tone: "professional",
+    preferredLength: "short",
+    frequentSenders: [],
+    interests: [],
+    lastUpdated: new Date().toISOString(),
+};
 
 interface FirestoreMemoryDoc {
     fields?: {
+        writingStyle?: { stringValue: string };
         tone?: { stringValue: string };
-        responseLength?: { stringValue: string };
-        regenerationCount?: { integerValue: string };
-        acceptanceCount?: { integerValue: string };
-        updatedAt?: { stringValue: string };
+        preferredLength?: { stringValue: string };
+        frequentSenders?: { arrayValue?: { values?: Array<{ stringValue: string }> } };
+        interests?: { arrayValue?: { values?: Array<{ stringValue: string }> } };
+        lastUpdated?: { stringValue: string };
     };
 }
 
-export async function readUserMemory(uid: string, idToken: string): Promise<UserMemory | null> {
-    try {
-        const res = await fetch(
-            `${FIRESTORE_BASE}/users/${uid}/config/memory`,
-            { headers: { Authorization: `Bearer ${idToken}` } },
-        );
-        if (!res.ok) return null;
-
-        const doc = (await res.json()) as FirestoreMemoryDoc;
-        const f = doc.fields;
-        if (!f) return null;
-
-        return {
-            tone: (f.tone?.stringValue as UserMemory["tone"]) ?? undefined,
-            responseLength: (f.responseLength?.stringValue as UserMemory["responseLength"]) ?? undefined,
-            regenerationCount: f.regenerationCount ? parseInt(f.regenerationCount.integerValue, 10) : undefined,
-            acceptanceCount: f.acceptanceCount ? parseInt(f.acceptanceCount.integerValue, 10) : undefined,
-            updatedAt: f.updatedAt?.stringValue,
-        };
-    } catch {
-        return null;
-    }
-}
-
-export async function updateUserMemory(
+export async function readUserMemory(
     uid: string,
     idToken: string,
-    updates: Partial<UserMemory>,
-): Promise<void> {
-    const current = await readUserMemory(uid, idToken) ?? {};
-    const merged: UserMemory = { ...current, ...updates, updatedAt: new Date().toISOString() };
+): Promise<UserMemoryProfile> {
+    const url = `${FIRESTORE_BASE}/users/${uid}/memory/profile`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+    if (!res.ok) return { ...DEFAULT_PROFILE };
 
-    const fields: Record<string, unknown> = {
-        updatedAt: { stringValue: merged.updatedAt },
+    const doc = (await res.json()) as FirestoreMemoryDoc;
+    const f = doc.fields;
+    if (!f) return { ...DEFAULT_PROFILE };
+
+    return {
+        writingStyle: f.writingStyle?.stringValue ?? DEFAULT_PROFILE.writingStyle,
+        tone: (f.tone?.stringValue ?? DEFAULT_PROFILE.tone) as UserMemoryProfile["tone"],
+        preferredLength: (f.preferredLength?.stringValue ?? DEFAULT_PROFILE.preferredLength) as UserMemoryProfile["preferredLength"],
+        frequentSenders: (f.frequentSenders?.arrayValue?.values ?? []).map(v => v.stringValue).filter(Boolean),
+        interests: (f.interests?.arrayValue?.values ?? []).map(v => v.stringValue).filter(Boolean),
+        lastUpdated: f.lastUpdated?.stringValue ?? DEFAULT_PROFILE.lastUpdated,
     };
-    if (merged.tone) fields["tone"] = { stringValue: merged.tone };
-    if (merged.responseLength) fields["responseLength"] = { stringValue: merged.responseLength };
-    if (merged.regenerationCount !== undefined) fields["regenerationCount"] = { integerValue: String(merged.regenerationCount) };
-    if (merged.acceptanceCount !== undefined) fields["acceptanceCount"] = { integerValue: String(merged.acceptanceCount) };
+}
 
-    await fetch(
-        `${FIRESTORE_BASE}/users/${uid}/config/memory?key=${FIREBASE_API_KEY}`,
-        {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ fields }),
+export async function writeUserMemory(
+    uid: string,
+    idToken: string,
+    profile: UserMemoryProfile,
+): Promise<void> {
+    const url =
+        `${FIRESTORE_BASE}/users/${uid}/memory/profile` +
+        `?updateMask.fieldPaths=writingStyle` +
+        `&updateMask.fieldPaths=tone` +
+        `&updateMask.fieldPaths=preferredLength` +
+        `&updateMask.fieldPaths=frequentSenders` +
+        `&updateMask.fieldPaths=interests` +
+        `&updateMask.fieldPaths=lastUpdated`;
+
+    await fetch(url, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
         },
-    ).catch(() => undefined);
+        body: JSON.stringify({
+            fields: {
+                writingStyle: { stringValue: profile.writingStyle },
+                tone: { stringValue: profile.tone },
+                preferredLength: { stringValue: profile.preferredLength },
+                frequentSenders: {
+                    arrayValue: {
+                        values: profile.frequentSenders.map(s => ({ stringValue: s })),
+                    },
+                },
+                interests: {
+                    arrayValue: {
+                        values: profile.interests.map(i => ({ stringValue: i })),
+                    },
+                },
+                lastUpdated: { stringValue: new Date().toISOString() },
+            },
+        }),
+    });
 }
 
 /**
- * Converts stored memory into injected instructions for AI system prompts.
- * Returns an empty string when no meaningful preferences have been recorded.
+ * Merges an interaction signal into the current memory profile.
+ * Reads the current profile, applies the signal, writes back.
  */
-export function formatMemoryForPrompt(memory: UserMemory | null): string {
-    if (!memory) return "";
+export async function recordInteractionSignal(
+    uid: string,
+    idToken: string,
+    signal: MemoryInteractionSignal,
+): Promise<void> {
+    const profile = await readUserMemory(uid, idToken);
 
-    const hints: string[] = [];
-
-    if (memory.tone === "formal") {
-        hints.push("Use formal, conservative language.");
-    } else if (memory.tone === "casual") {
-        hints.push("Use a relaxed, friendly tone.");
+    // Update frequent senders (keep top 20)
+    if (signal.repliedToEmail) {
+        const senders = profile.frequentSenders.filter(s => s !== signal.repliedToEmail);
+        senders.unshift(signal.repliedToEmail);
+        profile.frequentSenders = senders.slice(0, 20);
     }
 
-    if (memory.responseLength === "short") {
-        hints.push("Keep responses very brief (1-2 sentences).");
-    } else if (memory.responseLength === "long") {
-        hints.push("Provide more detailed, thorough responses.");
+    // Update interests (keep top 30 unique keywords)
+    if (signal.engagedTopics?.length) {
+        const interests = new Set([...signal.engagedTopics, ...profile.interests]);
+        profile.interests = Array.from(interests).slice(0, 30);
     }
 
-    const regenCount = memory.regenerationCount ?? 0;
-    const acceptCount = memory.acceptanceCount ?? 0;
-    if (regenCount > acceptCount && regenCount > 3) {
-        hints.push("This user is particular — make the draft especially polished.");
+    // Update writing style signals from accepted drafts
+    if (signal.draftStyle?.tone) profile.tone = signal.draftStyle.tone;
+    if (signal.draftStyle?.length) profile.preferredLength = signal.draftStyle.length;
+
+    await writeUserMemory(uid, idToken, profile);
+}
+
+/**
+ * Formats the memory profile into a compact AI system prompt injection.
+ * Returns an empty string if the profile has no meaningful signals.
+ */
+export function formatMemoryForPrompt(profile: UserMemoryProfile): string {
+    const parts: string[] = [];
+
+    if (profile.tone !== "professional") {
+        parts.push(`Preferred tone: ${profile.tone}.`);
+    }
+    if (profile.preferredLength === "short") {
+        parts.push("Keep replies brief — the user prefers short responses.");
+    } else if (profile.preferredLength === "long") {
+        parts.push("The user prefers detailed, thorough replies.");
+    }
+    if (profile.frequentSenders.length > 0) {
+        parts.push(`Frequent contacts: ${profile.frequentSenders.slice(0, 5).join(", ")}.`);
+    }
+    if (profile.interests.length > 0) {
+        parts.push(`User context: often discusses ${profile.interests.slice(0, 8).join(", ")}.`);
     }
 
-    if (hints.length === 0) return "";
-    return `\nUser preferences (learned from past interactions):\n${hints.map(h => `- ${h}`).join("\n")}`;
+    return parts.length > 0
+        ? `\n\nUser memory context:\n${parts.join("\n")}`
+        : "";
 }

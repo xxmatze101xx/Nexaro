@@ -78,19 +78,17 @@ export function useSyncEngine({
             incoming.forEach(m => next.set(m.id, m));
             return next;
         });
-
         // Auto-enqueue embedding jobs for new messages (fire-and-forget)
         if (enableEmbeddings && user) {
             const newMessages = incoming.filter(m => !embeddingEnqueuedRef.current.has(m.id));
             if (newMessages.length > 0) {
                 newMessages.forEach(m => embeddingEnqueuedRef.current.add(m.id));
-                user.getIdToken().then(idToken => {
-                    void enqueueEmbeddingJobs(newMessages, user, idToken);
-                }).catch(() => undefined);
+                user.getIdToken()
+                    .then(idToken => { void enqueueEmbeddingJobs(newMessages, user, idToken); })
+                    .catch(() => undefined);
             }
         }
-
-    }, []);
+    }, [user, enableEmbeddings]);
 
     const runSync = useCallback(async () => {
         if (!user || isSyncingRef.current) return;
@@ -250,6 +248,7 @@ export function useSyncEngine({
         if (!user) {
             setSyncedMessages(new Map());
             initialSyncDoneRef.current.clear();
+            embeddingEnqueuedRef.current.clear();
         }
     }, [user]);
 
