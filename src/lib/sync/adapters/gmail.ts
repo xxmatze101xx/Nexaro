@@ -7,7 +7,7 @@
  *              Falls back to initial if historyId has expired (404).
  */
 
-import { getValidAccessToken } from "@/lib/gmail";
+import { getValidToken } from "@/lib/token-manager";
 import { normalizeGmail } from "@/lib/normalizers";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import type { GmailSyncCredentials, SyncMode, SyncResult, SyncState } from "../types";
@@ -71,11 +71,11 @@ export async function syncGmail(
     mode: SyncMode,
     state: SyncState | null,
 ): Promise<Omit<SyncResult, "service">> {
-    const { uid, email } = creds;
+    const { uid, email, idToken } = creds;
     const errors: string[] = [];
     const nextState: Partial<SyncState> = {};
 
-    const accessToken = await getValidAccessToken(uid, email);
+    const accessToken = await getValidToken(uid, "gmail", idToken, email);
     if (!accessToken) {
         return { added: 0, messages: [], nextState: {}, errors: ["no_access_token"] };
     }

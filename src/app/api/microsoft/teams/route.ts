@@ -124,12 +124,14 @@ async function resolveMicrosoftToken(
 
             if (tokenData.access_token) {
                 // Persist refreshed token to Firestore (best-effort, non-blocking)
+                const refreshedAt = Date.now();
                 const patchUrl =
                     `${fsUrl}?key=${apiKey}` +
                     `&updateMask.fieldPaths=access_token` +
                     `&updateMask.fieldPaths=refresh_token` +
                     `&updateMask.fieldPaths=expires_in` +
-                    `&updateMask.fieldPaths=token_acquired_at`;
+                    `&updateMask.fieldPaths=token_acquired_at` +
+                    `&updateMask.fieldPaths=expires_at`;
 
                 fetch(patchUrl, {
                     method: "PATCH",
@@ -139,7 +141,8 @@ async function resolveMicrosoftToken(
                             access_token: { stringValue: tokenData.access_token },
                             refresh_token: { stringValue: tokenData.refresh_token ?? refreshToken },
                             expires_in: { integerValue: String(tokenData.expires_in ?? 3600) },
-                            token_acquired_at: { integerValue: String(Date.now()) },
+                            token_acquired_at: { integerValue: String(refreshedAt) },
+                            expires_at: { integerValue: String(refreshedAt + (tokenData.expires_in ?? 3600) * 1000) },
                         },
                     }),
                 }).catch(() => {});

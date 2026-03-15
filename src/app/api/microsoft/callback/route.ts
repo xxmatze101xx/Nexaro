@@ -86,12 +86,14 @@ export async function GET(request: Request) {
         // Write to Firestore via REST API using the user's Firebase ID token as Bearer auth.
         // This satisfies security rules (same pattern as Slack callback).
         const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/microsoft`;
+        const now = Date.now();
         const firestoreBody = {
             fields: {
                 access_token: { stringValue: tokenData.access_token },
                 refresh_token: { stringValue: tokenData.refresh_token ?? "" },
                 expires_in: { integerValue: String(tokenData.expires_in ?? 3600) },
-                token_acquired_at: { integerValue: String(Date.now()) },
+                token_acquired_at: { integerValue: String(now) },
+                expires_at: { integerValue: String(now + (tokenData.expires_in ?? 3600) * 1000) },
                 user_id: { stringValue: profile.id ?? "" },
                 email: { stringValue: profile.mail ?? "" },
                 display_name: { stringValue: profile.displayName ?? "" },
