@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase";
 import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
 import type { SlackChannel } from "@/lib/slack";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
+import { useSemanticSearch } from "@/hooks/useSemanticSearch";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
@@ -93,6 +94,8 @@ function DashboardContent() {
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
+  // Semantic search — enhances keyword filter with embedding-based ranking
+  const { results: semanticResults, isSearching: isSemanticSearching, isFallback: semanticFallback } = useSemanticSearch(searchQuery);
   // Toast system
   const { toasts: actionToasts, showToast, dismissToast } = useToast();
   // New-message toasts (LIVE-02) – max 3
@@ -380,15 +383,27 @@ function DashboardContent() {
       if (selectedSidebarItem.accountId) msgs = msgs.filter(m => m.accountId === selectedSidebarItem.accountId);
     }
 
-    // Filter by search
+    // Filter by search — semantic results take priority over keyword filter
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      msgs = msgs.filter(
-        (m) =>
-          m.content.toLowerCase().includes(q) ||
-          m.sender.toLowerCase().includes(q) ||
-          (m.subject ?? "").toLowerCase().includes(q)
-      );
+      if (semanticResults && !semanticFallback) {
+        // Semantic search: rank by vector similarity score
+        const scoreMap = new Map(semanticResults.map(r => [r.messageId, r.score]));
+        msgs = msgs.filter(m => scoreMap.has(m.id) || scoreMap.has(m.external_id));
+        msgs.sort((a, b) => {
+          const sa = scoreMap.get(a.id) ?? scoreMap.get(a.external_id) ?? 0;
+          const sb = scoreMap.get(b.id) ?? scoreMap.get(b.external_id) ?? 0;
+          return sb - sa;
+        });
+      } else {
+        // Keyword fallback (semantic not yet available or no embeddings stored)
+        const q = searchQuery.toLowerCase();
+        msgs = msgs.filter(
+          (m) =>
+            m.content.toLowerCase().includes(q) ||
+            m.sender.toLowerCase().includes(q) ||
+            (m.subject ?? "").toLowerCase().includes(q)
+        );
+      }
     }
 
     // Sort
@@ -400,7 +415,7 @@ function DashboardContent() {
     }
 
     return msgs;
-  }, [displayMessages, selectedSidebarItem, searchQuery, sortOrder]);
+  }, [displayMessages, allMessages, selectedSidebarItem, searchQuery, searchScope, sortOrder, semanticResults, semanticFallback]);
 
   // Stats
 
