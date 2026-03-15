@@ -21,6 +21,8 @@ import { ToastContainer } from "@/components/ui/toast";
 import { NewMessageToast } from "@/components/new-message-toast";
 import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
 import { SlackChannelView } from "@/components/slack-channel-view";
+import { DailyBriefingPanel } from "@/components/daily-briefing-panel";
+import { useDailyBriefing } from "@/hooks/useDailyBriefing";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -400,6 +402,15 @@ function DashboardContent() {
 
     return msgs;
   }, [displayMessages, selectedSidebarItem, searchQuery, sortOrder]);
+
+  // ── Daily Briefing ──────────────────────────────────────────────────────
+  const {
+    briefing: dailyBriefing,
+    generatedAt: briefingGeneratedAt,
+    isGenerating: isBriefingGenerating,
+    error: briefingError,
+    generate: generateBriefing,
+  } = useDailyBriefing(user?.uid ?? null, allMessages);
 
   // Stats
 
@@ -1004,6 +1015,19 @@ function DashboardContent() {
           messages={allMessages}
           onFilter={(source) => setSelectedSidebarItem({ source })}
         />
+
+        {/* Daily Executive Briefing */}
+        {allMessages.length >= 5 && (
+          <div className="px-6 pt-4 pb-0">
+            <DailyBriefingPanel
+              briefing={dailyBriefing}
+              generatedAt={briefingGeneratedAt}
+              isGenerating={isBriefingGenerating}
+              error={briefingError}
+              onGenerate={generateBriefing}
+            />
+          </div>
+        )}
 
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
