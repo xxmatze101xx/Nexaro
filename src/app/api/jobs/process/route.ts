@@ -30,6 +30,7 @@ import {
  */
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
@@ -218,6 +219,46 @@ async function runJobProcessor(job: Job): Promise<Record<string, unknown>> {
     return processors[job.type](job.input);
 }
 
+// ── Decision persistence ───────────────────────────────────────────────────────
+
+/**
+ * Saves a detected decision record to users/{uid}/decisions in Firestore.
+ * Called after a successful decision_detection job with hasDecision: true.
+ */
+async function saveDetectedDecisions(
+    uid: string,
+    idToken: string,
+    jobInput: Record<string, unknown>,
+    decisions: string[],
+): Promise<void> {
+    try {
+        const detectedAt = new Date().toISOString();
+        await fetch(`${FIRESTORE_BASE}/users/${uid}/decisions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+                fields: {
+                    messageId: { stringValue: String(jobInput.messageId ?? "") },
+                    messageSubject: { stringValue: String(jobInput.subject ?? "(Kein Betreff)") },
+                    messageSender: { stringValue: String(jobInput.sender ?? "Unknown") },
+                    decisions: {
+                        arrayValue: {
+                            values: decisions.map(d => ({ stringValue: d })),
+                        },
+                    },
+                    detectedAt: { stringValue: detectedAt },
+                },
+            }),
+        });
+    } catch {
+        // Non-critical — log failure but don't fail the job
+        logger.warn("jobs/process", "Failed to save decision record", { uid });
+    }
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -293,6 +334,16 @@ export async function POST(request: Request) {
 
         // Privacy: sanitize output before persisting — output must never contain full bodies.
         const safeOutput = sanitizeJobPayload(rawOutput, `jobs/${job.id}/output`);
+
+        // Persist detected decisions to the decisions collection before clearing input
+        if (
+            job.type === "decision_detection" &&
+            rawOutput.hasDecision === true &&
+            Array.isArray(rawOutput.decisions) &&
+            (rawOutput.decisions as string[]).length > 0
+        ) {
+            void saveDetectedDecisions(uid, idToken, job.input, rawOutput.decisions as string[]);
+        }
 
         // Privacy: clear the job input from Firestore after successful processing.
         // Inputs contain full message bodies which must not be permanently stored.
