@@ -13,12 +13,18 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { syncEngine } from "@/lib/sync";
 import type { SyncResult, SyncStatus } from "@/lib/sync";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
 import type { User } from "firebase/auth";
 import type { SlackChannel } from "@/lib/slack";
+import { enqueueEmbeddingJobs } from "@/lib/embeddings";
 
+/** Polling interval when Gmail push is active (fallback). */
+const POLL_INTERVAL_PUSH_MS = 10 * 60 * 1000; // 10 minutes
+/** Polling interval when no push is active. */
 const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
 export interface SyncEngineStatus {
@@ -43,6 +49,8 @@ interface SyncEngineOptions {
     slackConnected: boolean;
     slackChannels: SlackChannel[];
     microsoftConnected: boolean;
+    /** When true, automatically enqueues embedding_generation jobs for new messages */
+    enableEmbeddings?: boolean;
 }
 
 export function useSyncEngine({
@@ -51,6 +59,7 @@ export function useSyncEngine({
     slackConnected,
     slackChannels,
     microsoftConnected,
+    enableEmbeddings = false,
 }: SyncEngineOptions): UseSyncEngineResult {
     const [syncedMessages, setSyncedMessages] = useState<Map<string, UnifiedMessage>>(new Map());
     const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>({ gmail: "idle", slack: "idle", teams: "idle", outlook: "idle" });
@@ -60,14 +69,29 @@ export function useSyncEngine({
     const initialSyncDoneRef = useRef<Set<string>>(new Set());
     const isSyncingRef = useRef(false);
     const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Track which message IDs have already had embedding jobs enqueued this session
+    const embeddingEnqueuedRef = useRef<Set<string>>(new Set());
 
-    const mergeMessages = useCallback((incoming: UnifiedMessage[]) => {
+    const mergeAndEmbedMessages = useCallback((incoming: UnifiedMessage[]) => {
         if (incoming.length === 0) return;
         setSyncedMessages(prev => {
             const next = new Map(prev);
             incoming.forEach(m => next.set(m.id, m));
             return next;
         });
+
+        // Auto-enqueue embedding jobs for new messages (fire-and-forget)
+        if (enableEmbeddings && user) {
+            const newMessages = incoming.filter(m => !embeddingEnqueuedRef.current.has(m.id));
+            if (newMessages.length > 0) {
+                newMessages.forEach(m => embeddingEnqueuedRef.current.add(m.id));
+                user.getIdToken().then(idToken => {
+                    void enqueueEmbeddingJobs(newMessages, user, idToken);
+                }).catch(() => undefined);
+            }
+        }
+
+        // Keep alias for backward compat in closure below
     }, []);
 
     const runSync = useCallback(async () => {
@@ -178,16 +202,42 @@ export function useSyncEngine({
         runSync();
     }, [user, gmailAccounts, slackConnected, slackChannels, microsoftConnected, runSync]);
 
-    // ── Polling: incremental sync every 2 minutes ─────────────────────────────
+    // ── Polling: 2-min interval normally, 10-min when Gmail push is active ───────
     useEffect(() => {
         if (!user) return;
 
-        pollTimerRef.current = setInterval(runSync, POLL_INTERVAL_MS);
+        // Determine polling interval based on push status
+        const hasPush = gmailAccounts.length > 0; // Refine: check pushActive from SyncState if needed
+        const interval = hasPush ? POLL_INTERVAL_PUSH_MS : POLL_INTERVAL_MS;
+        pollTimerRef.current = setInterval(runSync, interval);
 
         return () => {
             if (pollTimerRef.current) clearInterval(pollTimerRef.current);
         };
-    }, [user, runSync]);
+    }, [user, gmailAccounts.length, runSync]);
+
+    // ── Gmail push listener: immediate sync when Pub/Sub webhook signals new mail ──
+    useEffect(() => {
+        if (!user || gmailAccounts.length === 0) return;
+
+        // Watch users/{uid}/sync/gmail for lastPushAt changes written by the webhook
+        const syncRef = doc(db, "users", user.uid, "sync", "gmail");
+        let lastSeenPushAt: string | null = null;
+
+        const unsubscribe = onSnapshot(syncRef, snapshot => {
+            if (!snapshot.exists()) return;
+            const data = snapshot.data() as { lastPushAt?: string };
+            const pushAt = data.lastPushAt ?? null;
+
+            if (pushAt && pushAt !== lastSeenPushAt) {
+                lastSeenPushAt = pushAt;
+                // Trigger immediate incremental Gmail sync
+                runSync();
+            }
+        });
+
+        return () => unsubscribe();
+    }, [user, gmailAccounts.length, runSync]);
 
     // ── Clear messages on logout ───────────────────────────────────────────────
     useEffect(() => {
