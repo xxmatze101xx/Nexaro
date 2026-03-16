@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
         }
 
         const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        const redirectUri = `${origin}/settings?service=calendar`;
+        const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI ?? `${origin}/settings?service=calendar`;
 
         const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
