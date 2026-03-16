@@ -171,19 +171,60 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                     />
                 </div>
 
+                {/* Attachments list */}
+                {attachments.length > 0 && (
+                    <div className="px-4 pb-1 flex flex-wrap gap-1.5 shrink-0">
+                        {attachments.map((file, idx) => (
+                            <div key={idx} className="flex items-center gap-1 rounded-sm border border-border/60 bg-muted/40 px-2 py-1 text-[10px] font-medium text-foreground max-w-[180px]">
+                                <Paperclip className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                                <span className="truncate">{file.name}</span>
+                                <button
+                                    onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                    className="shrink-0 ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                    <X className="h-2.5 w-2.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* Footer Toolbar */}
                 <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-t border-border shrink-0">
                     <div className="flex items-center gap-1">
-                        <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Datei anhängen (Demnächst)">
-                            <Paperclip className="w-4 h-4" />
-                        </button>
-                        <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Bild einfügen (Demnächst)">
-                            <ImageIcon className="w-4 h-4" />
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                                const files = Array.from(e.target.files ?? []);
+                                setAttachments(prev => [...prev, ...files]);
+                                e.target.value = "";
+                            }}
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm"
+                            title="Datei anhängen"
+                        >
+                            <Paperclip className="w-3 h-3" />
+                            {attachments.length > 0 ? `Anhänge (${attachments.length})` : "Anhang"}
                         </button>
                         <div className="w-px h-4 bg-border mx-1" />
-                        <button className="p-1.5 text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center gap-1.5" title="Mit KI verbessern">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold tracking-wide uppercase">KI Entwurf</span>
+                        <button
+                            onClick={handleGenerateDraft}
+                            disabled={isGenerating || success}
+                            className={cn(
+                                "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
+                                "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
+                                "disabled:opacity-50 disabled:pointer-events-none"
+                            )}
+                            title="E-Mail mit KI verfassen"
+                        >
+                            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            {isGenerating ? "Generiere..." : "KI Entwurf"}
                         </button>
                     </div>
 

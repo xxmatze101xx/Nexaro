@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { X, Send, Paperclip, Image as ImageIcon, Sparkles } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { X, Send, Paperclip, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendEmail } from "@/lib/gmail";
+import { auth } from "@/lib/firebase";
 
 interface ComposeEmailDialogProps {
     isOpen: boolean;
@@ -17,9 +18,39 @@ export function ComposeEmailDialog({ isOpen, onClose, uid, gmailAccounts, defaul
     const [subject, setSubject] = useState("");
     const [body, setBody] = useState("");
     const [isSending, setIsSending] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [attachments, setAttachments] = useState<File[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     if (!isOpen) return null;
+
+    const handleGenerateDraft = async () => {
+        if (!subject.trim() && !body.trim()) {
+            setError("Bitte fülle zumindest den Betreff aus, damit die KI einen Entwurf erstellen kann.");
+            return;
+        }
+        setIsGenerating(true);
+        setError(null);
+        try {
+            const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+
+            const res = await fetch("/api/ai/compose", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ to, subject, hint: body }),
+            });
+            if (!res.ok) throw new Error("AI generation failed");
+            const data = (await res.json()) as { body?: string };
+            setBody(data.body ?? "");
+        } catch {
+            setError("KI-Entwurf konnte nicht generiert werden. Bitte versuche es erneut.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleSend = async () => {
         if (!to || !subject || !body) {
@@ -130,20 +161,60 @@ export function ComposeEmailDialog({ isOpen, onClose, uid, gmailAccounts, defaul
                     </div>
                 </div>
 
-                {/* Footer / Formatting Toolbar */}
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-t border-border">
+                {/* Footer / Toolbar */}
+                <div className="flex flex-col border-t border-border">
+                    {/* Attachments list */}
+                    {attachments.length > 0 && (
+                        <div className="px-4 pt-2 flex flex-wrap gap-1.5">
+                            {attachments.map((file, idx) => (
+                                <div key={idx} className="flex items-center gap-1 rounded-sm border border-border/60 bg-muted/40 px-2 py-1 text-[10px] font-medium text-foreground max-w-[180px]">
+                                    <Paperclip className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">{file.name}</span>
+                                    <button
+                                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                        className="shrink-0 ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                                    >
+                                        <X className="h-2.5 w-2.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/10">
                     <div className="flex items-center gap-1">
-                        {/* Fake formatting tools, could be wired up to a rich text editor later */}
-                        <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Datei anhängen (Demnächst)">
-                            <Paperclip className="w-4 h-4" />
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                                const files = Array.from(e.target.files ?? []);
+                                setAttachments(prev => [...prev, ...files]);
+                                e.target.value = "";
+                            }}
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all shadow-sm"
+                            title="Datei anhängen"
+                        >
+                            <Paperclip className="w-3 h-3" />
+                            {attachments.length > 0 ? `Anhänge (${attachments.length})` : "Anhang"}
                         </button>
-                        <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Bild einfügen (Demnächst)">
-                            <ImageIcon className="w-4 h-4" />
-                        </button>
-                        <div className="w-px h-4 bg-border mx-2"></div>
-                        <button className="p-1.5 text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center gap-1.5" title="Mit KI verbessern">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold tracking-wide uppercase">KI Entwurf</span>
+                        <div className="w-px h-4 bg-border mx-1"></div>
+                        <button
+                            onClick={handleGenerateDraft}
+                            disabled={isGenerating}
+                            className={cn(
+                                "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
+                                "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
+                                "disabled:opacity-50 disabled:pointer-events-none"
+                            )}
+                            title="E-Mail mit KI verfassen"
+                        >
+                            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            {isGenerating ? "Generiere..." : "KI Entwurf"}
                         </button>
                     </div>
 
