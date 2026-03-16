@@ -17,6 +17,10 @@ import {
     Calendar,
     Monitor,
     Inbox,
+    Paperclip,
+    FileText,
+    Image as ImageIcon,
+    File,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
@@ -31,9 +35,17 @@ import {
     deleteDoc,
     query,
     orderBy,
+    where,
 } from "firebase/firestore";
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+interface MentionableFile {
+    filename: string;
+    mimeType: string;
+    url: string;
+    source: string;
+}
 
 interface ChatMessage {
     role: "user" | "assistant";
@@ -113,6 +125,41 @@ async function saveSessionToFirestore(uid: string, session: ChatSession): Promis
 
 async function deleteSessionFromFirestore(uid: string, sessionId: string): Promise<void> {
     await deleteDoc(doc(db, "users", uid, "chatSessions", sessionId));
+}
+
+async function loadMentionFiles(uid: string): Promise<MentionableFile[]> {
+    try {
+        const q = query(
+            collection(db, "messages"),
+            where("userId", "==", uid),
+            orderBy("timestamp", "desc"),
+        );
+        const snap = await getDocs(q);
+        const files: MentionableFile[] = [];
+        const seen = new Set<string>();
+        snap.docs.forEach(d => {
+            const data = d.data() as {
+                attachments?: Array<{ filename: string; mimeType: string; url: string }>;
+                source?: string;
+            };
+            if (data.attachments) {
+                data.attachments.forEach(att => {
+                    if (!seen.has(att.filename)) {
+                        seen.add(att.filename);
+                        files.push({
+                            filename: att.filename,
+                            mimeType: att.mimeType,
+                            url: att.url,
+                            source: data.source ?? "unknown",
+                        });
+                    }
+                });
+            }
+        });
+        return files;
+    } catch {
+        return [];
+    }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -471,6 +518,13 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
+    // @ mention state
+    const [mentionFiles, setMentionFiles] = useState<MentionableFile[]>([]);
+    const [mentionActive, setMentionActive] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState("");
+    const [mentionStart, setMentionStart] = useState(0);
+    const [mentionIndex, setMentionIndex] = useState(0);
+
     // Keep a ref so async callbacks always see the latest sessions without stale closures
     const sessionsRef = useRef<ChatSession[]>([]);
     useEffect(() => {
@@ -498,6 +552,12 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
             sessionsRef.current = loaded;
             if (loaded.length > 0) setActiveId(loaded[0].id);
         });
+    }, [uid]);
+
+    // Load mentionable files once per user session
+    useEffect(() => {
+        if (!uid) return;
+        void loadMentionFiles(uid).then(setMentionFiles);
     }, [uid]);
 
     const activeSession = sessions.find(s => s.id === activeId) ?? null;
@@ -641,7 +701,65 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         }
     }, [input, isLoading, activeId, uid, permissions, allMessages, upcomingMeetings]);
 
+    const filteredMentions = mentionActive
+        ? mentionFiles
+            .filter(f => f.filename.toLowerCase().includes(mentionQuery.toLowerCase()))
+            .slice(0, 8)
+        : [];
+
+    const insertMention = useCallback((file: MentionableFile) => {
+        const before = input.slice(0, mentionStart);
+        const after = input.slice(mentionStart + 1 + mentionQuery.length);
+        setInput(`${before}@${file.filename}${after}`);
+        setMentionActive(false);
+        setMentionQuery("");
+        setTimeout(() => inputRef.current?.focus(), 0);
+    }, [input, mentionStart, mentionQuery]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        setInput(value);
+
+        const cursor = e.target.selectionStart ?? value.length;
+        const textBeforeCursor = value.slice(0, cursor);
+        const atIndex = textBeforeCursor.lastIndexOf("@");
+
+        if (atIndex !== -1) {
+            const queryStr = textBeforeCursor.slice(atIndex + 1);
+            if (!queryStr.includes(" ")) {
+                setMentionActive(true);
+                setMentionQuery(queryStr);
+                setMentionStart(atIndex);
+                setMentionIndex(0);
+                return;
+            }
+        }
+        setMentionActive(false);
+        setMentionQuery("");
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (mentionActive && filteredMentions.length > 0) {
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setMentionIndex(i => Math.min(i + 1, filteredMentions.length - 1));
+                return;
+            }
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setMentionIndex(i => Math.max(i - 1, 0));
+                return;
+            }
+            if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+                insertMention(filteredMentions[mentionIndex]);
+                return;
+            }
+            if (e.key === "Escape") {
+                setMentionActive(false);
+                return;
+            }
+        }
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             void sendMessage();
@@ -825,26 +943,81 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             ))}
                         </div>
                     )}
-                    <div className="flex gap-2 items-end bg-muted/50 border border-border rounded-xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
-                        <textarea
-                            ref={inputRef}
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Ask anything… (Enter to send, Shift+Enter for newline)"
-                            rows={1}
-                            className="flex-1 bg-transparent text-sm resize-none outline-none placeholder:text-muted-foreground max-h-40 leading-relaxed"
-                            style={{ fieldSizing: "content" } as React.CSSProperties}
-                            disabled={isLoading}
-                        />
-                        <button
-                            onClick={() => void sendMessage()}
-                            disabled={!input.trim() || isLoading}
-                            className="p-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shrink-0 self-end"
-                            aria-label="Send message"
-                        >
-                            <Send className="w-4 h-4" />
-                        </button>
+                    <div className="relative">
+                        {/* @ mention dropdown */}
+                        {mentionActive && filteredMentions.length > 0 && (
+                            <div className="absolute bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-20 max-h-56 overflow-y-auto">
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50">
+                                    <Paperclip className="w-3 h-3 text-muted-foreground" />
+                                    <span className="text-[10px] text-muted-foreground font-medium">Files</span>
+                                </div>
+                                {filteredMentions.map((file, i) => (
+                                    <button
+                                        key={file.filename}
+                                        onMouseDown={e => { e.preventDefault(); insertMention(file); }}
+                                        className={cn(
+                                            "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                                            i === mentionIndex
+                                                ? "bg-primary/10 text-primary"
+                                                : "hover:bg-muted text-foreground",
+                                        )}
+                                    >
+                                        <span className="shrink-0">
+                                            {file.mimeType.startsWith("image/")
+                                                ? <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                                                : file.mimeType === "application/pdf"
+                                                    ? <FileText className="w-3.5 h-3.5 text-red-500" />
+                                                    : file.mimeType.includes("word") || file.mimeType.includes("document")
+                                                        ? <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                        : <File className="w-3.5 h-3.5 text-muted-foreground" />}
+                                        </span>
+                                        <span className="flex-1 text-sm truncate">{file.filename}</span>
+                                        <span className={cn(
+                                            "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0",
+                                            file.source === "gmail" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                                                : file.source === "slack" ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"
+                                                : file.source === "teams" ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                                                : file.source === "outlook" ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                                                : "bg-muted text-muted-foreground",
+                                        )}>
+                                            {file.source}
+                                        </span>
+                                    </button>
+                                ))}
+                                {mentionActive && mentionQuery.length === 0 && mentionFiles.length === 0 && (
+                                    <p className="px-3 py-2 text-xs text-muted-foreground">No files found</p>
+                                )}
+                            </div>
+                        )}
+                        {mentionActive && filteredMentions.length === 0 && mentionQuery.length > 0 && (
+                            <div className="absolute bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-xl shadow-lg z-20">
+                                <p className="px-3 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
+                                    <Paperclip className="w-3 h-3" />
+                                    No files matching &ldquo;{mentionQuery}&rdquo;
+                                </p>
+                            </div>
+                        )}
+                        <div className="flex gap-2 items-end bg-muted/50 border border-border rounded-xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
+                            <textarea
+                                ref={inputRef}
+                                value={input}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Ask anything… (Enter to send, Shift+Enter for newline)"
+                                rows={1}
+                                className="flex-1 bg-transparent text-sm resize-none outline-none placeholder:text-muted-foreground max-h-40 leading-relaxed"
+                                style={{ fieldSizing: "content" } as React.CSSProperties}
+                                disabled={isLoading}
+                            />
+                            <button
+                                onClick={() => void sendMessage()}
+                                disabled={!input.trim() || isLoading}
+                                className="p-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shrink-0 self-end"
+                                aria-label="Send message"
+                            >
+                                <Send className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
                         Nexaro AI can make mistakes. Verify important information.
