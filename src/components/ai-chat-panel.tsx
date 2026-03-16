@@ -672,12 +672,12 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             "flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border transition-colors",
                             enabledIntegrationCount > 0
                                 ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-                                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                                : "border-border bg-muted/50 text-foreground hover:bg-muted",
                         )}
                         title="Manage data access"
                     >
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        {enabledIntegrationCount > 0 ? `${enabledIntegrationCount} active` : "Data access"}
+                        {enabledIntegrationCount > 0 ? `${enabledIntegrationCount} active` : "Datenzugriff"}
                     </button>
                 </div>
 
@@ -697,10 +697,10 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             {enabledIntegrationCount === 0 && (
                                 <button
                                     onClick={() => setShowPermissions(true)}
-                                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors text-muted-foreground"
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground mt-1"
                                 >
-                                    <ShieldCheck className="w-3 h-3" />
-                                    Enable data access for personalized answers
+                                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="text-xs">Datenzugriff aktivieren für persönliche Antworten</span>
                                 </button>
                             )}
                             <div className="flex flex-wrap gap-2 justify-center mt-1">
