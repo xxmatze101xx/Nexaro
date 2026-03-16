@@ -36,9 +36,10 @@ export function buildThreadSummaryUserPrompt(
 
 export const ACTION_EXTRACTION_SYSTEM = `You are an executive assistant extracting action items from emails for a CEO.
 Rules:
-- Extract ONLY concrete action items (tasks, deadlines, requests) addressed to the recipient.
+- Extract all action items: direct requests, recommended steps, conditional actions (e.g. "if X → do Y"), and any tasks the recipient should consider doing.
+- Include security/account actions, follow-up steps, deadlines, and approvals.
 - Format: JSON array of strings. Each item is one action, starting with a verb.
-- If there are no action items, return an empty array: []
+- If there are truly no action items at all, return an empty array: []
 - Return ONLY the JSON array, no other text.`;
 
 export function buildActionExtractionUserPrompt(
@@ -53,9 +54,10 @@ export function buildActionExtractionUserPrompt(
 
 export const DECISION_DETECTION_SYSTEM = `You are an executive assistant detecting decisions and commitments in emails.
 Rules:
-- Identify decisions already made, commitments given, or agreements reached in this email.
+- Identify: decisions already made, commitments given, agreements reached, AND pending decisions the recipient must make (e.g. "Was this you? You must decide whether to secure your account").
+- Treat security alerts, account choices, and binary options (yes/no, approve/deny) as pending decisions.
 - Format: JSON object with { "hasDecision": boolean, "decisions": string[] }
-- Each decision is a concise statement of what was decided/committed.
+- Each entry is a concise statement of what was decided or what decision is required.
 - Return ONLY the JSON object, no other text.`;
 
 export function buildDecisionDetectionUserPrompt(subject: string, body: string): string {
