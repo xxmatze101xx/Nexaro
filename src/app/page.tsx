@@ -31,6 +31,7 @@ import { DecisionsDashboard } from "@/components/decisions-dashboard";
 import { useDecisions } from "@/hooks/useDecisions";
 import { AIChatPanel } from "@/components/ai-chat-panel";
 import { FilesPanel } from "@/components/files-panel";
+import { HomeDashboard } from "@/components/home-dashboard";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -104,6 +105,7 @@ function DashboardContent() {
   const [showDecisions, setShowDecisions] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(true);
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
@@ -869,16 +871,19 @@ function DashboardContent() {
 
         {/* Main Navigation */}
         <div className="px-2 mb-4 space-y-0.5 shrink-0">
-          <Link href="/" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+          <button
+            onClick={() => { setShowDashboard(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setSelectedMessage(null); }}
+            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showDashboard && !showFiles && !showAIChat && !showDecisions ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+          >
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Dashboard
-          </Link>
+          </button>
           <Link href="/calendar" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/calendar" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
           </Link>
           <button
-            onClick={() => { setShowFiles(v => !v); setShowAIChat(false); setShowDecisions(false); }}
+            onClick={() => { setShowFiles(v => !v); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showFiles ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <FolderOpen className="w-4 h-4 shrink-0" />
@@ -889,7 +894,7 @@ function DashboardContent() {
             Einstellungen
           </Link>
           <button
-            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); setShowFiles(false); }}
+            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); setShowFiles(false); setShowDashboard(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showAIChat ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <Bot className="w-4 h-4 shrink-0" />
@@ -926,7 +931,7 @@ function DashboardContent() {
                     return (
                       <button
                         key={item.name}
-                        onClick={() => setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder })}
+                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); }}
                         className={cn(
                           "w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors",
                           isActive
@@ -1086,14 +1091,16 @@ function DashboardContent() {
           </div>
         </header>
 
-        {/* FEAT-03: Inbox Overview Widget */}
-        <InboxOverviewWidget
-          messages={allMessages}
-          onFilter={(source) => setSelectedSidebarItem({ source })}
-        />
+        {/* FEAT-03: Inbox Overview Widget — hidden on home dashboard */}
+        {!showDashboard && (
+          <InboxOverviewWidget
+            messages={allMessages}
+            onFilter={(source) => setSelectedSidebarItem({ source })}
+          />
+        )}
 
-        {/* Daily Executive Briefing */}
-        {allMessages.length >= 5 && (
+        {/* Daily Executive Briefing — hidden on home dashboard */}
+        {!showDashboard && allMessages.length >= 5 && (
           <div className="px-6 pt-4 pb-0">
             <DailyBriefingPanel
               briefing={dailyBriefing}
@@ -1108,8 +1115,18 @@ function DashboardContent() {
         {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
 
-          {/* ── Files ─────────────────────────────────────────────────── */}
-          {showFiles ? (
+          {/* ── Home Dashboard ─────────────────────────────────────── */}
+          {showDashboard ? (
+            <HomeDashboard
+              displayName={displayName}
+              allMessages={allMessages}
+              upcomingMeetings={upcomingMeetings}
+              meetingsLoading={meetingsLoading}
+              onCompose={() => { setIsComposing(true); setShowDashboard(false); setSelectedMessage(null); }}
+              onShowAIChat={() => { setShowAIChat(true); setShowDashboard(false); setShowFiles(false); setShowDecisions(false); }}
+              onOpenInbox={() => { setShowDashboard(false); setSelectedSidebarItem(null); }}
+            />
+          ) : showFiles ? (
             <FilesPanel userId={user?.uid ?? ""} className="flex-1" />
           ) : showAIChat ? (
             <AIChatPanel
