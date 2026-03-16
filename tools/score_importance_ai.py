@@ -3,10 +3,12 @@ score_importance_ai.py
 AI-powered importance scoring via Gemini 2.0 Flash.
 
 Privacy design:
-  - Only a minimal, anonymised summary is sent to Gemini.
-  - Full email body is NEVER transmitted — only the first 150 chars.
-  - Sender e-mail address is reduced to domain only (e.g. "company.com").
-  - No thread IDs, recipient addresses, or metadata leave this service.
+  - Sender first name is abbreviated to an initial (e.g. "M. Cacic").
+  - Full sender email is included — it stays within the user's own pipeline.
+  - Subject line is included for accurate intent detection.
+  - Content preview is capped at 600 chars (up from 150) to capture the
+    actual message body, not just boilerplate intros.
+  - No thread IDs or recipient addresses leave this service.
   - The Gemini response is a single integer — no message content is stored
     in Gemini's context beyond the single API call.
 """
@@ -41,17 +43,30 @@ SYSTEM_PROMPT = (
 )
 
 
-def _sender_domain(sender: str) -> str:
+def _abbreviate_sender_name(sender: str) -> str:
     """
-    Reduces a sender to their domain only for privacy.
-    'john.doe@company.com' → 'company.com'
-    'Slack User'           → 'unknown'
+    Abbreviates the display name to first initial + last name.
+    'Matteo Cacic <m.cacic@company.com>' → 'M. Cacic'
+    'john.doe@company.com'               → '' (no display name)
     """
-    match = re.search(r"@([\w.\-]+)", sender)
-    return match.group(1) if match else "unknown"
+    # Strip email address portion e.g. 'Name <email>'
+    name = re.sub(r"<[^>]+>", "", sender).strip()
+    # If what remains looks like a bare email address, no display name
+    if not name or "@" in name:
+        return ""
+    parts = name.split()
+    if len(parts) >= 2:
+        return f"{parts[0][0].upper()}. {' '.join(parts[1:])}"
+    return name
 
 
-def _safe_preview(content: str, max_chars: int = 150) -> str:
+def _sender_email(sender: str) -> str:
+    """Extracts the email address from a sender string."""
+    match = re.search(r"[\w.\-+]+@[\w.\-]+", sender)
+    return match.group(0) if match else sender
+
+
+def _safe_preview(content: str, max_chars: int = 600) -> str:
     """Truncates content to max_chars. No further processing needed."""
     return content[:max_chars].strip()
 
@@ -73,16 +88,27 @@ def score_with_ai(message: dict, fallback_score: float = 5.0) -> float:
         logger.warning("score_importance_ai: GEMINI_API_KEY not set, returning fallback")
         return fallback_score
 
-    # --- Build anonymised prompt (privacy boundary) ---
+    # --- Build prompt (privacy boundary: abbreviated name, full email, 600-char preview) ---
     source = message.get("source", "unknown")
-    sender_domain = _sender_domain(message.get("sender", ""))
+    raw_sender = message.get("sender", "")
+    abbreviated_name = _abbreviate_sender_name(raw_sender)
+    sender_email = _sender_email(raw_sender)
+    subject = message.get("subject", "").strip()
     preview = _safe_preview(message.get("content", ""))
 
-    prompt = (
-        f"Source: {source}\n"
-        f"Sender domain: {sender_domain}\n"
-        f"Preview: {preview}"
-    )
+    sender_line = abbreviated_name if abbreviated_name else sender_email
+    if abbreviated_name:
+        sender_line = f"{abbreviated_name} <{sender_email}>"
+
+    prompt_parts = [
+        f"Source: {source}",
+        f"Sender: {sender_line}",
+    ]
+    if subject:
+        prompt_parts.append(f"Subject: {subject}")
+    prompt_parts.append(f"Preview: {preview}")
+
+    prompt = "\n".join(prompt_parts)
     # ---- nothing beyond this point contains personal data ----
 
     body = json.dumps({
@@ -111,8 +137,8 @@ def score_with_ai(message: dict, fallback_score: float = 5.0) -> float:
         )
         ai_score = max(0.0, min(10.0, float(int(raw))))
         logger.info(
-            "score_importance_ai: scored source=%s domain=%s score=%.1f",
-            source, sender_domain, ai_score,
+            "score_importance_ai: scored source=%s sender=%s score=%.1f",
+            source, sender_email, ai_score,
         )
         return ai_score
 

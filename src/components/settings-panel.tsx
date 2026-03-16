@@ -9,6 +9,7 @@ import {
     Shield,
     LogOut,
     Mail,
+    Star,
 } from "lucide-react";
 import { uploadProfilePicture } from "@/lib/storage";
 import { auth } from "@/lib/firebase";
@@ -34,6 +35,7 @@ import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DigestSection } from "@/components/settings/DigestSection";
 import { FeatureFlagsSection } from "@/components/settings/FeatureFlagsSection";
 import { DataPurgeSection } from "@/components/settings/DataPurgeSection";
+import { VipSendersSection } from "@/components/settings/VipSendersSection";
 
 interface SettingsPanelProps {
     className?: string;
@@ -153,7 +155,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
-        const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "Abonnement", "Sicherheit"];
+        const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "VIP", "Abonnement", "Sicherheit"];
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
@@ -354,6 +356,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
         { id: "Konto", icon: <User className="w-4 h-4" /> },
         { id: "Dienste", icon: <LinkIcon className="w-4 h-4" /> },
         { id: "Zusammenfassungen", icon: <Mail className="w-4 h-4" /> },
+        { id: "VIP", icon: <Star className="w-4 h-4" /> },
         { id: "Abonnement", icon: <CreditCard className="w-4 h-4" /> },
         { id: "Sicherheit", icon: <Shield className="w-4 h-4" /> },
     ];
@@ -428,6 +431,9 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                         </div>
                         <div id="settings-Zusammenfassungen">
                             <DigestSection uid={user?.uid} userEmail={email} />
+                        </div>
+                        <div id="settings-VIP">
+                            <VipSendersSection uid={user?.uid} />
                         </div>
                         <FeatureFlagsSection uid={user?.uid} />
                         <div id="settings-Abonnement">

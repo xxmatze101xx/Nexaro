@@ -74,13 +74,13 @@ def score(message: dict, user_preferences: dict = None) -> float:
     if thread_id:
         raw_score += 1.0
 
-    # Factor 5: Sender frequency bonus (weight: 2.0)
-    # In production, this checks Firestore for reply history.
-    # For now, use a static bonus if sender is in user's VIP list.
+    # Factor 5: VIP sender bonus (weight: 3.0)
+    # Senders in the user's VIP list get a significant boost.
+    # Managed via Settings → VIP-Absender in the UI.
     vip_senders = prefs.get("vip_senders", [])
     sender = message.get("sender", "").lower()
     if any(vip.lower() in sender for vip in vip_senders):
-        raw_score += 2.0
+        raw_score += 3.0
 
     # Factor 6: Time sensitivity — date/time mentions (weight: 2.0)
     time_patterns = [
