@@ -50,6 +50,16 @@ def write_message(payload: dict, importance_score: float, user_id: str = "system
     return payload["id"]
 
 
+def update_importance_score(doc_id: str, importance_score: float) -> None:
+    """
+    Overwrites only the importance_score field of an existing message document.
+    Called after AI scoring completes to replace the quick Python placeholder.
+    """
+    db.collection("messages").document(doc_id).update({
+        "importance_score": importance_score,
+    })
+
+
 def read_message(doc_id: str) -> dict:
     """Reads a message document by ID."""
     doc = db.collection("messages").document(doc_id).get()

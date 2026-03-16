@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from normalize_payload import normalize
-from score_importance import score, get_badge
-from write_to_firestore import write_message
+from score_importance import score as python_score, get_badge
+from score_importance_ai import score_with_ai
+from write_to_firestore import write_message, update_importance_score
 
 def generate_mock_message():
     """Generates a realistic mock message from various sources."""
@@ -68,16 +69,30 @@ def main():
         
         # 1. Normalize
         normalized = normalize(raw_msg)
-        
-        # 2. Score
-        importance_score = score(normalized)
-        
-        # 3. Write to Firestore
-        doc_id = write_message(normalized, importance_score)
-        if doc_id:
-            logger.info(f"Successfully processed mock message from {normalized['source']} with score {importance_score}")
-        else:
-            logger.error(f"Failed to process message from {normalized['source']}")
+
+        # 2a. Python score — fast heuristic, used as immediate placeholder
+        quick_score = python_score(normalized)
+
+        # 3. Write to Firestore immediately so the UI can show the message
+        doc_id = write_message(normalized, quick_score)
+        if not doc_id:
+            logger.error(f"Failed to write message from {normalized['source']}")
+            continue
+
+        logger.info(
+            f"Written message {doc_id} from {normalized['source']} "
+            f"(placeholder score: {quick_score})"
+        )
+
+        # 2b. AI score — more accurate, overwrites the placeholder in Firestore.
+        # Only a minimal anonymised summary is sent to Gemini (no full body,
+        # no personal e-mail addresses). See score_importance_ai.py for details.
+        ai_score = score_with_ai(normalized, fallback_score=quick_score)
+        if ai_score != quick_score:
+            update_importance_score(doc_id, ai_score)
+            logger.info(
+                f"AI score updated for {doc_id}: {quick_score} → {ai_score}"
+            )
 
     logger.info("Mock generation complete.")
 
