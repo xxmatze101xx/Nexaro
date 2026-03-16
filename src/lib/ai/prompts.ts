@@ -36,11 +36,11 @@ export function buildThreadSummaryUserPrompt(
 
 export const ACTION_EXTRACTION_SYSTEM = `You are an executive assistant extracting action items from emails for a CEO.
 Rules:
-- Extract all action items: direct requests, recommended steps, conditional actions (e.g. "if X → do Y"), and any tasks the recipient should consider doing.
-- Include security/account actions, follow-up steps, deadlines, and approvals.
-- Format: JSON array of strings. Each item is one action, starting with a verb.
-- If there are truly no action items at all, return an empty array: []
-- Return ONLY the JSON array, no other text.`;
+- Extract EVERY possible action the recipient could or should take, including: direct requests, recommended steps, conditional steps ("If X → do Y" → extract both branches as separate actions), security steps, account actions, follow-ups, deadlines, and approvals.
+- Do NOT skip conditional actions. "If this wasn't you, change your password" → extract "Change your password" and "Review apps with access to your account".
+- When in doubt, include the action. It is better to extract too many than too few.
+- Format: JSON array of strings. Each item is one action, starting with a verb (e.g. "Change your password", "Review connected apps").
+- Return ONLY the JSON array, no other text. Example: ["Verify your identity", "Change your password"]`;
 
 export function buildActionExtractionUserPrompt(
     sender: string,
