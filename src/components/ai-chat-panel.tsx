@@ -129,10 +129,10 @@ async function deleteSessionFromFirestore(uid: string, sessionId: string): Promi
 
 async function loadMentionFiles(uid: string): Promise<MentionableFile[]> {
     try {
+        // No orderBy to avoid composite Firestore index requirement
         const q = query(
             collection(db, "messages"),
             where("userId", "==", uid),
-            orderBy("timestamp", "desc"),
         );
         const snap = await getDocs(q);
         const files: MentionableFile[] = [];
@@ -931,7 +931,57 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                 </div>
 
                 {/* Input */}
-                <div className="p-4 border-t border-border shrink-0">
+                <div className="p-4 border-t border-border shrink-0 relative">
+                    {/* @ mention dropdown — anchored to outer container so it clears the Context bar */}
+                    {mentionActive && (
+                        <div className="absolute bottom-full left-4 right-4 mb-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-50 max-h-60 overflow-y-auto">
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50 sticky top-0 bg-popover">
+                                <Paperclip className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground font-medium">
+                                    Files {mentionQuery ? `— "${mentionQuery}"` : ""}
+                                </span>
+                            </div>
+                            {filteredMentions.length > 0 ? filteredMentions.map((file, i) => (
+                                <button
+                                    key={file.filename}
+                                    onMouseDown={e => { e.preventDefault(); insertMention(file); }}
+                                    className={cn(
+                                        "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                                        i === mentionIndex
+                                            ? "bg-primary/10 text-primary"
+                                            : "hover:bg-muted text-foreground",
+                                    )}
+                                >
+                                    <span className="shrink-0">
+                                        {file.mimeType.startsWith("image/")
+                                            ? <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                                            : file.mimeType === "application/pdf"
+                                                ? <FileText className="w-3.5 h-3.5 text-red-500" />
+                                                : file.mimeType.includes("word") || file.mimeType.includes("document")
+                                                    ? <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                                    : <File className="w-3.5 h-3.5 text-muted-foreground" />}
+                                    </span>
+                                    <span className="flex-1 text-sm truncate">{file.filename}</span>
+                                    <span className={cn(
+                                        "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0",
+                                        file.source === "gmail" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                                            : file.source === "slack" ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"
+                                            : file.source === "teams" ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                                            : file.source === "outlook" ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
+                                            : "bg-muted text-muted-foreground",
+                                    )}>
+                                        {file.source}
+                                    </span>
+                                </button>
+                            )) : (
+                                <p className="px-3 py-2.5 text-xs text-muted-foreground">
+                                    {mentionQuery
+                                        ? `Keine Dateien für "${mentionQuery}"`
+                                        : "Keine Dateien gefunden"}
+                                </p>
+                            )}
+                        </div>
+                    )}
                     {enabledIntegrationCount > 0 && (
                         <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                             <span className="text-[10px] text-muted-foreground">Context:</span>
@@ -943,61 +993,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             ))}
                         </div>
                     )}
-                    <div className="relative">
-                        {/* @ mention dropdown */}
-                        {mentionActive && filteredMentions.length > 0 && (
-                            <div className="absolute bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-20 max-h-56 overflow-y-auto">
-                                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50">
-                                    <Paperclip className="w-3 h-3 text-muted-foreground" />
-                                    <span className="text-[10px] text-muted-foreground font-medium">Files</span>
-                                </div>
-                                {filteredMentions.map((file, i) => (
-                                    <button
-                                        key={file.filename}
-                                        onMouseDown={e => { e.preventDefault(); insertMention(file); }}
-                                        className={cn(
-                                            "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors",
-                                            i === mentionIndex
-                                                ? "bg-primary/10 text-primary"
-                                                : "hover:bg-muted text-foreground",
-                                        )}
-                                    >
-                                        <span className="shrink-0">
-                                            {file.mimeType.startsWith("image/")
-                                                ? <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
-                                                : file.mimeType === "application/pdf"
-                                                    ? <FileText className="w-3.5 h-3.5 text-red-500" />
-                                                    : file.mimeType.includes("word") || file.mimeType.includes("document")
-                                                        ? <FileText className="w-3.5 h-3.5 text-blue-600" />
-                                                        : <File className="w-3.5 h-3.5 text-muted-foreground" />}
-                                        </span>
-                                        <span className="flex-1 text-sm truncate">{file.filename}</span>
-                                        <span className={cn(
-                                            "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0",
-                                            file.source === "gmail" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                                                : file.source === "slack" ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"
-                                                : file.source === "teams" ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-                                                : file.source === "outlook" ? "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-                                                : "bg-muted text-muted-foreground",
-                                        )}>
-                                            {file.source}
-                                        </span>
-                                    </button>
-                                ))}
-                                {mentionActive && mentionQuery.length === 0 && mentionFiles.length === 0 && (
-                                    <p className="px-3 py-2 text-xs text-muted-foreground">No files found</p>
-                                )}
-                            </div>
-                        )}
-                        {mentionActive && filteredMentions.length === 0 && mentionQuery.length > 0 && (
-                            <div className="absolute bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-xl shadow-lg z-20">
-                                <p className="px-3 py-2.5 text-xs text-muted-foreground flex items-center gap-2">
-                                    <Paperclip className="w-3 h-3" />
-                                    No files matching &ldquo;{mentionQuery}&rdquo;
-                                </p>
-                            </div>
-                        )}
-                        <div className="flex gap-2 items-end bg-muted/50 border border-border rounded-xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
+                    <div className="flex gap-2 items-end bg-muted/50 border border-border rounded-xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
                             <textarea
                                 ref={inputRef}
                                 value={input}
@@ -1018,7 +1014,6 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                 <Send className="w-4 h-4" />
                             </button>
                         </div>
-                    </div>
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
                         Nexaro AI can make mistakes. Verify important information.
                     </p>
