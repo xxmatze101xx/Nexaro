@@ -81,7 +81,7 @@ function ActionBlock({ label, icon, state, onRun }: ActionBlockProps) {
 
             {/* Result */}
             {resultText && (
-                <div className="px-3 py-2 text-xs text-foreground leading-relaxed whitespace-pre-wrap border-t border-border/40 bg-muted/10 max-h-48 overflow-y-auto">
+                <div className="px-3 py-2 text-xs text-foreground leading-relaxed whitespace-pre-wrap border-t border-border/40 bg-muted/10">
                     {resultText}
                 </div>
             )}
@@ -136,7 +136,7 @@ export function AIActionsPanel({ message, className }: AIActionsPanelProps) {
     }
 
     return (
-        <div className={cn("flex-shrink-0 border-t border-border/40", className)}>
+        <div className={cn("flex-shrink-0 border-t border-border/40 overflow-hidden", className)}>
             {/* Collapsed header — always visible, click to toggle */}
             <button
                 onClick={() => setIsOpen(v => !v)}
@@ -158,7 +158,7 @@ export function AIActionsPanel({ message, className }: AIActionsPanelProps) {
 
             {/* Expandable content — own scroll so it can't crush the email body */}
             {isOpen && (
-                <div className="flex flex-col gap-2 px-3 pb-3 max-h-72 overflow-y-auto">
+                <div className="flex flex-col gap-2 px-3 pb-3 max-h-[55vh] overflow-y-auto">
                     <ActionBlock
                         label="Summarize Thread"
                         icon={<FileText className="h-3.5 w-3.5" />}
