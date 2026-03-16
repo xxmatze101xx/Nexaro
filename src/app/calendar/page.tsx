@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { getCalendarAccounts, setCalendarAccountVisibility, CalendarAccount } from "@/lib/user";
-import { fetchCalendarEvents, getAccountColor, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, CalendarEvent } from "@/lib/calendar";
+import { fetchCalendarEvents, getAccountColor, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarAuthErrors, CalendarEvent } from "@/lib/calendar";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CELL_H = 64;
@@ -574,6 +574,7 @@ function CalendarContent() {
     const { user } = useAuth();
     const [uid, setUid] = useState<string | null>(null);
     const [accounts, setAccounts] = useState<CalendarAccount[]>([]);
+    const [authErrorEmails, setAuthErrorEmails] = useState<string[]>([]);
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selected, setSelected] = useState<CalendarEvent | null>(null);
@@ -587,7 +588,7 @@ function CalendarContent() {
     useEffect(() => {
         if (!user) { setIsLoading(false); return; }
         setUid(user.uid);
-        getCalendarAccounts(user.uid).then(accs => setAccounts(accs));
+        getCalendarAccounts(user.uid).then(accs => setAccounts(accs)).catch(console.error);
     }, [user]);
 
     const loadRange = useCallback(async (uid: string, accs: CalendarAccount[], from: Date, to: Date) => {
@@ -599,6 +600,8 @@ function CalendarContent() {
         try {
             const all = await Promise.all(visible.map(acc => fetchCalendarEvents(uid, acc.email, from, to)));
             setEvents(prev => { const map = new Map(prev.map(e => [e.id, e])); all.flat().forEach(e => map.set(e.id, e)); return Array.from(map.values()); });
+            // Check for auth errors after loading (token refresh may have failed)
+            setAuthErrorEmails(getCalendarAuthErrors(visible.map(a => a.email)));
         } catch { loadedRanges.current.delete(key); }
     }, []);
 
@@ -771,6 +774,20 @@ function CalendarContent() {
                             <span className="text-amber-700 dark:text-amber-400 hidden sm:inline">— verbinde deinen Kalender um Termine zu sehen.</span>
                         </div>
                         <Link href="/settings" className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">Verbinden →</Link>
+                    </div>
+                )}
+
+                {/* Auth-error banner — shown when token refresh fails (expired / revoked) */}
+                {authErrorEmails.length > 0 && (
+                    <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-2.5 bg-red-50 dark:bg-red-950/30 border-b border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300">
+                        <div className="flex items-center gap-2 text-sm">
+                            <CalendarIcon className="w-4 h-4 shrink-0" />
+                            <span className="font-semibold">Kalender-Verbindung abgelaufen</span>
+                            <span className="text-red-700 dark:text-red-400 hidden sm:inline">
+                                — {authErrorEmails.join(", ")} muss neu verbunden werden.
+                            </span>
+                        </div>
+                        <Link href="/settings" className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">Neu verbinden →</Link>
                     </div>
                 )}
 

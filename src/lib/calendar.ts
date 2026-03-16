@@ -102,6 +102,10 @@ export async function getCalendarAccessToken(uid: string, email: string): Promis
                 // Set backoff: 10 min for permanent errors (400), 2 min for transient
                 const backoffMs = res.status === 400 ? 10 * 60 * 1000 : 2 * 60 * 1000;
                 localStorage.setItem(backoffKey, (Date.now() + backoffMs).toString());
+                // Permanent auth error (expired/revoked token) — mark for UI
+                if (res.status === 400) {
+                    localStorage.setItem(`gcal_auth_error_${email}`, "true");
+                }
                 return null;
             }
 
@@ -110,6 +114,7 @@ export async function getCalendarAccessToken(uid: string, email: string): Promis
                 localStorage.setItem(cacheKey, data.access_token);
                 localStorage.setItem(expiryKey, (Date.now() + (data.expires_in ?? 3600) * 1000).toString());
                 localStorage.removeItem(backoffKey); // clear any prior backoff on success
+                localStorage.removeItem(`gcal_auth_error_${email}`); // clear auth error on success
                 return data.access_token;
             }
         } catch (e) {
@@ -121,6 +126,15 @@ export async function getCalendarAccessToken(uid: string, email: string): Promis
     _refreshInFlight.set(email, promise);
     promise.finally(() => _refreshInFlight.delete(email));
     return promise;
+}
+
+/**
+ * Returns which account emails currently have a permanent auth error
+ * (i.e. the refresh token is expired/revoked and needs reconnection).
+ */
+export function getCalendarAuthErrors(emails: string[]): string[] {
+    if (typeof window === "undefined") return [];
+    return emails.filter(email => localStorage.getItem(`gcal_auth_error_${email}`) === "true");
 }
 
 /**
