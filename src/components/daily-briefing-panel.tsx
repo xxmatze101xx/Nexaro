@@ -95,7 +95,7 @@ export function DailyBriefingPanel({
 
     return (
         <div
-            className={`rounded-xl border border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-gray-900 p-4 ${className}`}
+            className={`rounded-xl border border-border bg-muted/40 p-4 ${className}`}
         >
             {/* Header */}
             <div className={`flex items-center justify-between ${collapsed ? "" : "mb-3"}`}>

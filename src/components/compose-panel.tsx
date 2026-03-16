@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { sendEmail } from "@/lib/gmail";
-import { Paperclip, Image as ImageIcon, Sparkles, Send, X } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { Paperclip, Sparkles, Send, X, Loader2 } from "lucide-react";
 
 interface ComposePanelProps {
     uid: string;
@@ -18,8 +19,38 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     const [subject, setSubject] = useState("");
     const [body, setBody] = useState("");
     const [isSending, setIsSending] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [attachments, setAttachments] = useState<File[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleGenerateDraft = async () => {
+        if (!subject.trim() && !body.trim()) {
+            setError("Bitte fülle zumindest den Betreff aus, damit die KI einen Entwurf erstellen kann.");
+            return;
+        }
+        setIsGenerating(true);
+        setError(null);
+        try {
+            const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+
+            const res = await fetch("/api/ai/compose", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ to, subject, hint: body }),
+            });
+            if (!res.ok) throw new Error("AI generation failed");
+            const data = (await res.json()) as { body?: string };
+            setBody(data.body ?? "");
+        } catch {
+            setError("KI-Entwurf konnte nicht generiert werden. Bitte versuche es erneut.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleSend = async () => {
         if (!to || !subject || !body) {

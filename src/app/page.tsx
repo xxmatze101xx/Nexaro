@@ -31,6 +31,7 @@ import { DecisionsDashboard } from "@/components/decisions-dashboard";
 import { useDecisions } from "@/hooks/useDecisions";
 import { AIChatPanel } from "@/components/ai-chat-panel";
 import { FilesPanel } from "@/components/files-panel";
+import { SettingsPanel } from "@/components/settings-panel";
 import { HomeDashboard } from "@/components/home-dashboard";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -105,6 +106,7 @@ function DashboardContent() {
   const [showDecisions, setShowDecisions] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
@@ -889,10 +891,13 @@ function DashboardContent() {
             <FolderOpen className="w-4 h-4 shrink-0" />
             Files
           </button>
-<Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+<button
+            onClick={() => { setShowSettings(v => !v); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); }}
+            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showSettings ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+          >
             <Settings className="w-4 h-4 shrink-0" />
             Einstellungen
-          </Link>
+          </button>
           <button
             onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); setShowFiles(false); setShowDashboard(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showAIChat ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
@@ -1126,6 +1131,8 @@ function DashboardContent() {
               onShowAIChat={() => { setShowAIChat(true); setShowDashboard(false); setShowFiles(false); setShowDecisions(false); }}
               onOpenInbox={() => { setShowDashboard(false); setSelectedSidebarItem(null); }}
             />
+          ) : showSettings ? (
+            <SettingsPanel className="flex-1" />
           ) : showFiles ? (
             <FilesPanel userId={user?.uid ?? ""} className="flex-1" />
           ) : showAIChat ? (
