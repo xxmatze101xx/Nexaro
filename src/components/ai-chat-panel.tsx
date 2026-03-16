@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
 import { useAuth } from "@/contexts/AuthContext";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import {
     collection,
     doc,
@@ -37,6 +37,7 @@ import {
     orderBy,
     where,
 } from "firebase/firestore";
+import { ref, listAll, getDownloadURL, getMetadata } from "firebase/storage";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -128,15 +129,36 @@ async function deleteSessionFromFirestore(uid: string, sessionId: string): Promi
 }
 
 async function loadMentionFiles(uid: string): Promise<MentionableFile[]> {
+    const files: MentionableFile[] = [];
+    const seen = new Set<string>();
+
+    // 1. Firebase Storage uploads: users/{uid}/uploads/
     try {
-        // No orderBy to avoid composite Firestore index requirement
-        const q = query(
-            collection(db, "messages"),
-            where("userId", "==", uid),
-        );
+        const listRef = ref(storage, `users/${uid}/uploads`);
+        const result = await listAll(listRef);
+        await Promise.all(result.items.map(async itemRef => {
+            try {
+                const [url, meta] = await Promise.all([
+                    getDownloadURL(itemRef),
+                    getMetadata(itemRef),
+                ]);
+                if (!seen.has(itemRef.name)) {
+                    seen.add(itemRef.name);
+                    files.push({
+                        filename: itemRef.name,
+                        mimeType: meta.contentType ?? "application/octet-stream",
+                        url,
+                        source: "upload",
+                    });
+                }
+            } catch { /* skip unreadable item */ }
+        }));
+    } catch { /* storage not available or empty */ }
+
+    // 2. Firestore email attachments from messages collection
+    try {
+        const q = query(collection(db, "messages"), where("userId", "==", uid));
         const snap = await getDocs(q);
-        const files: MentionableFile[] = [];
-        const seen = new Set<string>();
         snap.docs.forEach(d => {
             const data = d.data() as {
                 attachments?: Array<{ filename: string; mimeType: string; url: string }>;
@@ -150,16 +172,15 @@ async function loadMentionFiles(uid: string): Promise<MentionableFile[]> {
                             filename: att.filename,
                             mimeType: att.mimeType,
                             url: att.url,
-                            source: data.source ?? "unknown",
+                            source: data.source ?? "email",
                         });
                     }
                 });
             }
         });
-        return files;
-    } catch {
-        return [];
-    }
+    } catch { /* no messages */ }
+
+    return files;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
