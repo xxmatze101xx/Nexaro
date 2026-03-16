@@ -85,7 +85,7 @@ export function DailyBriefingPanel({
     onGenerate,
     className = "",
 }: DailyBriefingPanelProps) {
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
 
     const today = new Date().toLocaleDateString("en-US", {
         weekday: "long",
