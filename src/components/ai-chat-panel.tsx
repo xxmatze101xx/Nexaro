@@ -21,6 +21,17 @@ import {
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
+import { useAuth } from "@/contexts/AuthContext";
+import { db } from "@/lib/firebase";
+import {
+    collection,
+    doc,
+    getDocs,
+    setDoc,
+    deleteDoc,
+    query,
+    orderBy,
+} from "firebase/firestore";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -54,9 +65,8 @@ export interface AIChatConnected {
     outlook: boolean;
 }
 
-// ── Storage helpers ────────────────────────────────────────────────────────
+// ── Permissions storage (device-specific, stay in localStorage) ────────────
 
-const SESSIONS_KEY = "nexaro-ai-chats";
 const PERMISSIONS_KEY = "nexaro-ai-permissions";
 
 const DEFAULT_PERMISSIONS: AIChatPermissions = {
@@ -66,21 +76,6 @@ const DEFAULT_PERMISSIONS: AIChatPermissions = {
     teams: false,
     outlook: false,
 };
-
-function loadSessions(): ChatSession[] {
-    if (typeof window === "undefined") return [];
-    try {
-        const raw = localStorage.getItem(SESSIONS_KEY);
-        return raw ? (JSON.parse(raw) as ChatSession[]) : [];
-    } catch {
-        return [];
-    }
-}
-
-function saveSessions(sessions: ChatSession[]) {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-}
 
 function loadPermissions(): AIChatPermissions {
     if (typeof window === "undefined") return { ...DEFAULT_PERMISSIONS };
@@ -96,6 +91,31 @@ function savePermissions(p: AIChatPermissions) {
     if (typeof window === "undefined") return;
     localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(p));
 }
+
+// ── Firestore helpers ──────────────────────────────────────────────────────
+
+async function loadSessionsFromFirestore(uid: string): Promise<ChatSession[]> {
+    try {
+        const q = query(
+            collection(db, "users", uid, "chatSessions"),
+            orderBy("updatedAt", "desc"),
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => d.data() as ChatSession);
+    } catch {
+        return [];
+    }
+}
+
+async function saveSessionToFirestore(uid: string, session: ChatSession): Promise<void> {
+    await setDoc(doc(db, "users", uid, "chatSessions", session.id), session);
+}
+
+async function deleteSessionFromFirestore(uid: string, sessionId: string): Promise<void> {
+    await deleteDoc(doc(db, "users", uid, "chatSessions", sessionId));
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeId() {
     return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -438,6 +458,9 @@ interface AIChatPanelProps {
 }
 
 export function AIChatPanel({ className, allMessages = [], upcomingMeetings = [], connected = {} }: AIChatPanelProps) {
+    const { user } = useAuth();
+    const uid = user?.uid ?? null;
+
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [input, setInput] = useState("");
@@ -448,6 +471,12 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
+    // Keep a ref so async callbacks always see the latest sessions without stale closures
+    const sessionsRef = useRef<ChatSession[]>([]);
+    useEffect(() => {
+        sessionsRef.current = sessions;
+    }, [sessions]);
+
     const resolvedConnected: AIChatConnected = {
         gmail: connected.gmail ?? false,
         slack: connected.slack ?? false,
@@ -456,27 +485,26 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         outlook: connected.outlook ?? false,
     };
 
-    // Load from localStorage on mount
+    // Load permissions from localStorage (device-specific preference)
     useEffect(() => {
-        const storedSessions = loadSessions();
-        const storedPermissions = loadPermissions();
-        setSessions(storedSessions);
-        setPermissions(storedPermissions);
-        if (storedSessions.length > 0) {
-            setActiveId(storedSessions[0].id);
-        }
+        setPermissions(loadPermissions());
     }, []);
+
+    // Load chat sessions from Firestore whenever the authenticated user changes
+    useEffect(() => {
+        if (!uid) return;
+        void loadSessionsFromFirestore(uid).then(loaded => {
+            setSessions(loaded);
+            sessionsRef.current = loaded;
+            if (loaded.length > 0) setActiveId(loaded[0].id);
+        });
+    }, [uid]);
 
     const activeSession = sessions.find(s => s.id === activeId) ?? null;
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [activeSession?.messages.length]);
-
-    const updateSessions = useCallback((updated: ChatSession[]) => {
-        setSessions(updated);
-        saveSessions(updated);
-    }, []);
 
     const handlePermissionChange = useCallback((key: keyof AIChatPermissions, value: boolean) => {
         setPermissions(prev => {
@@ -487,6 +515,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     }, []);
 
     const createNewChat = useCallback(() => {
+        if (!uid) return;
         const newSession: ChatSession = {
             id: makeId(),
             title: "New chat",
@@ -494,20 +523,24 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
-        const updated = [newSession, ...sessions];
-        updateSessions(updated);
+        setSessions(prev => [newSession, ...prev]);
+        void saveSessionToFirestore(uid, newSession);
         setActiveId(newSession.id);
         setInput("");
         inputRef.current?.focus();
-    }, [sessions, updateSessions]);
+    }, [uid]);
 
     const deleteSession = useCallback((id: string) => {
-        const updated = sessions.filter(s => s.id !== id);
-        updateSessions(updated);
-        if (activeId === id) {
-            setActiveId(updated.length > 0 ? updated[0].id : null);
-        }
-    }, [sessions, activeId, updateSessions]);
+        if (!uid) return;
+        setSessions(prev => {
+            const updated = prev.filter(s => s.id !== id);
+            if (activeId === id) {
+                setActiveId(updated.length > 0 ? updated[0].id : null);
+            }
+            return updated;
+        });
+        void deleteSessionFromFirestore(uid, id);
+    }, [uid, activeId]);
 
     const enabledIntegrationCount = Object.values(permissions).filter(
         (v, i) => v && Object.values(resolvedConnected)[i],
@@ -515,11 +548,12 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
 
     const sendMessage = useCallback(async () => {
         const trimmed = input.trim();
-        if (!trimmed || isLoading) return;
+        if (!trimmed || isLoading || !uid) return;
 
         let sessionId = activeId;
-        let currentSessions = [...sessions];
+        let currentSessions = [...sessionsRef.current];
 
+        // Auto-create a session if none is active
         if (!sessionId) {
             const newSession: ChatSession = {
                 id: makeId(),
@@ -540,13 +574,16 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         const session = currentSessions[sessionIdx];
         const updatedMessages = [...session.messages, userMsg];
         const newTitle = session.messages.length === 0 ? makeTitleFromMessage(trimmed) : session.title;
+        const updatedSession: ChatSession = { ...session, title: newTitle, messages: updatedMessages, updatedAt: Date.now() };
 
-        currentSessions[sessionIdx] = { ...session, title: newTitle, messages: updatedMessages, updatedAt: Date.now() };
-        updateSessions(currentSessions);
+        currentSessions[sessionIdx] = updatedSession;
+        setSessions(currentSessions);
+        sessionsRef.current = currentSessions;
+        void saveSessionToFirestore(uid, updatedSession);
+
         setInput("");
         setIsLoading(true);
 
-        // Build context from enabled integrations
         const context = buildContext(permissions, allMessages, upcomingMeetings);
 
         try {
@@ -566,32 +603,43 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                 createdAt: Date.now(),
             };
 
-            const latestSessions = loadSessions();
+            // Use the ref to get the freshest state after the async call
+            const latestSessions = [...sessionsRef.current];
             const latestIdx = latestSessions.findIndex(s => s.id === sessionId);
             if (latestIdx !== -1) {
-                latestSessions[latestIdx] = {
+                const withReply: ChatSession = {
                     ...latestSessions[latestIdx],
                     messages: [...latestSessions[latestIdx].messages, assistantMsg],
                     updatedAt: Date.now(),
                 };
-                updateSessions(latestSessions);
+                latestSessions[latestIdx] = withReply;
+                setSessions(latestSessions);
+                sessionsRef.current = latestSessions;
+                void saveSessionToFirestore(uid, withReply);
             }
         } catch {
-            const latestSessions = loadSessions();
+            const latestSessions = [...sessionsRef.current];
             const latestIdx = latestSessions.findIndex(s => s.id === sessionId);
             if (latestIdx !== -1) {
-                latestSessions[latestIdx] = {
+                const withError: ChatSession = {
                     ...latestSessions[latestIdx],
-                    messages: [...latestSessions[latestIdx].messages, { role: "assistant", content: "Failed to connect. Please try again.", createdAt: Date.now() }],
+                    messages: [...latestSessions[latestIdx].messages, {
+                        role: "assistant",
+                        content: "Failed to connect. Please try again.",
+                        createdAt: Date.now(),
+                    }],
                     updatedAt: Date.now(),
                 };
-                updateSessions(latestSessions);
+                latestSessions[latestIdx] = withError;
+                setSessions(latestSessions);
+                sessionsRef.current = latestSessions;
+                void saveSessionToFirestore(uid, withError);
             }
         } finally {
             setIsLoading(false);
             inputRef.current?.focus();
         }
-    }, [input, isLoading, activeId, sessions, updateSessions, permissions, allMessages, upcomingMeetings]);
+    }, [input, isLoading, activeId, uid, permissions, allMessages, upcomingMeetings]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === "Enter" && !e.shiftKey) {
