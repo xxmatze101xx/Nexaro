@@ -139,7 +139,10 @@ async function processActionExtraction(input: Record<string, unknown>): Promise<
             .filter(s => s.length > 5);
     }
 
-    return { actions, count: actions.length };
+    const result = actions.length > 0
+        ? actions.map(a => `• ${a}`).join("\n")
+        : "No action items found.";
+    return { result, actions, count: actions.length };
 }
 
 async function processDecisionDetection(input: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -167,7 +170,10 @@ async function processDecisionDetection(input: Record<string, unknown>): Promise
         hasDecision = decisions.length > 0;
     }
 
-    return { hasDecision, decisions, count: decisions.length };
+    const result = decisions.length > 0
+        ? decisions.map(d => `• ${d}`).join("\n")
+        : "No decisions or commitments detected.";
+    return { result, hasDecision, decisions, count: decisions.length };
 }
 
 async function processEmbeddingGeneration(input: Record<string, unknown>): Promise<Record<string, unknown>> {
