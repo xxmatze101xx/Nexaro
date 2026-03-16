@@ -460,8 +460,8 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
 
             {/* Reply Compose — expands when replying, compact otherwise */}
             <div className={cn(
-                "flex-shrink-0 border-t border-border flex flex-col",
-                isReplying ? "max-h-[50%] overflow-y-auto" : "max-h-[220px] overflow-y-auto"
+                "border-t border-border flex flex-col",
+                isReplying ? "flex-1 min-h-0" : "flex-shrink-0 max-h-[220px] overflow-y-auto"
             )}>
                 {/* Draft Error Banner */}
                 {draftError && (
@@ -562,7 +562,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                                 value={draftText}
                                 onChange={(e) => setDraftText(e.target.value)}
                                 className={cn(
-                                    "w-full h-full min-h-[100px] bg-transparent",
+                                    "w-full h-full min-h-[300px] bg-transparent",
                                     "text-sm text-foreground placeholder:text-muted-foreground leading-relaxed",
                                     "focus:outline-none resize-none"
                                 )}
