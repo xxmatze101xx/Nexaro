@@ -245,6 +245,7 @@ export function ComposeEmailDialog({ isOpen, onClose, uid, gmailAccounts, defaul
                         </button>
                     </div>
                 </div>
+                </div>
             </div>
         </div>
     );
