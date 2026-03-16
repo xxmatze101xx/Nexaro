@@ -813,8 +813,8 @@ function DashboardContent() {
           </div>
         </div>
       )}
-      {/* Sidebar — hidden when full-page dashboard is active */}
-      <aside className={cn("w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col h-full shrink-0", showDashboard && "hidden")}>
+      {/* Sidebar */}
+      <aside className="w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col h-full shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-14 shrink-0 mt-2">
           <Image src="/logo.png" alt="Nexaro Logo" width={32} height={32} className="object-contain" />
@@ -1125,7 +1125,6 @@ function DashboardContent() {
               onCompose={() => { setIsComposing(true); setShowDashboard(false); setSelectedMessage(null); }}
               onShowAIChat={() => { setShowAIChat(true); setShowDashboard(false); setShowFiles(false); setShowDecisions(false); }}
               onOpenInbox={() => { setShowDashboard(false); setSelectedSidebarItem(null); }}
-              onClose={() => { setShowDashboard(false); }}
             />
           ) : showFiles ? (
             <FilesPanel userId={user?.uid ?? ""} className="flex-1" />

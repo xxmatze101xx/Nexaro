@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
-import { Pencil, Check, Plus, X, LayoutGrid, ArrowLeft } from "lucide-react";
+import { Pencil, Check, Plus, X, LayoutGrid } from "lucide-react";
 import {
   loadConfig,
   saveConfig,
@@ -33,7 +33,6 @@ interface HomeDashboardProps {
   onCompose: () => void;
   onShowAIChat: () => void;
   onOpenInbox: () => void;
-  onClose: () => void;
 }
 
 function getGreeting(name: string): string {
@@ -52,7 +51,6 @@ export function HomeDashboard({
   onCompose,
   onShowAIChat,
   onOpenInbox,
-  onClose,
 }: HomeDashboardProps) {
   const [config, setConfig] = useState<StoredConfig | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -142,31 +140,21 @@ export function HomeDashboard({
   if (!config) return null;
 
   return (
-    <div className="fixed inset-0 z-40 bg-background flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-border/50 shrink-0 bg-background">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Posteingang
-          </button>
-          <div className="w-px h-4 bg-border" />
-          <div>
-            <h1 className="text-lg font-bold text-foreground leading-none">
-              {getGreeting(displayName)}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5 capitalize">
-              {new Date().toLocaleDateString("de-DE", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-          </div>
+      <div className="flex items-center justify-between px-8 py-4 border-b border-border/50 shrink-0">
+        <div>
+          <h1 className="text-lg font-bold text-foreground leading-none">
+            {getGreeting(displayName)}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+            {new Date().toLocaleDateString("de-DE", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
