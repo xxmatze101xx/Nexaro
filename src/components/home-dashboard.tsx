@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Pencil, Check, Plus, X, LayoutGrid } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Responsive, WidthProvider } from "react-grid-layout";
+import { Pencil, Check, Plus, X, LayoutGrid, ArrowLeft } from "lucide-react";
 import {
-  loadDashboardConfig,
-  saveDashboardConfig,
+  loadConfig,
+  saveConfig,
   WIDGET_META,
+  makeLayoutItem,
   type WidgetConfig,
   type WidgetId,
+  type StoredConfig,
+  type LayoutItem,
 } from "@/lib/dashboard-config";
 import { WidgetClock } from "@/components/dashboard/widget-clock";
 import { WidgetQuote } from "@/components/dashboard/widget-quote";
@@ -19,6 +23,8 @@ import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
 import { cn } from "@/lib/utils";
 
+const ResponsiveGridLayout = WidthProvider(Responsive);
+
 interface HomeDashboardProps {
   displayName: string;
   allMessages: Message[];
@@ -27,6 +33,7 @@ interface HomeDashboardProps {
   onCompose: () => void;
   onShowAIChat: () => void;
   onOpenInbox: () => void;
+  onClose: () => void;
 }
 
 function getGreeting(name: string): string {
@@ -45,37 +52,59 @@ export function HomeDashboard({
   onCompose,
   onShowAIChat,
   onOpenInbox,
+  onClose,
 }: HomeDashboardProps) {
-  const [config, setConfig] = useState<WidgetConfig[]>([]);
+  const [config, setConfig] = useState<StoredConfig | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setConfig(loadDashboardConfig());
-    setMounted(true);
+    setConfig(loadConfig());
   }, []);
 
-  const enabledWidgets = config.filter((w) => w.enabled);
-  const disabledWidgets = config.filter((w) => !w.enabled);
+  const enabledWidgets = config?.widgets.filter((w) => w.enabled) ?? [];
+  const disabledWidgets = config?.widgets.filter((w) => !w.enabled) ?? [];
+  const currentLayout = config?.layout ?? [];
+
+  const persistConfig = useCallback((next: StoredConfig) => {
+    setConfig(next);
+    saveConfig(next);
+  }, []);
+
+  const handleLayoutChange = useCallback(
+    (newLayout: LayoutItem[]) => {
+      if (!config) return;
+      // Merge positions back — keep minW/minH from current layout
+      const updated = newLayout.map((item) => {
+        const existing = config.layout.find((l) => l.i === item.i);
+        return { ...existing, ...item };
+      });
+      persistConfig({ ...config, layout: updated });
+    },
+    [config, persistConfig]
+  );
 
   const removeWidget = (id: WidgetId) => {
-    const updated = config.map((w) =>
-      w.id === id ? { ...w, enabled: false } : w
-    );
-    setConfig(updated);
-    saveDashboardConfig(updated);
+    if (!config) return;
+    persistConfig({
+      widgets: config.widgets.map((w) =>
+        w.id === id ? { ...w, enabled: false } : w
+      ),
+      layout: config.layout.filter((l) => l.i !== id),
+    });
   };
 
   const addWidget = (id: WidgetId) => {
-    const updated = config.map((w) =>
-      w.id === id ? { ...w, enabled: true } : w
-    );
-    setConfig(updated);
-    saveDashboardConfig(updated);
+    if (!config) return;
+    persistConfig({
+      widgets: config.widgets.map((w) =>
+        w.id === id ? { ...w, enabled: true } : w
+      ),
+      layout: [...config.layout, makeLayoutItem(id, config.layout)],
+    });
   };
 
-  const renderWidgetContent = (id: WidgetId) => {
+  const renderContent = (id: WidgetId) => {
     switch (id) {
       case "clock":
         return <WidgetClock />;
@@ -110,18 +139,26 @@ export function HomeDashboard({
     }
   };
 
-  if (!mounted) return null;
+  if (!config) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-6 pb-12">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+    <div className="fixed inset-0 z-40 bg-background flex flex-col overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-8 py-4 border-b border-border/50 shrink-0 bg-background">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Posteingang
+          </button>
+          <div className="w-px h-4 bg-border" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-lg font-bold text-foreground leading-none">
               {getGreeting(displayName)}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 capitalize">
+            <p className="text-xs text-muted-foreground mt-0.5 capitalize">
               {new Date().toLocaleDateString("de-DE", {
                 weekday: "long",
                 year: "numeric",
@@ -130,7 +167,23 @@ export function HomeDashboard({
               })}
             </p>
           </div>
+        </div>
 
+        <div className="flex items-center gap-2">
+          {editMode && (
+            <button
+              onClick={() => setShowAddPanel((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+                showAddPanel
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Widget hinzufügen
+            </button>
+          )}
           <button
             onClick={() => {
               setEditMode((v) => !v);
@@ -151,14 +204,55 @@ export function HomeDashboard({
             {editMode ? "Fertig" : "Bearbeiten"}
           </button>
         </div>
+      </div>
 
-        {/* Widget Grid */}
+      {/* Add Widget Panel */}
+      {showAddPanel && editMode && (
+        <div className="shrink-0 border-b border-border bg-muted/30 px-8 py-4">
+          {disabledWidgets.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Alle Widgets sind bereits aktiv.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {disabledWidgets.map(({ id }: WidgetConfig) => {
+                const meta = WIDGET_META[id];
+                return (
+                  <button
+                    key={id}
+                    onClick={() => addWidget(id)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-border bg-card hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <Plus className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground leading-none">
+                        {meta.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {meta.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         {enabledWidgets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-24 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center gap-4 h-full text-muted-foreground">
             <LayoutGrid className="w-10 h-10 opacity-20" />
             <p className="text-sm font-medium">Noch keine Widgets aktiviert.</p>
             <button
-              onClick={() => setShowAddPanel(true)}
+              onClick={() => {
+                setEditMode(true);
+                setShowAddPanel(true);
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" />
@@ -166,91 +260,50 @@ export function HomeDashboard({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[200px]">
-            {enabledWidgets.map(({ id }) => {
-              const meta = WIDGET_META[id];
-              return (
-                <div
-                  key={id}
-                  className={cn(
-                    "relative bg-card border border-border rounded-2xl p-5 shadow-sm transition-all",
-                    editMode && "ring-2 ring-primary/20",
-                    meta.colSpan === 2 && "md:col-span-2"
-                  )}
-                >
-                  {editMode && (
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: currentLayout, md: currentLayout, sm: currentLayout }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            rowHeight={80}
+            margin={[12, 12]}
+            isDraggable={editMode}
+            isResizable={editMode}
+            draggableHandle=".drag-handle"
+            onLayoutChange={handleLayoutChange}
+            measureBeforeMount={false}
+            useCSSTransforms
+          >
+            {enabledWidgets.map(({ id }: WidgetConfig) => (
+              <div
+                key={id}
+                className={cn(
+                  "bg-card border border-border rounded-2xl overflow-hidden relative transition-shadow",
+                  editMode && "ring-2 ring-primary/20 shadow-lg"
+                )}
+              >
+                {/* Drag handle bar — only visible in edit mode */}
+                {editMode && (
+                  <div className="drag-handle absolute inset-x-0 top-0 h-8 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing bg-gradient-to-b from-black/[0.06] to-transparent z-10 select-none rounded-t-2xl">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      ⠿ {WIDGET_META[id].label}
+                    </span>
                     <button
+                      onMouseDown={(e) => e.stopPropagation()}
                       onClick={() => removeWidget(id)}
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-80 transition-opacity z-10 shadow-sm"
-                      title="Widget entfernen"
+                      className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-80 transition-opacity"
                     >
                       <X className="w-3 h-3" />
                     </button>
-                  )}
-                  {renderWidgetContent(id)}
+                  </div>
+                )}
+
+                <div className={cn("h-full p-5 overflow-hidden", editMode && "pt-10")}>
+                  {renderContent(id)}
                 </div>
-              );
-            })}
-
-            {/* Add Widget tile — visible in edit mode */}
-            {editMode && (
-              <div
-                className="border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 text-muted-foreground cursor-pointer hover:border-primary hover:text-primary transition-colors p-5"
-                onClick={() => setShowAddPanel((v) => !v)}
-              >
-                <Plus className="w-6 h-6" />
-                <span className="text-sm font-medium">Widget hinzufügen</span>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Add Widget Panel */}
-        {showAddPanel && (
-          <div className="mt-6 border border-border rounded-2xl p-5 bg-card shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-foreground">
-                Verfügbare Widgets
-              </h3>
-              <button
-                onClick={() => setShowAddPanel(false)}
-                className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {disabledWidgets.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Alle Widgets sind bereits aktiv.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {disabledWidgets.map(({ id }) => {
-                  const meta = WIDGET_META[id];
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => addWidget(id)}
-                      className="flex items-start gap-3 p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors text-left group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center shrink-0 transition-colors">
-                        <Plus className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">
-                          {meta.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-                          {meta.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            ))}
+          </ResponsiveGridLayout>
         )}
       </div>
     </div>

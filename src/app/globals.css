@@ -1,5 +1,29 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
+
+/* react-grid-layout resize handle — matches Nexaro design */
+.react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.react-grid-item:hover .react-resizable-handle,
+.react-grid-item.resizing .react-resizable-handle {
+  opacity: 1;
+}
+.react-resizable-handle::after {
+  border-color: var(--primary) !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-right-width: 2px !important;
+  border-bottom-width: 2px !important;
+}
+.react-grid-item.react-grid-placeholder {
+  background: var(--primary) !important;
+  opacity: 0.12 !important;
+  border-radius: 1rem !important;
+}
 
 /* Nexaro Brand Tokens */
 :root {
