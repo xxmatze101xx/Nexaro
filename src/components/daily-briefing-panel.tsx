@@ -32,7 +32,7 @@ function BriefingSection({ text }: { text: string }) {
                 const colonIdx = section.indexOf(":");
                 if (colonIdx === -1) {
                     return section.trim() ? (
-                        <p key={i} className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                        <p key={i} className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
                             {section.trim()}
                         </p>
                     ) : null;
@@ -44,14 +44,14 @@ function BriefingSection({ text }: { text: string }) {
 
                 return (
                     <div key={i}>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
                             {heading}
                         </p>
                         <ul className="space-y-1">
                             {lines.map((line, j) => (
                                 <li
                                     key={j}
-                                    className="flex gap-2 text-xs text-gray-700 dark:text-gray-300 leading-relaxed"
+                                    className="flex gap-2 text-xs text-gray-800 dark:text-gray-200 leading-relaxed"
                                 >
                                     <span className="shrink-0 mt-0.5 w-1 h-1 rounded-full bg-blue-400 dark:bg-blue-500 translate-y-[5px]" />
                                     <span>{line.replace(/^[-•]\s*/, "")}</span>
@@ -71,7 +71,7 @@ function GeneratedAt({ iso }: { iso: string }) {
         minute: "2-digit",
     });
     return (
-        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+        <span className="text-[10px] text-gray-500 dark:text-gray-400">
             Generated at {time}
         </span>
     );
@@ -105,7 +105,7 @@ export function DailyBriefingPanel({
                     title={collapsed ? "Expand briefing" : "Collapse briefing"}
                 >
                     <svg
-                        className={`w-3.5 h-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
+                        className={`w-3.5 h-3.5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${collapsed ? "-rotate-90" : ""}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -118,10 +118,10 @@ export function DailyBriefingPanel({
                             Executive Briefing
                         </p>
                         {collapsed && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500">{today}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{today}</p>
                         )}
                         {!collapsed && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500">{today}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{today}</p>
                         )}
                     </div>
                 </button>
@@ -166,7 +166,7 @@ export function DailyBriefingPanel({
             {!collapsed && (
                 <>
                     {isGenerating && !briefing && (
-                        <div className="py-4 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
+                        <div className="py-4 flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
                             <div className="flex gap-1">
                                 {[0, 1, 2].map(i => (
                                     <span
@@ -190,7 +190,7 @@ export function DailyBriefingPanel({
                     )}
 
                     {!briefing && !isGenerating && !error && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 py-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
                             Generate your daily executive briefing to get a prioritized summary of today&apos;s communications.
                         </p>
                     )}
