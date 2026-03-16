@@ -55,6 +55,8 @@
 | Mobile Responsive | Audit and fix grid layouts for small screens |
 | Snooze / Pin | Add `snoozedUntil` Firestore field + cron to re-activate |
 
+~~Bug: "Summarize Thread" button threw "input.messages array is required"~~ ✅ Fixed: `processThreadSummary` now falls back to building a single-message array from `sender`+`body` when no `messages` array is passed.
+
 ## ⚠️ Slack App Config — Action Required
 
 The Slack OAuth redirect URI in `.env.local` should be `https://nexaro-9j3h.vercel.app/api/slack/callback`.

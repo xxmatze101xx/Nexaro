@@ -89,10 +89,17 @@ async function callOpenAI(systemPrompt: string, userPrompt: string, maxTokens = 
 // ── Job processors ────────────────────────────────────────────────────────────
 
 async function processThreadSummary(input: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const messages = input.messages as Array<{ from: string; body: string }> | undefined;
     const subject = String(input.subject ?? "(no subject)");
 
-    if (!messages?.length) throw new Error("input.messages array is required");
+    // Accept either a pre-built messages array or the single-message fields (sender + body)
+    // that ai-actions-panel sends when summarising a single email.
+    let messages = input.messages as Array<{ from: string; body: string }> | undefined;
+    if (!messages?.length) {
+        const body = String(input.body ?? "").trim();
+        const from = String(input.sender ?? "Unknown");
+        if (!body) throw new Error("input.messages array is required");
+        messages = [{ from, body }];
+    }
 
     const summary = await callOpenAI(
         THREAD_SUMMARY_SYSTEM,
