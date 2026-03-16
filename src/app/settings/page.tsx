@@ -88,7 +88,7 @@ function SettingsContent() {
 
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get("code");
-        const service = urlParams.get("service");
+        const service = urlParams.get("service") ?? urlParams.get("state");
         const slackConnectedParam = urlParams.get("slack_connected");
         const microsoftConnectedParam = urlParams.get("microsoft_connected");
 
@@ -313,9 +313,9 @@ function SettingsContent() {
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
         } else if (integrationId === "Google Calendar") {
             if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
-            const redirectUri = `${window.location.origin}/settings?service=calendar`;
+            const redirectUri = `${window.location.origin}/settings`;
             const scope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=calendar`;
         } else if (integrationId === "Slack") {
             if (slackConnected) {
                 if (confirm("Slack wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
