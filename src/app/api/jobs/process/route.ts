@@ -107,7 +107,7 @@ async function processThreadSummary(input: Record<string, unknown>): Promise<Rec
         400,
     );
 
-    return { summary };
+    return { result: summary };
 }
 
 async function processActionExtraction(input: Record<string, unknown>): Promise<Record<string, unknown>> {
