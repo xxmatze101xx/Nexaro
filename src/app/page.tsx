@@ -57,7 +57,6 @@ import {
   Hash,
   Lock,
   Calendar,
-  LogOut,
   Plus,
   RefreshCw,
   Pencil,
@@ -988,13 +987,6 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* Bottom Section */}
-        <div className="p-4 shrink-0 mt-auto">
-          <button className="flex items-center gap-2 text-sm border-t border-sidebar-border pt-4 text-muted-foreground font-medium hover:text-foreground transition-colors w-full px-2 rounded-md">
-            <LogOut className="w-4 h-4" />
-            Abmelden
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -1104,8 +1096,8 @@ function DashboardContent() {
           />
         )}
 
-        {/* Daily Executive Briefing — hidden on home dashboard */}
-        {!showDashboard && allMessages.length >= 5 && (
+        {/* Daily Executive Briefing — hidden on home dashboard and settings */}
+        {!showDashboard && !showSettings && allMessages.length >= 5 && (
           <div className="px-6 pt-4 pb-0">
             <DailyBriefingPanel
               briefing={dailyBriefing}
