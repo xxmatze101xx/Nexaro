@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Responsive, WidthProvider } from "react-grid-layout";
+import ReactGridLayout, { WidthProvider } from "react-grid-layout";
 import { Pencil, Check, Plus, X, LayoutGrid } from "lucide-react";
 import {
   loadConfig,
@@ -23,7 +23,7 @@ import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
 import { cn } from "@/lib/utils";
 
-const ResponsiveGridLayout = WidthProvider(Responsive);
+const GridLayout = WidthProvider(ReactGridLayout);
 
 interface HomeDashboardProps {
   displayName: string;
@@ -248,11 +248,10 @@ export function HomeDashboard({
             </button>
           </div>
         ) : (
-          <ResponsiveGridLayout
+          <GridLayout
             className="layout"
-            layouts={{ lg: currentLayout, md: currentLayout, sm: currentLayout }}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            layout={currentLayout}
+            cols={12}
             rowHeight={80}
             margin={[12, 12]}
             isDraggable={editMode}
@@ -291,7 +290,7 @@ export function HomeDashboard({
                 </div>
               </div>
             ))}
-          </ResponsiveGridLayout>
+          </GridLayout>
         )}
       </div>
     </div>
