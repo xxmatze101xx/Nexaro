@@ -5,7 +5,7 @@
 
 export const REQUIRED_SCOPES = {
     slack_bot: ["channels:history", "groups:history", "im:history", "chat:write"],
-    slack_user: ["channels:read", "groups:read", "im:read", "users:read", "channels:history", "chat:write"],
+    slack_user: ["channels:read", "groups:read", "im:read", "users:read", "channels:history"],
 } as const;
 
 /**
