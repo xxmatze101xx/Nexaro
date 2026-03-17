@@ -48,6 +48,23 @@ async function getSlackToken(idToken: string, projectId: string): Promise<{
     };
 }
 
+interface SlackReaction {
+    name: string;
+    count: number;
+    users: string[];
+}
+
+interface RawSlackMessage {
+    ts: string;
+    user?: string;
+    text?: string;
+    subtype?: string;
+    username?: string;
+    reactions?: SlackReaction[];
+    reply_count?: number;
+    thread_ts?: string;
+}
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const channelId = searchParams.get("channel");
@@ -77,13 +94,25 @@ export async function GET(request: Request) {
 
     // Use user token (xoxp-) for conversations.history — the user is already a member of their channels,
     // so this avoids "not_in_channel" errors that occur when the bot hasn't been invited.
-    // User token carries channels:history scope (see REQUIRED_SCOPES.slack_user).
-    // Use user token for users.info as well (users:read scope).
     const historyToken = tokens.userToken || tokens.botToken;
     const usersToken   = tokens.userToken || tokens.botToken;
 
     if (!historyToken) {
         return NextResponse.json({ error: "no_token", messages: [] }, { status: 400 });
+    }
+
+    // ── Get current user's Slack ID via auth.test ────────────────────────────
+    let currentSlackUserId: string | null = null;
+    try {
+        const authTestRes = await fetch("https://slack.com/api/auth.test", {
+            headers: { Authorization: `Bearer ${historyToken}` },
+        });
+        const authTestData = await authTestRes.json() as { ok: boolean; user_id?: string };
+        if (authTestData.ok && authTestData.user_id) {
+            currentSlackUserId = authTestData.user_id;
+        }
+    } catch {
+        // non-fatal — currentSlackUserId stays null
     }
 
     // ── Fetch conversation history ───────────────────────────────────────────
@@ -100,7 +129,7 @@ export async function GET(request: Request) {
     const histData = await histRes.json() as {
         ok: boolean;
         error?: string;
-        messages?: Array<{ ts: string; user?: string; text?: string; subtype?: string; username?: string }>;
+        messages?: RawSlackMessage[];
     };
 
     if (!histData.ok) {
@@ -141,11 +170,14 @@ export async function GET(request: Request) {
     );
 
     const messages = raw.map(m => ({
-        ts:       m.ts,
-        user:     m.user ?? "app",
-        userName: (m.user ? userMap[m.user]?.name : m.username) ?? m.user ?? "Slack Bot",
-        text:     m.text ?? "",
+        ts:          m.ts,
+        user:        m.user ?? "app",
+        userName:    (m.user ? userMap[m.user]?.name : m.username) ?? m.user ?? "Slack Bot",
+        text:        m.text ?? "",
+        reactions:   m.reactions,
+        reply_count: m.reply_count,
+        thread_ts:   m.thread_ts,
     }));
 
-    return NextResponse.json({ messages });
+    return NextResponse.json({ messages, currentSlackUserId });
 }

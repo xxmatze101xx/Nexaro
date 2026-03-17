@@ -6,7 +6,8 @@ import { logger } from "@/lib/logger";
  * Authorization: Bearer <firebase_id_token>
  * Body: { channel: string, text: string }
  *
- * Sends a message to a Slack channel using the user token.
+ * Sends a message to a Slack channel.
+ * Tries user token first (has chat:write after re-auth), falls back to bot token silently.
  */
 export async function POST(request: Request) {
     const authHeader = request.headers.get("Authorization");
@@ -42,24 +43,45 @@ export async function POST(request: Request) {
         };
     };
 
-    // Use bot token for posting — it carries chat:write scope.
-    // User token (xoxp-) does not have chat:write in the current OAuth config.
-    const token = fsData.fields?.access_token?.stringValue || fsData.fields?.user_access_token?.stringValue || "";
-    if (!token) return NextResponse.json({ error: "no_token" }, { status: 400 });
+    const userToken = fsData.fields?.user_access_token?.stringValue ?? "";
+    const botToken  = fsData.fields?.access_token?.stringValue ?? "";
 
-    const sendRes = await fetch("https://slack.com/api/chat.postMessage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ channel: body.channel, text: body.text }),
-    });
-    const sendData = await sendRes.json() as { ok: boolean; error?: string };
+    if (!userToken && !botToken) {
+        return NextResponse.json({ error: "no_token" }, { status: 400 });
+    }
+
+    // Try user token first — it will have chat:write after re-auth.
+    // If it returns missing_scope, fall back to bot token silently.
+    const tryPost = async (token: string) => {
+        const res = await fetch("https://slack.com/api/chat.postMessage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ channel: body.channel, text: body.text }),
+        });
+        return res.json() as Promise<{ ok: boolean; error?: string }>;
+    };
+
+    let sentAsBot = false;
+    let sendData: { ok: boolean; error?: string };
+
+    if (userToken) {
+        sendData = await tryPost(userToken);
+        if (!sendData.ok && sendData.error === "missing_scope" && botToken) {
+            // Silent fallback to bot token
+            sendData = await tryPost(botToken);
+            sentAsBot = true;
+        }
+    } else {
+        sendData = await tryPost(botToken);
+        sentAsBot = true;
+    }
 
     if (!sendData.ok) {
         logger.error("slack/send", "chat.postMessage failed", { error: sendData.error, channel: body.channel });
         return NextResponse.json({ error: sendData.error }, { status: 500 });
     }
 
-    logger.info("slack/send", "Message sent", { channel: body.channel });
+    logger.info("slack/send", "Message sent", { channel: body.channel, sentAsBot });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ...(sentAsBot ? { sentAsBot: true } : {}) });
 }

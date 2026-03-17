@@ -175,6 +175,10 @@ def main() -> None:
         "token_acquired_at": 0,  # Force refresh if only refresh_token is set
     }
 
+    target_uid = os.getenv("FIREBASE_UID", "system")
+    if target_uid == "system":
+        logger.warning("FIREBASE_UID not set — messages will be written with uid='system' and won't appear in the UI")
+
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     raw_messages = fetch_messages(credentials, since)
     logger.info(f"Processing {len(raw_messages)} messages...")
@@ -184,7 +188,7 @@ def main() -> None:
         try:
             normalized = normalize(raw)
             importance = score(normalized)
-            doc_id = write_message(normalized, importance)
+            doc_id = write_message(normalized, importance, user_id=target_uid)
             if doc_id:
                 logger.info(f"Wrote Outlook message from '{normalized['sender']}' (score={importance:.1f})")
             else:

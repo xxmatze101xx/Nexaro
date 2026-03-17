@@ -34,9 +34,12 @@ export interface GmailMessage {
  * @returns Unsubscribe function.
  */
 export function subscribeToGmailScores(
-    onUpdate: (scores: Record<string, number>) => void
+    onUpdate: (scores: Record<string, number>) => void,
+    uid?: string,
 ): () => void {
-    const q = query(collection(db, "messages"), where("source", "==", "gmail"));
+    const q = uid
+        ? query(collection(db, "messages"), where("uid", "==", uid), where("source", "==", "gmail"))
+        : query(collection(db, "messages"), where("source", "==", "gmail"));
     return onSnapshot(q, (snapshot) => {
         const scores: Record<string, number> = {};
         snapshot.docs.forEach(doc => {

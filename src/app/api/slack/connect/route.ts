@@ -50,6 +50,8 @@ export async function GET(request: Request) {
         "channels:history", // read message history in public channels
         "groups:history",   // read message history in private channels
         "im:history",       // read DM history
+        "chat:write",       // send messages as the user
+        "reactions:write",  // add/remove emoji reactions
     ].join(",");
 
     // Encode uid and Firebase ID token together in state — the callback needs

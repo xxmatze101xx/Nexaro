@@ -41,7 +41,7 @@ def write_message(payload: dict, importance_score: float, user_id: str = "system
         "importance_score": importance_score,
         "ai_draft_response": None,
         "status": "unread",
-        "user_id": user_id,
+        "uid": user_id,
         "created_at": firestore.SERVER_TIMESTAMP,
     }
 
@@ -72,7 +72,7 @@ def list_messages(user_id: str, limit: int = 20) -> list:
     """Lists messages for a user, sorted by importance (highest first)."""
     query = (
         db.collection("messages")
-        .where("user_id", "==", user_id)
+        .where("uid", "==", user_id)
         .order_by("importance_score", direction=firestore.Query.DESCENDING)
         .limit(limit)
     )

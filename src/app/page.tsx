@@ -12,7 +12,7 @@ import type { SlackChannel } from "@/lib/slack";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useSemanticSearch } from "@/hooks/useSemanticSearch";
 import type { UnifiedMessage } from "@/lib/normalizers/types";
-import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, limit, where } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -179,9 +179,10 @@ function DashboardContent() {
 
   // Subscribe to Python pipeline scores for Gmail messages
   useEffect(() => {
-    const unsub = subscribeToGmailScores(setFirestoreGmailScores);
+    if (!user) return;
+    const unsub = subscribeToGmailScores(setFirestoreGmailScores, user.uid);
     return () => unsub();
-  }, []);
+  }, [user]);
 
   // Subscribe to real-time messages from Firestore (only when authenticated)
   useEffect(() => {
@@ -191,6 +192,7 @@ function DashboardContent() {
     }
     const q = query(
       collection(db, "messages"),
+      where("uid", "==", user.uid),
       orderBy("importance_score", "desc"),
       limit(100)
     );

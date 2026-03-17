@@ -59,14 +59,18 @@ def generate_mock_message():
 
 def main():
     logger.info("Starting Mock Adapter generation...")
-    
+
+    target_uid = os.getenv("FIREBASE_UID", "system")
+    if target_uid == "system":
+        logger.warning("FIREBASE_UID not set — messages will be written with uid='system' and won't appear in the UI")
+
     # Generate 10 mock messages
     num_messages = 10
     logger.info(f"Generating {num_messages} mock messages...")
-    
+
     for _ in range(num_messages):
         raw_msg = generate_mock_message()
-        
+
         # 1. Normalize
         normalized = normalize(raw_msg)
 
@@ -74,7 +78,7 @@ def main():
         quick_score = python_score(normalized)
 
         # 3. Write to Firestore immediately so the UI can show the message
-        doc_id = write_message(normalized, quick_score)
+        doc_id = write_message(normalized, quick_score, user_id=target_uid)
         if not doc_id:
             logger.error(f"Failed to write message from {normalized['source']}")
             continue

@@ -158,6 +158,10 @@ def main() -> None:
         logger.error("SLACK_BOT_TOKEN is not set — add it to .env")
         sys.exit(1)
 
+    target_uid = os.getenv("FIREBASE_UID", "system")
+    if target_uid == "system":
+        logger.warning("FIREBASE_UID not set — messages will be written with uid='system' and won't appear in the UI")
+
     credentials = {"bot_token": bot_token}
     # Fetch messages from the last 24 hours
     from datetime import timedelta
@@ -171,7 +175,7 @@ def main() -> None:
         try:
             normalized = normalize(raw)
             importance = score(normalized)
-            doc_id = write_message(normalized, importance)
+            doc_id = write_message(normalized, importance, user_id=target_uid)
             if doc_id:
                 logger.info(f"Wrote Slack message from '{normalized['sender']}' (score={importance:.1f})")
             else:
