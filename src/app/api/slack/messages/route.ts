@@ -75,10 +75,11 @@ export async function GET(request: Request) {
         }
     }
 
-    // Use bot token for conversations.history — it carries channels:history/groups:history/im:history scopes.
-    // User token (xoxp-) only has channels:read, groups:read etc. — NOT the history scopes.
-    // Use user token for users.info — it carries users:read scope.
-    const historyToken = tokens.botToken || tokens.userToken;
+    // Use user token (xoxp-) for conversations.history — the user is already a member of their channels,
+    // so this avoids "not_in_channel" errors that occur when the bot hasn't been invited.
+    // User token carries channels:history scope (see REQUIRED_SCOPES.slack_user).
+    // Use user token for users.info as well (users:read scope).
+    const historyToken = tokens.userToken || tokens.botToken;
     const usersToken   = tokens.userToken || tokens.botToken;
 
     if (!historyToken) {

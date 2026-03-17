@@ -222,9 +222,10 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
             const headers: Record<string, string> = { "Content-Type": "application/json" };
             if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
 
-            // Use full HTML content (stripped) when available; fall back to the Firestore preview
+            // Use full HTML content when available; DOMParser decodes entities + strips tags correctly.
+            // Fall back to the Firestore text preview.
             const fullBody = message.htmlContent
-                ? message.htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+                ? (new DOMParser().parseFromString(message.htmlContent, "text/html").body.textContent ?? message.content)
                 : message.content;
 
             const res = await fetch("/api/ai/draft", {
