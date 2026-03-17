@@ -28,6 +28,8 @@ import {
     disconnectSlack,
     getMicrosoftConnection,
     disconnectMicrosoft,
+    getDriveConnection,
+    disconnectDrive,
     type CalendarAccount,
 } from "@/lib/user";
 import { AccountSection } from "@/components/settings/AccountSection";
@@ -59,6 +61,7 @@ function SettingsContent() {
     const [slackConnected, setSlackConnected] = useState(false);
     const [slackScopeUpgradeRequired, setSlackScopeUpgradeRequired] = useState(false);
     const [microsoftConnected, setMicrosoftConnected] = useState(false);
+    const [driveConnected, setDriveConnected] = useState(false);
     const codeHandledRef = useRef(false);
 
     // Force light mode on this page
@@ -91,6 +94,8 @@ function SettingsContent() {
         const service = urlParams.get("service") ?? urlParams.get("state");
         const slackConnectedParam = urlParams.get("slack_connected");
         const microsoftConnectedParam = urlParams.get("microsoft_connected");
+        const driveConnectedParam = urlParams.get("drive_connected");
+        const driveErrorParam = urlParams.get("drive_error");
 
         if (code && !codeHandledRef.current) {
             codeHandledRef.current = true;
@@ -108,6 +113,7 @@ function SettingsContent() {
             // condition where Firestore hasn't propagated the write yet
             if (slackConnectedParam === "true") setSlackConnected(true);
             if (microsoftConnectedParam === "true") setMicrosoftConnected(true);
+            if (driveConnectedParam === "true") setDriveConnected(true);
 
             // Async verify (with retry to handle Firestore propagation delay)
             const verifyWithRetry = async (
@@ -154,12 +160,22 @@ function SettingsContent() {
                 getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
             }
 
-            if (slackConnectedParam === "true" || microsoftConnectedParam === "true") {
+            if (driveConnectedParam === "true") {
+                verifyWithRetry(() => getDriveConnection(user.uid), setDriveConnected);
+            } else {
+                getDriveConnection(user.uid).then(conn => setDriveConnected(!!conn));
+            }
+
+            if (slackConnectedParam === "true" || microsoftConnectedParam === "true" || driveConnectedParam === "true") {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
             const errorParam = urlParams.get("slack_error") ?? urlParams.get("microsoft_error");
             if (errorParam) {
                 alert(`OAuth-Fehler: ${errorParam}`);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            if (driveErrorParam) {
+                alert(`Google Drive Fehler: ${driveErrorParam}`);
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
@@ -194,10 +210,11 @@ function SettingsContent() {
 
     const handleGmailOAuthCallback = async (code: string, uid: string) => {
         try {
+            const redirectUri = `${window.location.origin}/settings`;
             const res = await fetch("/api/gmail/exchange", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code }),
+                body: JSON.stringify({ code, redirectUri }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
             if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
@@ -235,27 +252,40 @@ function SettingsContent() {
 
     const handleCalendarOAuthCallback = async (code: string, uid: string) => {
         try {
+            const redirectUri = `${window.location.origin}/settings`;
             const res = await fetch("/api/calendar/exchange", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code }),
+                body: JSON.stringify({ code, redirectUri }),
             });
-            const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
+            const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; id_token?: string; error?: string };
             if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
 
             if (data.access_token) {
-                const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-                    headers: { Authorization: `Bearer ${data.access_token}` },
-                });
-                if (profileRes.ok) {
-                    const profileData = (await profileRes.json()) as { email?: string };
-                    const accountEmail = profileData.email;
-                    if (accountEmail) {
-                        localStorage.setItem(`gcal_access_token_${accountEmail}`, data.access_token);
-                        localStorage.setItem(`gcal_token_expiry_${accountEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
-                        if (data.refresh_token) await saveCalendarRefreshToken(uid, data.refresh_token, accountEmail);
-                        setCalendarAccounts(await getCalendarAccounts(uid));
+                // Extract email from id_token (JWT) — avoids extra userinfo API call
+                let accountEmail: string | undefined;
+                if (data.id_token) {
+                    try {
+                        const payload = JSON.parse(atob(data.id_token.split(".")[1])) as { email?: string };
+                        accountEmail = payload.email;
+                    } catch {
+                        // fallback to userinfo API
                     }
+                }
+                if (!accountEmail) {
+                    const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+                        headers: { Authorization: `Bearer ${data.access_token}` },
+                    });
+                    if (profileRes.ok) {
+                        const profileData = (await profileRes.json()) as { email?: string };
+                        accountEmail = profileData.email;
+                    }
+                }
+                if (accountEmail) {
+                    localStorage.setItem(`gcal_access_token_${accountEmail}`, data.access_token);
+                    localStorage.setItem(`gcal_token_expiry_${accountEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
+                    if (data.refresh_token) await saveCalendarRefreshToken(uid, data.refresh_token, accountEmail);
+                    setCalendarAccounts(await getCalendarAccounts(uid));
                 }
             }
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -310,12 +340,23 @@ function SettingsContent() {
             if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
             const redirectUri = `${window.location.origin}/settings`;
             const scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&include_granted_scopes=false`;
         } else if (integrationId === "Google Calendar") {
             if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
             const redirectUri = `${window.location.origin}/settings`;
-            const scope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=calendar`;
+            // openid + email: minimal OIDC scopes to identify the account — no Gmail access
+            const scope = "openid email https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&include_granted_scopes=false&state=calendar`;
+        } else if (integrationId === "Google Drive") {
+            const idToken = await user.getIdToken(false);
+            if (driveConnected) {
+                if (confirm("Google Drive wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
+                    await disconnectDrive(user.uid);
+                    setDriveConnected(false);
+                }
+            } else {
+                window.location.href = `/api/drive/auth?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
+            }
         } else if (integrationId === "Slack") {
             if (slackConnected) {
                 if (confirm("Slack wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
@@ -323,14 +364,29 @@ function SettingsContent() {
                     setSlackConnected(false);
                 }
             } else {
-                // Get a fresh Firebase ID token — the server-side callback needs it to
-                // authenticate the Firestore REST write (Bearer auth, satisfies security rules).
-                const idToken = await user.getIdToken(/* forceRefresh */ false);
+                const idToken = await user.getIdToken(false);
                 window.location.href = `/api/slack/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
             }
-        } else if (integrationId === "Outlook" || integrationId === "Microsoft Teams") {
-            const idToken = await user.getIdToken(/* forceRefresh */ false);
-            window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
+        } else if (integrationId === "Outlook") {
+            if (microsoftConnected) {
+                if (confirm("Microsoft / Outlook wirklich trennen?")) {
+                    await disconnectMicrosoft(user.uid);
+                    setMicrosoftConnected(false);
+                }
+            } else {
+                const idToken = await user.getIdToken(false);
+                window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}&service=outlook`;
+            }
+        } else if (integrationId === "Microsoft Teams") {
+            if (microsoftConnected) {
+                if (confirm("Microsoft Teams wirklich trennen?")) {
+                    await disconnectMicrosoft(user.uid);
+                    setMicrosoftConnected(false);
+                }
+            } else {
+                const idToken = await user.getIdToken(false);
+                window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}&service=teams`;
+            }
         } else {
             alert(`${integrationId} Integration ist noch nicht implementiert.`);
         }
@@ -356,6 +412,7 @@ function SettingsContent() {
         { id: "Slack", name: "Slack", domain: "slack.com", description: "Sende Benachrichtigungen in Kanäle und erstelle Projekte aus Nachrichten.", status: (slackConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
         { id: "Gmail", name: "Gmail", domain: "gmail.com", description: "Synchronisiere und verwalte deine E-Mails nahtlos in all deinen Projekten.", status: (gmailAccounts.length > 0 ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
         { id: "Google Calendar", name: "Google Calendar", domain: "calendar.google.com", description: "Behalte deine Termine und Fristen stets im Blick mit der Kalender-Integration.", status: (calendarAccounts.length > 0 ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
+        { id: "Google Drive", name: "Google Drive", domain: "drive.google.com", description: "Greife auf deine Drive-Dateien zu und füge Dokumente direkt in Nachrichten ein.", status: (driveConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
         { id: "Outlook", name: "Microsoft Outlook", domain: "outlook.live.com", description: "Greife über Microsofts etablierten Dienst direkt auf deine Mails und Kontakte zu.", status: (microsoftConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
         { id: "Microsoft Teams", name: "Microsoft Teams", domain: "teams.microsoft.com", description: "Kommunikation auf Unternehmensebene nahtlos mit Projektaktivitäten verbunden.", status: (microsoftConnected ? "connected" : "disconnected") as "connected" | "disconnected", email: null },
         { id: "Proton Mail", name: "Proton Mail", domain: "proton.me", description: "Sichere Ende-zu-Ende verschlüsselte Kommunikation direkt aus Nexaro heraus.", status: "disconnected" as const, email: null },

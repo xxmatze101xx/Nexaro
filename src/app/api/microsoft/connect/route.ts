@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const uid = searchParams.get("uid");
     const idToken = searchParams.get("idToken") ?? "";
+    const service = searchParams.get("service") ?? "outlook"; // "outlook" | "teams"
 
     if (!uid) {
         return NextResponse.json({ error: "Missing uid parameter" }, { status: 400 });
@@ -25,14 +26,13 @@ export async function GET(request: Request) {
         );
     }
 
+    const baseScopes = ["offline_access", "User.Read"];
+    const outlookScopes = ["Mail.Read", "Mail.Send", "Calendars.Read"];
+    const teamsScopes = ["Chat.Read"];
+
     const scopes = [
-        "offline_access",
-        "User.Read",
-        "Mail.Read",
-        "Mail.Send",
-        "Calendars.Read",
-        "Chat.Read",
-        "Files.Read",
+        ...baseScopes,
+        ...(service === "teams" ? teamsScopes : outlookScopes),
     ].join(" ");
 
     const params = new URLSearchParams({

@@ -101,7 +101,7 @@ export async function GET(request: Request) {
         }
 
         logger.info("drive/callback", "Google Drive token stored", { uid });
-        return NextResponse.redirect(`${appUrl}/?drive_connected=true`);
+        return NextResponse.redirect(`${appUrl}/settings?drive_connected=true`);
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "unknown";
         logger.error("drive/callback", "Unexpected error", { error: msg });

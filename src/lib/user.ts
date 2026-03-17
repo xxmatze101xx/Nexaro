@@ -294,3 +294,29 @@ export async function disconnectMicrosoft(uid: string) {
     await deleteDoc(ref);
 }
 
+// ─── Google Drive ────────────────────────────────────────────────────────────
+
+/**
+ * Retrieves the Google Drive connection for the user.
+ * Stored in: users/{uid}/tokens/google_drive
+ */
+export async function getDriveConnection(uid: string): Promise<{ access_token: string } | null> {
+    if (!uid) return null;
+    const ref = doc(db, "users", uid, "tokens", "google_drive");
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+        return snap.data() as { access_token: string };
+    }
+    return null;
+}
+
+/**
+ * Disconnects Google Drive by removing the token document.
+ */
+export async function disconnectDrive(uid: string) {
+    if (!uid) return;
+    const { deleteDoc } = await import("firebase/firestore");
+    const ref = doc(db, "users", uid, "tokens", "google_drive");
+    await deleteDoc(ref);
+}
+

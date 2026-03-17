@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
     try {
-        const { code } = await request.json();
+        const { code, redirectUri: clientRedirectUri } = await request.json() as { code?: string; redirectUri?: string };
 
         if (!code) {
             return NextResponse.json({ error: "Missing authorization code" }, { status: 400 });
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
         const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
         const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-        const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/settings` : "http://localhost:3000/settings");
+        const redirectUri = clientRedirectUri ?? process.env.GOOGLE_REDIRECT_URI ?? (process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/settings` : "http://localhost:3000/settings");
 
         if (!clientId || !clientSecret) {
             logger.error("gmail/exchange", "Missing Google OAuth credentials in environment variables");
