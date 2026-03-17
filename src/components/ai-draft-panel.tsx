@@ -222,6 +222,11 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
             const headers: Record<string, string> = { "Content-Type": "application/json" };
             if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
 
+            // Use full HTML content (stripped) when available; fall back to the Firestore preview
+            const fullBody = message.htmlContent
+                ? message.htmlContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+                : message.content;
+
             const res = await fetch("/api/ai/draft", {
                 method: "POST",
                 headers,
@@ -229,7 +234,7 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                     subject: message.subject,
                     sender: message.sender,
                     senderEmail: message.senderEmail,
-                    body: message.content,
+                    body: fullBody,
                     idToken,
                 }),
             });

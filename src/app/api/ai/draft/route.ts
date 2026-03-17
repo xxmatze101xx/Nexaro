@@ -108,16 +108,26 @@ Rules:
 - Do NOT add "Best regards" or a signature at the end.
 - Keep it under 400 characters if possible.${memoryHints}`;
 
-    // sender field is already abbreviated to initials by score_importance_ai.py
-    const from = draftBody.senderEmail
+    // Scrub sender name and email before including in the prompt
+    const rawFrom = draftBody.senderEmail
         ? `${draftBody.sender ?? ""} <${draftBody.senderEmail}>`.trim()
         : (draftBody.sender ?? "Unknown");
+    let anonymizedFrom = rawFrom;
+    try {
+        if (rawFrom.trim()) {
+            const r = scrubText(rawFrom);
+            anonymizedFrom = r.anonymized;
+            mapping = { ...r.mapping, ...mapping };
+        }
+    } catch {
+        anonymizedFrom = rawFrom;
+    }
 
-    const userPrompt = `From: ${from}
+    const userPrompt = `From: ${anonymizedFrom}
 Subject: ${anonymizedSubject || "(no subject)"}
 
 ${anonymizedBody}`;
-    console.log(">>> SENDING TO OPENAI:", userPrompt);
+    console.log(">>> SENDING TO OPENAI:\n", userPrompt);
     try {
         const groqRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
