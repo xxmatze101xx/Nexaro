@@ -16,6 +16,8 @@ import { uploadProfilePicture } from "@/lib/storage";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
     getUserProfile,
     getGmailAccounts,
@@ -95,6 +97,7 @@ function SettingsContent() {
         const slackConnectedParam = urlParams.get("slack_connected");
         const microsoftConnectedParam = urlParams.get("microsoft_connected");
         const driveConnectedParam = urlParams.get("drive_connected");
+        const driveTokensParam = urlParams.get("drive_tokens");
         const driveErrorParam = urlParams.get("drive_error");
 
         if (code && !codeHandledRef.current) {
@@ -103,6 +106,15 @@ function SettingsContent() {
                 handleCalendarOAuthCallback(code, user.uid);
             } else {
                 handleGmailOAuthCallback(code, user.uid);
+            }
+        } else if (driveTokensParam === "1" && !codeHandledRef.current) {
+            codeHandledRef.current = true;
+            const driveUid = urlParams.get("drive_uid") ?? "";
+            const accessToken = urlParams.get("drive_access_token") ?? "";
+            const refreshToken = urlParams.get("drive_refresh_token") ?? "";
+            const expiresAt = urlParams.get("drive_expires_at") ?? "";
+            if (driveUid === user.uid && accessToken) {
+                void handleDriveTokenCallback(accessToken, refreshToken, expiresAt);
             }
         } else {
             // Load all integration statuses
@@ -208,13 +220,30 @@ function SettingsContent() {
         }
     };
 
+    const handleDriveTokenCallback = async (accessToken: string, refreshToken: string, expiresAt: string) => {
+        if (!user?.uid) return;
+        try {
+            const ref = doc(db, "users", user.uid, "tokens", "google_drive");
+            await setDoc(ref, {
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: Number(expiresAt),
+                connected_at: serverTimestamp(),
+            });
+            setDriveConnected(true);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            alert(`Drive-Verbindung konnte nicht gespeichert werden: ${msg}`);
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+    };
+
     const handleGmailOAuthCallback = async (code: string, uid: string) => {
         try {
-            const redirectUri = `${window.location.origin}/settings`;
             const res = await fetch("/api/gmail/exchange", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code, redirectUri }),
+                body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
             if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
@@ -252,11 +281,10 @@ function SettingsContent() {
 
     const handleCalendarOAuthCallback = async (code: string, uid: string) => {
         try {
-            const redirectUri = `${window.location.origin}/settings`;
             const res = await fetch("/api/calendar/exchange", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code, redirectUri }),
+                body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; id_token?: string; error?: string };
             if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
@@ -337,25 +365,18 @@ function SettingsContent() {
         const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
         if (integrationId === "Gmail") {
-            if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
-            const redirectUri = `${window.location.origin}/settings`;
-            const scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&include_granted_scopes=false`;
+            // Server-side auth route ensures redirect_uri is always from env var (no mismatch)
+            window.location.href = "/api/gmail/auth";
         } else if (integrationId === "Google Calendar") {
-            if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
-            const redirectUri = `${window.location.origin}/settings`;
-            // openid + email: minimal OIDC scopes to identify the account — no Gmail access
-            const scope = "openid email https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&include_granted_scopes=false&state=calendar`;
+            window.location.href = "/api/calendar/auth";
         } else if (integrationId === "Google Drive") {
-            const idToken = await user.getIdToken(false);
             if (driveConnected) {
                 if (confirm("Google Drive wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
                     await disconnectDrive(user.uid);
                     setDriveConnected(false);
                 }
             } else {
-                window.location.href = `/api/drive/auth?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
+                window.location.href = `/api/drive/auth?uid=${encodeURIComponent(user.uid)}`;
             }
         } else if (integrationId === "Slack") {
             if (slackConnected) {

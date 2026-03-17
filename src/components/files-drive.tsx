@@ -100,10 +100,8 @@ export function FilesDrive({ userId, onSelect, selectedFile }: FilesDriveProps) 
     }
   }, [isConnected, currentFolderId, fetchFiles]);
 
-  const handleConnect = async () => {
-    if (!user) return;
-    const idToken = await user.getIdToken();
-    window.location.href = `/api/drive/auth?uid=${userId}&idToken=${idToken}`;
+  const handleConnect = () => {
+    window.location.href = `/api/drive/auth?uid=${userId}`;
   };
 
   const handleItemClick = (file: DriveFile) => {

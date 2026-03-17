@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 
 /**
- * GET /api/drive/callback?code=<auth_code>&state=<uid+idToken>
+ * GET /api/drive/callback?code=<auth_code>&state=<uid>
  *
- * Exchanges Google Drive OAuth code for tokens,
- * stores them in Firestore at users/{uid}/tokens/google_drive.
+ * Exchanges Google Drive OAuth code for tokens, then hands them off to
+ * the client via redirect params so the client can write to Firestore
+ * using its own authenticated SDK (avoids idToken-in-state expiry issues).
  *
  * Required env vars:
  *   GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, GOOGLE_DRIVE_REDIRECT_URI
- *   NEXT_PUBLIC_FIREBASE_PROJECT_ID
  */
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -19,27 +19,25 @@ export async function GET(request: Request) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
+    // State contains only the uid (no idToken to avoid expiry issues)
     let uid = "";
-    let idToken = "";
     try {
-        const parsed = JSON.parse(rawState) as { uid?: string; idToken?: string };
+        const parsed = JSON.parse(rawState) as { uid?: string };
         uid = parsed.uid ?? "";
-        idToken = parsed.idToken ?? "";
     } catch {
         uid = rawState;
     }
 
     if (error || !code || !uid) {
         const reason = error ?? "missing_code_or_state";
-        return NextResponse.redirect(`${appUrl}/settings?drive_error=${reason}`);
+        return NextResponse.redirect(`${appUrl}/settings?drive_error=${encodeURIComponent(reason)}`);
     }
 
     const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
     const redirectUri = process.env.GOOGLE_DRIVE_REDIRECT_URI;
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-    if (!clientId || !clientSecret || !redirectUri || !projectId) {
+    if (!clientId || !clientSecret || !redirectUri) {
         return NextResponse.redirect(`${appUrl}/settings?drive_error=server_config`);
     }
 
@@ -69,39 +67,23 @@ export async function GET(request: Request) {
                 error: tokenData.error,
                 description: tokenData.error_description,
             });
-            return NextResponse.redirect(`${appUrl}/settings?drive_error=${tokenData.error ?? "exchange_failed"}`);
+            return NextResponse.redirect(`${appUrl}/settings?drive_error=${encodeURIComponent(tokenData.error ?? "exchange_failed")}`);
         }
 
-        const now = Date.now();
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/tokens/google_drive`;
-        const firestoreBody = {
-            fields: {
-                access_token: { stringValue: tokenData.access_token },
-                refresh_token: { stringValue: tokenData.refresh_token ?? "" },
-                expires_in: { integerValue: String(tokenData.expires_in ?? 3600) },
-                token_acquired_at: { integerValue: String(now) },
-                expires_at: { integerValue: String(now + (tokenData.expires_in ?? 3600) * 1000) },
-                connected_at: { stringValue: new Date().toISOString() },
-            },
-        };
+        logger.info("drive/callback", "Drive token exchange successful, handing off to client", { uid });
 
-        const fsRes = await fetch(firestoreUrl, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify(firestoreBody),
+        // Pass tokens to the client via redirect params so the client writes to Firestore
+        // using its authenticated Firebase SDK (more reliable than server-side REST write).
+        const now = Date.now();
+        const params = new URLSearchParams({
+            drive_tokens: "1",
+            drive_uid: uid,
+            drive_access_token: tokenData.access_token,
+            drive_refresh_token: tokenData.refresh_token ?? "",
+            drive_expires_at: String(now + (tokenData.expires_in ?? 3600) * 1000),
         });
 
-        if (!fsRes.ok) {
-            const errText = await fsRes.text().catch(() => "(unreadable)");
-            logger.error("drive/callback", "Firestore token write failed", { status: fsRes.status, body: errText.slice(0, 300) });
-            return NextResponse.redirect(`${appUrl}/settings?drive_error=token_storage_failed`);
-        }
-
-        logger.info("drive/callback", "Google Drive token stored", { uid });
-        return NextResponse.redirect(`${appUrl}/settings?drive_connected=true`);
+        return NextResponse.redirect(`${appUrl}/settings?${params.toString()}`);
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "unknown";
         logger.error("drive/callback", "Unexpected error", { error: msg });

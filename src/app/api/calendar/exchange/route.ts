@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json() as { code?: string; redirectUri?: string };
-        const { code, redirectUri: clientRedirectUri } = body;
+        const { code } = await req.json() as { code?: string };
         if (!code) {
             return NextResponse.json({ error: "Missing code" }, { status: 400 });
         }
@@ -15,8 +14,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing Google credentials" }, { status: 500 });
         }
 
-        const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        const redirectUri = clientRedirectUri ?? process.env.GOOGLE_REDIRECT_URI ?? `${origin}/settings`;
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? `${appUrl}/settings`;
 
         const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",

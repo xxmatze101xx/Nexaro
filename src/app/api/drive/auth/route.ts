@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 /**
- * GET /api/drive/auth?uid=<firebase_uid>&idToken=<firebase_id_token>
+ * GET /api/drive/auth?uid=<firebase_uid>
  *
  * Initiates Google Drive OAuth flow.
  * Required env vars: GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_REDIRECT_URI
@@ -9,7 +9,6 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const uid = searchParams.get("uid");
-    const idToken = searchParams.get("idToken") ?? "";
 
     if (!uid) {
         return NextResponse.json({ error: "Missing uid parameter" }, { status: 400 });
@@ -25,18 +24,15 @@ export async function GET(request: Request) {
         );
     }
 
-    const scopes = [
-        "https://www.googleapis.com/auth/drive.readonly",
-    ].join(" ");
-
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: "code",
-        scope: scopes,
+        scope: "https://www.googleapis.com/auth/drive.readonly",
         access_type: "offline",
         prompt: "consent",
-        state: JSON.stringify({ uid, idToken }),
+        // Only uid in state — no idToken (avoids expiry issues; client handles Firestore write)
+        state: JSON.stringify({ uid }),
     });
 
     return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
