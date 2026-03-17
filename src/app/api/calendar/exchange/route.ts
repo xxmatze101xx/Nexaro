@@ -37,8 +37,9 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Internal server error";
         console.error("Calendar exchange route error:", err);
-        return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+        return NextResponse.json({ error: msg }, { status: 500 });
     }
 }

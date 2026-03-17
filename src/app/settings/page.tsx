@@ -191,6 +191,7 @@ function SettingsContent() {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     // Intersection observer for active nav section
