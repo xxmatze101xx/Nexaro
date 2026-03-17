@@ -5,7 +5,7 @@ import type { Message } from "@/lib/mock-data";
 import { ImportanceBadge } from "./importance-badge";
 import { SourceIcon, SOURCE_CONFIG } from "./source-filter";
 import { AIActionsPanel } from "./ai-actions-panel";
-import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff, Paperclip } from "lucide-react";
+import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, EyeOff, Paperclip, ShieldCheck } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { sendEmail, archiveEmail, markEmailStatus, type EmailAttachment } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
@@ -589,7 +589,8 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                         )}
 
                         {/* Toolbar */}
-                        <div className="flex items-center justify-between px-3 py-2 border-t border-border/50 bg-muted/10 shrink-0">
+                        <div className="flex flex-col border-t border-border/50 bg-muted/10 shrink-0">
+                        <div className="flex items-center justify-between px-3 py-2">
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={handleGenerateDraft}
@@ -689,6 +690,16 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                                 )}
                             </div>
                         </div>
+                        <div className="px-3 pb-2">
+                            <div
+                                className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 cursor-help"
+                                title="Persoenliche Daten werden vor der Verarbeitung anonymisiert und danach wiederhergestellt. Keine Rohdaten verlassen Nexaro."
+                            >
+                                <ShieldCheck className="h-3 w-3" />
+                                <span>Privatsphaere geschuetzt</span>
+                            </div>
+                        </div>
+                        </div>
                     </div>
                 )}
 
@@ -714,53 +725,71 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                                 )}
                             />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleGenerateDraft}
-                                disabled={isGenerating}
-                                className={cn(
-                                    "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-3 py-2 text-xs font-medium",
-                                    "text-foreground hover:bg-muted/50 hover:border-border transition-all shadow-sm",
-                                    "active:translate-y-[1px] disabled:opacity-50 disabled:pointer-events-none"
-                                )}
+                        <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleGenerateDraft}
+                                    disabled={isGenerating}
+                                    className={cn(
+                                        "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-3 py-2 text-xs font-medium",
+                                        "text-foreground hover:bg-muted/50 hover:border-border transition-all shadow-sm",
+                                        "active:translate-y-[1px] disabled:opacity-50 disabled:pointer-events-none"
+                                    )}
+                                >
+                                    {isGenerating
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                        : <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />}
+                                    {isGenerating ? "Generating..." : "Regenerate"}
+                                </button>
+                                <button
+                                    onClick={handleCopy}
+                                    className={cn(
+                                        "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-3 py-2 text-xs font-medium",
+                                        "text-foreground hover:bg-muted/50 hover:border-border transition-all shadow-sm",
+                                        "active:translate-y-[1px] ml-auto"
+                                    )}
+                                >
+                                    {copied ? <CheckCheck className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                                    {copied ? "Copied" : "Copy Draft"}
+                                </button>
+                            </div>
+                            <div
+                                className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 cursor-help"
+                                title="Persoenliche Daten werden vor der Verarbeitung anonymisiert und danach wiederhergestellt. Keine Rohdaten verlassen Nexaro."
                             >
-                                {isGenerating
-                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                                    : <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />}
-                                {isGenerating ? "Generating..." : "Regenerate"}
-                            </button>
-                            <button
-                                onClick={handleCopy}
-                                className={cn(
-                                    "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-3 py-2 text-xs font-medium",
-                                    "text-foreground hover:bg-muted/50 hover:border-border transition-all shadow-sm",
-                                    "active:translate-y-[1px] ml-auto"
-                                )}
-                            >
-                                {copied ? <CheckCheck className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
-                                {copied ? "Copied" : "Copy Draft"}
-                            </button>
+                                <ShieldCheck className="h-3 w-3" />
+                                <span>Privatsphaere geschuetzt</span>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {!message.ai_draft_response && !isReplying && (
-                    <div className="px-3 py-2 flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">AI-Entwurf generieren</span>
-                        <button
-                            onClick={handleGenerateDraft}
-                            disabled={isGenerating}
-                            className={cn(
-                                "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
-                                "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
-                                "disabled:opacity-50 disabled:pointer-events-none"
-                            )}
+                    <div className="px-3 py-2 flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">AI-Entwurf generieren</span>
+                            <button
+                                onClick={handleGenerateDraft}
+                                disabled={isGenerating}
+                                className={cn(
+                                    "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
+                                    "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
+                                    "disabled:opacity-50 disabled:pointer-events-none"
+                                )}
+                            >
+                                {isGenerating
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : <Sparkles className="h-3 w-3" />}
+                                {isGenerating ? "Generiere..." : "Generate Draft"}
+                            </button>
+                        </div>
+                        <div
+                            className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 cursor-help self-end"
+                            title="Persoenliche Daten werden vor der Verarbeitung anonymisiert und danach wiederhergestellt. Keine Rohdaten verlassen Nexaro."
                         >
-                            {isGenerating
-                                ? <Loader2 className="h-3 w-3 animate-spin" />
-                                : <Sparkles className="h-3 w-3" />}
-                            {isGenerating ? "Generiere..." : "Generate Draft"}
-                        </button>
+                            <ShieldCheck className="h-3 w-3" />
+                            <span>Privatsphaere geschuetzt</span>
+                        </div>
                     </div>
                 )}
             </div>

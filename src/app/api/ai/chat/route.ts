@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { scrubText, restoreText } from "@/lib/pii-scrubber";
 
 interface ChatMessage {
     role: "user" | "assistant" | "system";
@@ -40,8 +41,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "messages array is required." }, { status: 400 });
     }
 
-    const contextSection = body.context?.trim()
-        ? `\n\n---\n## Live Data from User's Integrations\nThe following real data was fetched from the user's connected accounts. Use it to give accurate, personalized answers.\n\n${body.context.trim()}\n---`
+    // --- PII scrubbing (privacy boundary) ---
+    // body.context contains live email/calendar data from integrations — scrub before sending to OpenAI.
+    // mapping is scoped here and NEVER logged, stored, or returned.
+    let contextForLLM = body.context?.trim() ?? "";
+    let mapping = {};
+    try {
+        if (contextForLLM) {
+            const r = scrubText(contextForLLM);
+            contextForLLM = r.anonymized;
+            mapping = r.mapping;
+        }
+    } catch (scrubErr) {
+        console.warn("ai/chat: pii-scrubber failed, using original context", scrubErr);
+        contextForLLM = body.context?.trim() ?? "";
+        mapping = {};
+    }
+    // -----------------------------------------
+
+    const contextSection = contextForLLM
+        ? `\n\n---\n## Live Data from User's Integrations\nThe following real data was fetched from the user's connected accounts. Use it to give accurate, personalized answers.\n\n${contextForLLM}\n---`
         : "";
 
     const systemMessage: ChatMessage = {
@@ -82,13 +101,17 @@ Today's date: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: 
             choices?: { message?: { content?: string } }[];
         };
 
-        const reply = data.choices?.[0]?.message?.content?.trim() ?? "";
+        const rawReply = data.choices?.[0]?.message?.content?.trim() ?? "";
 
-        if (!reply) {
+        if (!rawReply) {
             return NextResponse.json({ error: "AI returned an empty response." }, { status: 502 });
         }
 
+        // Restore PII placeholders → real values before returning to the client
+        const reply = restoreText(rawReply, mapping);
+
         logger.info("ai/chat", "Chat reply generated", { turns: body.messages.length });
+        // mapping is intentionally excluded from the response
         return NextResponse.json({ reply });
     } catch (err: unknown) {
         logger.error("ai/chat", "Unexpected error", { error: err instanceof Error ? err.message : String(err) });

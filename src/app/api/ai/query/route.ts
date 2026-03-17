@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { routeQuery } from "@/lib/ai-router";
 import { logger } from "@/lib/logger";
+import { scrubText, restoreText } from "@/lib/pii-scrubber";
 
 /**
  * POST /api/ai/query
@@ -90,10 +91,31 @@ export async function POST(request: Request) {
         return NextResponse.json({ type: "simple", reason });
     }
 
+    // --- PII scrubbing (privacy boundary) ---
+    // Scrub the query before sending to Gemini.
+    // mapping is scoped here and NEVER logged, stored, or returned.
+    let anonymizedQuery = query;
+    let mapping = {};
+    try {
+        if (query.trim()) {
+            const r = scrubText(query);
+            anonymizedQuery = r.anonymized;
+            mapping = r.mapping;
+        }
+    } catch (scrubErr) {
+        console.warn("ai/query: pii-scrubber failed, using original query", scrubErr);
+        anonymizedQuery = query;
+        mapping = {};
+    }
+    // -----------------------------------------
+
     // Complex queries: invoke Gemini
     try {
-        const answer = await callGemini(query);
+        const rawAnswer = await callGemini(anonymizedQuery);
+        // Restore PII placeholders → real values before returning to the client
+        const answer = restoreText(rawAnswer, mapping);
         logger.info("ai/query", "AI query answered", { uid, queryLength: query.length });
+        // mapping is intentionally excluded from the response
         return NextResponse.json({ type: "complex", answer });
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);

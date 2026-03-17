@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { readUserMemory, formatMemoryForPrompt } from "@/lib/user-memory";
+import { scrubText, restoreText, type ScrubMapping } from "@/lib/pii-scrubber";
 
 const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "";
 
@@ -71,6 +72,33 @@ export async function POST(request: Request) {
         }
     }
 
+    // --- PII scrubbing (privacy boundary) ---
+    // body and subject are scrubbed before leaving this server.
+    // mapping is scoped to this request handler and NEVER logged, stored, or returned.
+    let anonymizedBody = draftBody.body;
+    let anonymizedSubject = draftBody.subject ?? "";
+    let mapping: ScrubMapping = {};
+    try {
+        if (draftBody.body.trim()) {
+            const bodyResult = scrubText(draftBody.body);
+            anonymizedBody = bodyResult.anonymized;
+            mapping = bodyResult.mapping;
+        }
+        if (draftBody.subject?.trim()) {
+            const subjectResult = scrubText(draftBody.subject);
+            anonymizedSubject = subjectResult.anonymized;
+            // Merge so subject entities can also be restored in the generated draft
+            mapping = { ...subjectResult.mapping, ...mapping };
+        }
+    } catch (scrubErr) {
+        // Graceful fallback: never let scrubbing failure block draft generation
+        console.warn("ai/draft: pii-scrubber failed, using original content", scrubErr);
+        anonymizedBody = draftBody.body;
+        anonymizedSubject = draftBody.subject ?? "";
+        mapping = {};
+    }
+    // -----------------------------------------
+
     const systemPrompt = `You are a busy executive assistant. Write a concise, professional reply to the email the user provides.
 
 Rules:
@@ -80,15 +108,16 @@ Rules:
 - Do NOT add "Best regards" or a signature at the end.
 - Keep it under 400 characters if possible.${memoryHints}`;
 
+    // sender field is already abbreviated to initials by score_importance_ai.py
     const from = draftBody.senderEmail
         ? `${draftBody.sender ?? ""} <${draftBody.senderEmail}>`.trim()
         : (draftBody.sender ?? "Unknown");
 
     const userPrompt = `From: ${from}
-Subject: ${draftBody.subject ?? "(no subject)"}
+Subject: ${anonymizedSubject || "(no subject)"}
 
-${draftBody.body}`;
-
+${anonymizedBody}`;
+    console.log(">>> SENDING TO OPENAI:", userPrompt);
     try {
         const groqRes = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
@@ -120,9 +149,9 @@ ${draftBody.body}`;
             choices?: { message?: { content?: string } }[];
         };
 
-        const draft = groqData.choices?.[0]?.message?.content?.trim() ?? "";
+        const rawDraft = groqData.choices?.[0]?.message?.content?.trim() ?? "";
 
-        if (!draft) {
+        if (!rawDraft) {
             logger.warn("ai/draft", "OpenAI returned empty response");
             return NextResponse.json(
                 { error: "AI returned an empty response." },
@@ -130,11 +159,15 @@ ${draftBody.body}`;
             );
         }
 
+        // Restore PII placeholders → real values before returning to the client
+        const draft = restoreText(rawDraft, mapping);
+
         logger.info("ai/draft", "Draft generated", {
             subject: draftBody.subject ?? "(none)",
             length: draft.length,
             memoryInjected: memoryHints.length > 0,
         });
+        // mapping is intentionally excluded from the response
         return NextResponse.json({ draft });
     } catch (err: unknown) {
         logger.error("ai/draft", "Unexpected error calling OpenAI API", { error: err instanceof Error ? err.message : String(err) });

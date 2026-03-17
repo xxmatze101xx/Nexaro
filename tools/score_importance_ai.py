@@ -20,6 +20,7 @@ import urllib.request
 import urllib.error
 import logging
 from dotenv import load_dotenv
+from pii_scrubber import scrub_text
 
 load_dotenv()
 
@@ -94,7 +95,14 @@ def score_with_ai(message: dict, fallback_score: float = 5.0) -> float:
     abbreviated_name = _abbreviate_sender_name(raw_sender)
     sender_email = _sender_email(raw_sender)
     subject = message.get("subject", "").strip()
-    preview = _safe_preview(message.get("content", ""))
+    raw_preview = _safe_preview(message.get("content", ""))
+    # Scrub PII from content preview before sending to Gemini.
+    # Gemini returns only an integer so no restore is needed; mapping is discarded.
+    try:
+        preview, _mapping = scrub_text(raw_preview)
+    except Exception as exc:
+        logger.warning("score_importance_ai: pii_scrubber failed (%s), using original preview", exc)
+        preview = raw_preview
 
     sender_line = abbreviated_name if abbreviated_name else sender_email
     if abbreviated_name:

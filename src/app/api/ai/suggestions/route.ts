@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { scrubText, restoreText, type ScrubMapping } from "@/lib/pii-scrubber";
 
 /**
  * POST /api/ai/suggestions
@@ -37,6 +38,7 @@ async function generateOneSuggestion(
     apiKey: string,
     from: string,
     subject: string,
+    // body should already be anonymized by the caller
     body: string,
     style: typeof STYLES[number],
     memoryHints: string,
@@ -98,12 +100,33 @@ export async function POST(request: Request) {
         : (reqBody.sender ?? "Unknown");
     const subject = reqBody.subject ?? "(no subject)";
 
+    // --- PII scrubbing (privacy boundary) ---
+    // Scrub the email body once; share the same mapping for all 3 suggestion calls.
+    // mapping is scoped here and NEVER logged, stored, or returned.
+    let anonymizedBody = reqBody.body;
+    let mapping: ScrubMapping = {};
     try {
-        const suggestions = await Promise.all(
+        if (reqBody.body.trim()) {
+            const r = scrubText(reqBody.body);
+            anonymizedBody = r.anonymized;
+            mapping = r.mapping;
+        }
+    } catch (scrubErr) {
+        console.warn("ai/suggestions: pii-scrubber failed, using original content", scrubErr);
+        anonymizedBody = reqBody.body;
+        mapping = {};
+    }
+    // -----------------------------------------
+
+    try {
+        const rawSuggestions = await Promise.all(
             STYLES.map(style =>
-                generateOneSuggestion(apiKey, from, subject, reqBody.body, style, memoryHints)
+                generateOneSuggestion(apiKey, from, subject, anonymizedBody, style, memoryHints)
             )
         );
+
+        // Restore PII placeholders → real values in each suggestion
+        const suggestions = rawSuggestions.map(s => s ? restoreText(s, mapping) : s);
 
         const validSuggestions = suggestions.filter(Boolean);
         if (validSuggestions.length === 0) {
