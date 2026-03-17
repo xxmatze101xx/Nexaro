@@ -362,8 +362,6 @@ function SettingsContent() {
     const handleConnectProvider = async (integrationId: string) => {
         if (!user?.uid) { alert("Bitte zuerst einloggen."); return; }
 
-        const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
         if (integrationId === "Gmail") {
             // Server-side auth route ensures redirect_uri is always from env var (no mismatch)
             window.location.href = "/api/gmail/auth";
