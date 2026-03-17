@@ -42,8 +42,9 @@ export async function POST(request: Request) {
         };
     };
 
-    // Prefer user token for posting (appears as the real user, not a bot)
-    const token = fsData.fields?.user_access_token?.stringValue || fsData.fields?.access_token?.stringValue || "";
+    // Use bot token for posting — it carries chat:write scope.
+    // User token (xoxp-) does not have chat:write in the current OAuth config.
+    const token = fsData.fields?.access_token?.stringValue || fsData.fields?.user_access_token?.stringValue || "";
     if (!token) return NextResponse.json({ error: "no_token" }, { status: 400 });
 
     const sendRes = await fetch("https://slack.com/api/chat.postMessage", {
