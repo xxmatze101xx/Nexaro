@@ -96,7 +96,7 @@ export function FilesAttachments({ userId, onSelect, selectedFile }: FilesAttach
 
     const q = query(
       collection(db, "messages"),
-      where("userId", "==", userId),
+      where("uid", "==", userId),
       orderBy("timestamp", "desc")
     );
 
