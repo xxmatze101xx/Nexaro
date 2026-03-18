@@ -229,72 +229,48 @@ export default function LandingPage() {
       </section>
 
       {/* ── Radar Section ── */}
-      <section className="py-24 px-4 sm:px-6 bg-black border-b border-slate-800 overflow-hidden">
+      <section className="relative z-0 py-24 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
         <div className="max-w-6xl mx-auto text-center mb-16">
-          <p className="text-xs font-semibold uppercase tracking-widest text-sky-500 mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-sky-600 mb-3">
             Real-time Intelligence
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
             Always watching. Always connected.
           </h2>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">
+          <p className="text-slate-500 text-lg max-w-xl mx-auto">
             Nexaro monitors every channel simultaneously — so nothing critical ever slips through.
           </p>
         </div>
-        <div className="relative mx-auto flex h-96 w-full max-w-3xl flex-col items-center justify-center space-y-4 overflow-hidden px-4">
+        <div className="relative mx-auto flex h-[26rem] w-full max-w-4xl flex-col items-center justify-center space-y-6 overflow-hidden px-4">
           {/* Row 1 */}
-          <div className="mx-auto w-full max-w-3xl">
-            <div className="flex w-full items-center justify-center space-x-10 md:justify-between md:space-x-0">
-              <IconContainer
-                text="Gmail"
-                delay={0.2}
-                icon={<img src="/ServiceLogos/Gmail.svg" alt="Gmail" className="h-7 w-7 object-contain" />}
-              />
-              <IconContainer
-                text="Slack"
-                delay={0.4}
-                icon={<img src="/ServiceLogos/Slack.svg" alt="Slack" className="h-7 w-7 object-contain" />}
-              />
-              <IconContainer
-                text="MS Teams"
-                delay={0.3}
-                icon={<img src="/ServiceLogos/Microsoft Teams.svg" alt="Microsoft Teams" className="h-7 w-7 object-contain" />}
-              />
+          <div className="mx-auto w-full max-w-4xl">
+            <div className="flex w-full items-center justify-center gap-6 md:justify-between">
+              <IconContainer text="Gmail" delay={0.1} icon={<img src="/ServiceLogos/Gmail.svg" alt="Gmail" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="Slack" delay={0.2} icon={<img src="/ServiceLogos/Slack.svg" alt="Slack" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="MS Teams" delay={0.3} icon={<img src="/ServiceLogos/Microsoft Teams.svg" alt="Microsoft Teams" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="Zoom" delay={0.4} icon={<img src="/ServiceLogos/Zoom.svg" alt="Zoom" className="h-7 w-7 object-contain" />} />
             </div>
           </div>
           {/* Row 2 */}
-          <div className="mx-auto w-full max-w-md">
-            <div className="flex w-full items-center justify-center space-x-10 md:justify-between md:space-x-0">
-              <IconContainer
-                text="Google Calendar"
-                delay={0.5}
-                icon={<img src="/ServiceLogos/Google Calendar.svg" alt="Google Calendar" className="h-7 w-7 object-contain" />}
-              />
-              <IconContainer
-                text="HubSpot"
-                delay={0.8}
-                icon={<img src="/ServiceLogos/HubSpot.svg" alt="HubSpot" className="h-7 w-7 object-contain" />}
-              />
+          <div className="mx-auto w-full max-w-2xl">
+            <div className="flex w-full items-center justify-center gap-6 md:justify-between">
+              <IconContainer text="Google Calendar" delay={0.5} icon={<img src="/ServiceLogos/Google Calendar.svg" alt="Google Calendar" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="HubSpot" delay={0.6} icon={<img src="/ServiceLogos/HubSpot.svg" alt="HubSpot" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="Salesforce" delay={0.7} icon={<img src="/ServiceLogos/Salesforce.svg" alt="Salesforce" className="h-7 w-7 object-contain" />} />
             </div>
           </div>
           {/* Row 3 */}
-          <div className="mx-auto w-full max-w-3xl">
-            <div className="flex w-full items-center justify-center space-x-10 md:justify-between md:space-x-0">
-              <IconContainer
-                text="Jira"
-                delay={0.6}
-                icon={<img src="/ServiceLogos/Jira.svg" alt="Jira" className="h-7 w-7 object-contain" />}
-              />
-              <IconContainer
-                text="Outlook"
-                delay={0.7}
-                icon={<img src="/ServiceLogos/Outlook.svg" alt="Outlook" className="h-7 w-7 object-contain" />}
-              />
+          <div className="mx-auto w-full max-w-4xl">
+            <div className="flex w-full items-center justify-center gap-6 md:justify-between">
+              <IconContainer text="Jira" delay={0.8} icon={<img src="/ServiceLogos/Jira.svg" alt="Jira" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="Linear" delay={0.9} icon={<img src="/ServiceLogos/Linear.svg" alt="Linear" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="Outlook" delay={1.0} icon={<img src="/ServiceLogos/Outlook.svg" alt="Outlook" className="h-7 w-7 object-contain" />} />
+              <IconContainer text="Telegram" delay={1.1} icon={<img src="/ServiceLogos/Telegram.svg" alt="Telegram" className="h-7 w-7 object-contain" />} />
             </div>
           </div>
 
           <Radar className="absolute -bottom-12" />
-          <div className="absolute bottom-0 z-[41] h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+          <div className="absolute bottom-0 z-[4] h-px w-full bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
         </div>
       </section>
 

@@ -48,9 +48,9 @@ export const Radar = ({ className }: { className?: string }) => {
       {/* Rotating sweep line */}
       <div
         style={{ transformOrigin: "right center" }}
-        className="animate-radar-spin absolute right-1/2 top-1/2 z-40 flex h-[5px] w-[400px] items-end justify-center overflow-hidden bg-transparent"
+        className="animate-radar-spin absolute right-1/2 top-1/2 z-[2] flex h-[5px] w-[400px] items-end justify-center overflow-hidden bg-transparent"
       >
-        <div className="relative z-40 h-[1px] w-full bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
+        <div className="relative h-[1px] w-full bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
       </div>
       {/* Concentric circles */}
       {circles.map((_, idx) => (
@@ -82,13 +82,13 @@ export const IconContainer = ({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, delay: delay ?? 0 }}
-      className="relative z-50 flex flex-col items-center justify-center space-y-2"
+      className="relative z-[3] flex flex-col items-center justify-center space-y-2"
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800/80 shadow-inner backdrop-blur-sm">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
         {icon}
       </div>
       <div className="hidden rounded-md px-2 py-1 md:block">
-        <div className="text-center text-xs font-medium text-slate-400">
+        <div className="text-center text-xs font-medium text-slate-500">
           {text}
         </div>
       </div>
