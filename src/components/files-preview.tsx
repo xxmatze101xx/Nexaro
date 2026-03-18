@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   X,
@@ -273,41 +273,49 @@ function TextViewer({ file }: { file: PreviewFile }) {
       setError("No URL available to fetch content.");
       return;
     }
+
+    let cancelled = false;
     setContent(null);
     setError(null);
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 12000);
 
-    const fetchUrl = `/api/files/text?url=${encodeURIComponent(file.url)}`;
-    fetch(fetchUrl, { signal: controller.signal })
+    fetch(file.url, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       })
       .then((text) => {
-        // Pretty-print JSON
+        if (cancelled) return;
         if (isJsonFile(file)) {
-          try {
-            setContent(JSON.stringify(JSON.parse(text), null, 2));
-          } catch {
-            setContent(text);
-          }
+          try { setContent(JSON.stringify(JSON.parse(text), null, 2)); }
+          catch { setContent(text); }
         } else {
           setContent(text);
         }
       })
       .catch((err: unknown) => {
+        if (cancelled) return;
         if (err instanceof Error && err.name === "AbortError") {
-          setError("Request timed out. The file may be unavailable.");
+          setError("Timeout — Datei nicht erreichbar.");
         } else {
           setError(err instanceof Error ? err.message : String(err));
         }
       })
       .finally(() => clearTimeout(timer));
 
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [file.url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const renderedMarkdown = useMemo(
+    () => (content !== null && isMarkdownFile(file) ? renderMarkdown(content) : null),
+    [content] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   if (error) {
     return (
@@ -329,12 +337,12 @@ function TextViewer({ file }: { file: PreviewFile }) {
   }
 
   // Markdown — render as HTML
-  if (isMarkdownFile(file)) {
+  if (renderedMarkdown !== null) {
     return (
       <div className="h-full overflow-y-auto">
         <div
           className="px-8 py-6 text-sm text-foreground max-w-3xl"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+          dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
         />
       </div>
     );
