@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Hero } from "@/components/ui/hero";
+import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 
 const INTEGRATIONS = [
   { name: "Gmail",           logo: "/service-logos/gmail.svg" },
@@ -249,6 +250,11 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ── Bento Feature Grid ── */}
+      <section className="bg-white dark:bg-black border-y border-border overflow-hidden">
+        <FeaturesSectionWithBentoGrid />
       </section>
 
       {/* ── Social Proof ── */}
