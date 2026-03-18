@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { sendEmail } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
 import { Paperclip, Sparkles, Send, X, Loader2, Mic } from "lucide-react";
-import { AIVoiceInput } from "@/components/ui/ai-voice-input";
 
 interface ComposePanelProps {
     uid: string;
@@ -24,9 +23,55 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     const [attachments, setAttachments] = useState<File[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    const [voiceActive, setVoiceActive] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const interimRef = useRef("");
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const formatRecTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+    const toggleRecording = async () => {
+        if (isTranscribing) return;
+        if (isRecording) {
+            mediaRecorderRef.current?.stop();
+            if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+            setIsRecording(false);
+            setRecordingTime(0);
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunksRef.current = [];
+            const recorder = new MediaRecorder(stream);
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+            recorder.onstop = async () => {
+                stream.getTracks().forEach((t) => t.stop());
+                const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+                if (blob.size < 500) return;
+                setIsTranscribing(true);
+                try {
+                    const form = new FormData();
+                    form.append("audio", blob, "recording.webm");
+                    form.append("language", "de-DE");
+                    const res = await fetch("/api/ai/transcribe", { method: "POST", body: form });
+                    const data = (await res.json()) as { text?: string };
+                    if (data.text) setBody((prev) => (prev ? prev + "\n" + data.text : data.text!));
+                } finally {
+                    setIsTranscribing(false);
+                }
+            };
+            mediaRecorderRef.current = recorder;
+            recorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+            recordingTimerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+        } catch {
+            // Mic denied
+        }
+    };
 
     const handleGenerateDraft = async () => {
         if (!subject.trim() && !body.trim()) {
@@ -164,39 +209,6 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                     </div>
                 )}
 
-                {/* Voice overlay */}
-                {voiceActive && (
-                    <div className="mx-4 mt-3 rounded-xl border border-primary/30 bg-background shadow-sm shrink-0">
-                        <AIVoiceInput
-                            language="de-DE"
-                            onTranscript={(text, isFinal) => {
-                                if (isFinal) {
-                                    setBody(prev => {
-                                        const base = prev.endsWith(interimRef.current)
-                                            ? prev.slice(0, prev.length - interimRef.current.length)
-                                            : prev;
-                                        interimRef.current = "";
-                                        return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
-                                    });
-                                } else {
-                                    setBody(prev => {
-                                        const base = prev.endsWith(interimRef.current)
-                                            ? prev.slice(0, prev.length - interimRef.current.length)
-                                            : prev;
-                                        interimRef.current = text;
-                                        return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
-                                    });
-                                }
-                            }}
-                            onStop={() => {
-                                interimRef.current = "";
-                                setVoiceActive(false);
-                            }}
-                            className="py-3"
-                        />
-                    </div>
-                )}
-
                 {/* Body */}
                 <div className="flex-1 overflow-hidden px-4 pt-3 pb-1">
                     <textarea
@@ -250,18 +262,24 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                         </button>
                         <div className="w-px h-4 bg-border mx-1" />
                         <button
-                            onClick={() => setVoiceActive(v => !v)}
+                            onClick={() => void toggleRecording()}
+                            disabled={isTranscribing}
                             className={cn(
-                                "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium transition-all shadow-sm",
-                                voiceActive
+                                "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium transition-all shadow-sm disabled:opacity-50",
+                                isRecording
+                                    ? "border-red-400/60 bg-red-50 dark:bg-red-950/20 text-red-500"
+                                    : isTranscribing
                                     ? "border-primary/40 bg-primary/5 text-primary"
                                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                             )}
                             title="Per Sprache diktieren"
                             type="button"
                         >
-                            <Mic className="w-3 h-3" />
-                            {voiceActive ? "Diktieren aktiv" : "Diktieren"}
+                            {isTranscribing
+                                ? <Loader2 className="w-3 h-3 animate-spin" />
+                                : <Mic className={cn("w-3 h-3", isRecording && "animate-pulse")} />
+                            }
+                            {isTranscribing ? "Transcribing…" : isRecording ? `Stop ${formatRecTime(recordingTime)}` : "Diktieren"}
                         </button>
                         <div className="w-px h-4 bg-border mx-1" />
                         <button

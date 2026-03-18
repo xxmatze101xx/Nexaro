@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { ChatInput } from "@/components/ui/chat-input";
 import { Button } from "@/components/ui/button";
-import { AIVoiceInput } from "@/components/ui/ai-voice-input";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
@@ -559,8 +558,12 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const [activeId, setActiveId] = useState<string | null>(null);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [voiceActive, setVoiceActive] = useState(false);
-    const interimRef = useRef("");
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [showPermissions, setShowPermissions] = useState(false);
     const [permissions, setPermissions] = useState<AIChatPermissions>({ ...DEFAULT_PERMISSIONS });
@@ -803,6 +806,60 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
             inputRef.current?.focus();
         }
     }, [input, isLoading, activeId, uid, precomputedContext, attachedFiles]);
+
+    const formatRecTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+    const toggleRecording = useCallback(async () => {
+        if (isTranscribing) return;
+
+        if (isRecording) {
+            // Stop
+            mediaRecorderRef.current?.stop();
+            if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+            setIsRecording(false);
+            setRecordingTime(0);
+            return;
+        }
+
+        // Start
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunksRef.current = [];
+            const recorder = new MediaRecorder(stream);
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            recorder.onstop = async () => {
+                stream.getTracks().forEach((t) => t.stop());
+                const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+                if (blob.size < 500) return;
+                setIsTranscribing(true);
+                try {
+                    const form = new FormData();
+                    form.append("audio", blob, "recording.webm");
+                    form.append("language", "de-DE");
+                    const res = await fetch("/api/ai/transcribe", { method: "POST", body: form });
+                    const data = (await res.json()) as { text?: string };
+                    if (data.text) {
+                        setInput((prev) => (prev ? prev + " " + data.text : data.text!).trimStart());
+                    }
+                } finally {
+                    setIsTranscribing(false);
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                }
+            };
+
+            mediaRecorderRef.current = recorder;
+            recorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+            recordingTimerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+        } catch {
+            // Mic denied or not available
+        }
+    }, [isRecording, isTranscribing]);
 
     const filteredMentions = useMemo(() =>
         mentionActive
@@ -1100,37 +1157,24 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             ))}
                         </div>
                     )}
-                    {/* Voice input overlay */}
-                    {voiceActive && (
-                        <div className="mb-2 rounded-xl border border-primary/30 bg-background shadow-sm overflow-hidden">
-                            <AIVoiceInput
-                                language="de-DE"
-                                onTranscript={(text, isFinal) => {
-                                    if (isFinal) {
-                                        setInput(prev => {
-                                            const base = prev.endsWith(interimRef.current)
-                                                ? prev.slice(0, prev.length - interimRef.current.length)
-                                                : prev;
-                                            interimRef.current = "";
-                                            return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
-                                        });
-                                    } else {
-                                        setInput(prev => {
-                                            const base = prev.endsWith(interimRef.current)
-                                                ? prev.slice(0, prev.length - interimRef.current.length)
-                                                : prev;
-                                            interimRef.current = text;
-                                            return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
-                                        });
-                                    }
-                                }}
-                                onStop={() => {
-                                    interimRef.current = "";
-                                    setVoiceActive(false);
-                                    setTimeout(() => inputRef.current?.focus(), 50);
-                                }}
-                                className="py-3"
-                            />
+                    {/* Voice status bar */}
+                    {(isRecording || isTranscribing) && (
+                        <div className="flex items-center gap-2 mb-2 px-1 h-5">
+                            {isRecording && (
+                                <>
+                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                                    <span className="text-xs text-red-500 font-medium tabular-nums">
+                                        {formatRecTime(recordingTime)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground ml-1">Click mic to stop & transcribe</span>
+                                </>
+                            )}
+                            {isTranscribing && (
+                                <>
+                                    <Loader2 className="w-3 h-3 animate-spin text-primary shrink-0" />
+                                    <span className="text-xs text-muted-foreground">Transcribing…</span>
+                                </>
+                            )}
                         </div>
                     )}
                     <form
@@ -1161,17 +1205,22 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                disabled={isLoading}
-                                onClick={() => setVoiceActive(v => !v)}
+                                disabled={isLoading || isTranscribing}
+                                onClick={() => void toggleRecording()}
                                 className={cn(
                                     "h-8 w-8 shrink-0 transition-colors",
-                                    voiceActive
-                                        ? "text-primary bg-primary/10 hover:bg-primary/20"
+                                    isRecording
+                                        ? "text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30"
+                                        : isTranscribing
+                                        ? "text-primary"
                                         : "text-muted-foreground hover:text-foreground",
                                 )}
-                                aria-label={voiceActive ? "Stop voice input" : "Start voice input"}
+                                aria-label={isRecording ? "Stop recording" : "Start voice input"}
                             >
-                                <Mic className="size-4" />
+                                {isTranscribing
+                                    ? <Loader2 className="size-4 animate-spin" />
+                                    : <Mic className={cn("size-4", isRecording && "animate-pulse")} />
+                                }
                             </Button>
                             <Button
                                 type="submit"
