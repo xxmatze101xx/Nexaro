@@ -31,7 +31,7 @@ const Hero = React.forwardRef<HTMLDivElement, HeroProps>(
       >
         {eyebrow && (
           <p
-            className="uppercase tracking-[0.51em] leading-[133%] text-center text-[19px] mt-[249px] mb-8 text-muted-foreground animate-appear opacity-0"
+            className="uppercase tracking-[0.51em] leading-[133%] text-center text-[19px] mt-[100px] mb-8 text-muted-foreground animate-appear opacity-0"
           >
             {eyebrow}
           </p>
