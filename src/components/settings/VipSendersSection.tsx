@@ -93,96 +93,62 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
     };
 
     return (
-        <section id="VIP" className="scroll-mt-28">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
-                    <Star className="w-5 h-5" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-900">VIP-Absender</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Nachrichten von diesen Absendern erhalten automatisch einen hohen Wichtigkeitswert.
-                    </p>
-                </div>
-            </div>
+        <section id="VIP" className="space-y-4 scroll-mt-20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">VIP-Absender</p>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
-                {/* Add input */}
-                <div>
-                    <p className="text-sm font-semibold text-slate-800 mb-2">Absender hinzufügen</p>
-                    <div className="flex gap-2">
-                        <input
-                            type="email"
-                            value={input}
-                            onChange={(e) => { setInput(e.target.value); setError(null); }}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-                            placeholder="chef@company.com"
-                            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                        />
-                        <button
-                            onClick={handleAdd}
-                            disabled={isAdding || !input.trim()}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all",
-                                "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-                            )}
-                        >
-                            {isAdding
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <Plus className="w-4 h-4" />
-                            }
-                            Hinzufügen
-                        </button>
-                    </div>
-                    {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
-                </div>
-
-                {/* VIP list */}
-                <div>
-                    <p className="text-sm font-semibold text-slate-800 mb-2">
-                        VIP-Liste
-                        {emails.length > 0 && (
-                            <span className="ml-2 text-xs font-normal text-slate-400">{emails.length} Absender</span>
-                        )}
-                    </p>
-
-                    {isLoading ? (
-                        <div className="flex items-center gap-2 py-4 text-sm text-slate-400">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Lädt...
-                        </div>
-                    ) : emails.length === 0 ? (
-                        <p className="text-sm text-slate-400 py-3">
-                            Noch keine VIP-Absender. Füge wichtige Kontakte hinzu.
-                        </p>
-                    ) : (
-                        <ul className="space-y-2">
-                            {emails.map((email) => (
-                                <li
-                                    key={email}
-                                    className="flex items-center justify-between gap-3 px-3 py-2.5 bg-slate-50 rounded-xl"
-                                >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                        <span className="text-sm text-slate-700 truncate">{email}</span>
-                                    </div>
-                                    <button
-                                        onClick={() => handleRemove(email)}
-                                        className="shrink-0 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                        aria-label={`${email} entfernen`}
-                                    >
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
+            {/* Add input */}
+            <div className="flex gap-2">
+                <input
+                    type="email"
+                    value={input}
+                    onChange={(e) => { setInput(e.target.value); setError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+                    placeholder="chef@company.com"
+                    className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-foreground bg-background placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
+                />
+                <button
+                    onClick={handleAdd}
+                    disabled={isAdding || !input.trim()}
+                    className={cn(
+                        "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        "bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
                     )}
-                </div>
-
-                <p className="text-xs text-slate-400 border-t border-slate-100 pt-4">
-                    VIP-Absender erhalten einen Bonus von +3 Punkten beim Scoring. Die Liste wird nie an externe KI-Dienste weitergegeben.
-                </p>
+                >
+                    {isAdding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    Hinzufügen
+                </button>
             </div>
+            {error && <p className="text-xs text-destructive">{error}</p>}
+
+            {/* VIP list */}
+            {isLoading ? (
+                <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Lädt...
+                </div>
+            ) : emails.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">Noch keine VIP-Absender hinzugefügt.</p>
+            ) : (
+                <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                    {emails.map((email) => (
+                        <div key={email} className="flex items-center gap-3 px-4 py-2.5 bg-card">
+                            <Star className="w-3.5 h-3.5 text-warning shrink-0" />
+                            <span className="flex-1 text-sm text-foreground truncate">{email}</span>
+                            <button
+                                onClick={() => handleRemove(email)}
+                                className="shrink-0 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                aria-label={`${email} entfernen`}
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+                VIP-Absender erhalten +3 Punkte beim Scoring. Die Liste wird nie an externe KI-Dienste weitergegeben.
+            </p>
         </section>
     );
 }

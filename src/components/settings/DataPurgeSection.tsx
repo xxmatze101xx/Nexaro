@@ -27,7 +27,6 @@ export function DataPurgeSection({ user }: DataPurgeSectionProps) {
                 const data = (await res.json()) as { error?: string };
                 throw new Error(data.error ?? "Unbekannter Fehler");
             }
-            // Sign out after successful purge
             await auth.signOut();
             window.location.href = "/login";
         } catch (e: unknown) {
@@ -38,20 +37,16 @@ export function DataPurgeSection({ user }: DataPurgeSectionProps) {
     };
 
     return (
-        <section className="space-y-6 scroll-mt-28">
-            <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Datenlöschung</h2>
-                <p className="text-sm text-slate-500">Lösche alle deine gespeicherten Daten gemäß DSGVO Art. 17.</p>
-            </div>
+        <section className="space-y-4 scroll-mt-20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">Datenlöschung</p>
 
-            <div className="p-6 rounded-2xl border border-red-200 bg-red-50 shadow-sm space-y-4">
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
                 <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     <div>
-                        <h3 className="font-medium text-sm text-red-900">Alle Daten löschen</h3>
-                        <p className="text-sm text-red-700 mt-1">
-                            Löscht dauerhaft alle in Nexaro gespeicherten Daten: OAuth-Tokens, Synchronisierungsstatus,
-                            Hintergrundjobs, Protokolle und Einstellungen. Diese Aktion ist nicht rückgängig zu machen.
+                        <p className="text-sm font-medium text-foreground">Alle Daten löschen</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Löscht dauerhaft alle OAuth-Tokens, Einstellungen und Protokolle. Nicht rückgängig machbar.
                         </p>
                     </div>
                 </div>
@@ -59,35 +54,33 @@ export function DataPurgeSection({ user }: DataPurgeSectionProps) {
                 {!showConfirm ? (
                     <button
                         onClick={() => setShowConfirm(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 hover:bg-red-100 rounded-xl text-sm font-medium transition-all duration-200"
+                        className="flex items-center gap-2 px-3 py-1.5 border border-destructive/40 text-destructive hover:bg-destructive/10 rounded-lg text-xs font-medium transition-colors"
                     >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                         Meine Daten löschen
                     </button>
                 ) : (
-                    <div className="space-y-3">
-                        <p className="text-sm font-medium text-red-900">
-                            Bist du sicher? Diese Aktion kann nicht rückgängig gemacht werden.
-                        </p>
-                        <div className="flex gap-3">
+                    <div className="space-y-2">
+                        <p className="text-xs font-medium text-foreground">Bist du sicher? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+                        <div className="flex gap-2">
                             <button
                                 onClick={handlePurge}
                                 disabled={isPurging}
-                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 rounded-xl text-sm font-medium transition-all duration-200"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60 rounded-lg text-xs font-medium transition-colors"
                             >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                                 {isPurging ? "Lösche..." : "Endgültig löschen"}
                             </button>
                             <button
                                 onClick={() => { setShowConfirm(false); setPurgeError(null); }}
                                 disabled={isPurging}
-                                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-sm font-medium transition-all duration-200"
+                                className="px-3 py-1.5 border border-border text-muted-foreground hover:bg-muted rounded-lg text-xs font-medium transition-colors"
                             >
                                 Abbrechen
                             </button>
                         </div>
                         {purgeError && (
-                            <p className="text-sm text-red-600">Fehler: {purgeError}</p>
+                            <p className="text-xs text-destructive">Fehler: {purgeError}</p>
                         )}
                     </div>
                 )}

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { DownloadCloud, Plus, Search, ExternalLink, Settings as SettingsIcon, AlertTriangle } from "lucide-react";
+import { Search, ExternalLink, AlertTriangle } from "lucide-react";
 import { getAccountColor } from "@/lib/calendar";
 import type { CalendarAccount } from "@/lib/user";
 
@@ -26,7 +26,7 @@ interface IntegrationsSectionProps {
     onDisconnectCalendar: (email: string) => void;
 }
 
-type TabValue = "all" | "active" | "inactive" | "custom";
+type TabValue = "all" | "active" | "inactive";
 
 export function IntegrationsSection({
     integrations,
@@ -42,193 +42,111 @@ export function IntegrationsSection({
 
     const visibleIntegrations = useMemo(() => {
         let list = [...integrations];
-
         if (activeTab === "active") list = list.filter(i => i.status === "connected");
         else if (activeTab === "inactive") list = list.filter(i => i.status === "disconnected");
-        else if (activeTab === "custom") list = []; // placeholder for custom workflows
-
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
-            list = list.filter(
-                i => i.name.toLowerCase().includes(q) || i.domain.toLowerCase().includes(q)
-            );
+            list = list.filter(i => i.name.toLowerCase().includes(q) || i.domain.toLowerCase().includes(q));
         }
-
         return list;
     }, [integrations, activeTab, searchQuery]);
 
     const tabs: { value: TabValue; label: string }[] = [
-        { value: "all", label: "Alle zeigen" },
+        { value: "all", label: "Alle" },
         { value: "active", label: "Aktiv" },
         { value: "inactive", label: "Inaktiv" },
-        { value: "custom", label: "Custom" },
     ];
 
     return (
-        <section id="Dienste" className="space-y-6 scroll-mt-28">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Integrations & Workflows</h2>
-                    <p className="text-sm text-slate-500">Optimiere deinen Workflow und verbinde die Tools, die dein Team täglich nutzt.</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm transition-all shadow-sm">
-                        <DownloadCloud className="w-4 h-4 text-slate-500" /> Export
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 hover:-translate-y-0.5">
-                        <Plus className="w-4 h-4" /> Integration erstellen
-                    </button>
-                </div>
+        <section id="Dienste" className="space-y-4 scroll-mt-20">
+            <div className="flex items-center justify-between gap-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">Dienste & Integrationen</p>
             </div>
 
-            {/* Filter Tabs + Search */}
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 py-2">
-                <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/70 border border-slate-200/60 rounded-xl w-fit">
-                    {tabs.map((tab, idx) => (
+            {/* Filter + Search */}
+            <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+                    {tabs.map(tab => (
                         <button
                             key={tab.value}
                             onClick={() => setActiveTab(tab.value)}
                             className={cn(
-                                "px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all",
+                                "px-3 py-1 text-xs font-medium rounded-md transition-colors",
                                 activeTab === tab.value
-                                    ? "text-slate-900 bg-white shadow-sm border border-slate-200/50"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                                    ? "bg-card text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
                             )}
                         >
                             {tab.value === "active" && (
-                                <span className="inline-flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20" />
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-success" />
                                     {tab.label}
                                 </span>
                             )}
                             {tab.value !== "active" && tab.label}
                         </button>
                     ))}
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
-                    <button className="px-2 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-white/50 rounded-lg transition-all">
-                        <Plus className="w-4 h-4" />
-                    </button>
                 </div>
 
-                <div className="relative group w-full xl:w-72">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors" />
+                <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Integration suchen..."
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                        placeholder="Suchen..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all"
                     />
                 </div>
             </div>
 
-            {/* Integration Cards */}
+            {/* Integration list */}
             {visibleIntegrations.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 text-sm">
-                    {activeTab === "custom"
-                        ? "Custom Workflows kommen bald."
-                        : "Keine Integrationen gefunden."}
-                </div>
+                <p className="text-center py-10 text-sm text-muted-foreground">Keine Integrationen gefunden.</p>
             ) : (
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
                     {visibleIntegrations.map((integration) => {
                         const isConnected = integration.status === "connected";
+                        const needsUpgrade = integration.id === "Slack" && slackScopeUpgradeRequired;
 
                         return (
-                            <div
-                                key={integration.id}
-                                className="group relative flex flex-col bg-white rounded-2xl border border-slate-200/80 hover:border-slate-300 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden hover:-translate-y-1"
-                            >
-                                {isConnected && (
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-500" />
-                                )}
-                                {integration.id === "Slack" && slackScopeUpgradeRequired && (
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-amber-500" />
-                                )}
-
-                                <div className="p-6 flex-1 flex flex-col">
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="w-12 h-12 rounded-[14px] bg-white border border-slate-150 flex items-center justify-center p-2.5 shadow-sm group-hover:scale-110 transition-transform duration-500 ease-out">
-                                            <Image
-                                                src={`/ServiceLogos/${integration.id}.svg`}
-                                                alt={integration.name}
-                                                width={26}
-                                                height={26}
-                                                className="w-full h-full object-contain drop-shadow-sm"
-                                            />
-                                        </div>
-                                        <a
-                                            href={`https://${integration.domain}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-900 transition-colors px-2.5 py-1 rounded-full hover:bg-slate-50"
-                                        >
-                                            {integration.domain}
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                        </a>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-base font-semibold tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
-                                                {integration.name}
-                                            </h3>
-                                            {integration.id === "Slack" && slackScopeUpgradeRequired && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">
-                                                    <AlertTriangle className="w-3 h-3" />
-                                                    Neu verbinden
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-[13px] text-slate-500 leading-relaxed font-normal line-clamp-2">
-                                            {integration.description}
-                                        </p>
-                                    </div>
+                            <div key={integration.id} className="flex items-center gap-4 px-4 py-3 bg-card hover:bg-muted/40 transition-colors">
+                                {/* Logo */}
+                                <div className="w-9 h-9 rounded-lg bg-background border border-border flex items-center justify-center p-1.5 shrink-0">
+                                    <Image
+                                        src={`/ServiceLogos/${integration.id}.svg`}
+                                        alt={integration.name}
+                                        width={22}
+                                        height={22}
+                                        className="w-full h-full object-contain"
+                                    />
                                 </div>
 
-                                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3">
-                                    <div className="flex items-center justify-between">
-                                        <button className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
-                                            <SettingsIcon className="w-4 h-4" /> Verwalten
-                                        </button>
-
-                                        {(integration.id === "Gmail" || integration.id === "Google Calendar") ? (
-                                            <button
-                                                onClick={() => onConnect(integration.id)}
-                                                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-                                                title="Weiteres Konto verbinden"
-                                            >
-                                                + Hinzufügen
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => onConnect(integration.id)}
-                                                className={cn(
-                                                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full",
-                                                    "focus:outline-none focus:ring-4 focus:ring-slate-900/10 transition-all duration-300",
-                                                    isConnected ? "bg-emerald-500 hover:bg-emerald-600" : "bg-slate-200 hover:bg-slate-300"
-                                                )}
-                                                role="switch"
-                                                aria-checked={isConnected}
-                                                title={isConnected ? "Integration trennen" : "Integration verbinden"}
-                                            >
-                                                <span className="sr-only">Toggle {integration.name}</span>
-                                                <span
-                                                    aria-hidden="true"
-                                                    className="pointer-events-none absolute left-0 inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition-transform duration-300 ease-out"
-                                                    style={{ transform: isConnected ? "translateX(20px)" : "translateX(2px)" }}
-                                                />
-                                            </button>
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-foreground truncate">{integration.name}</span>
+                                        {isConnected && !needsUpgrade && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+                                        )}
+                                        {needsUpgrade && (
+                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-warning/10 text-warning text-[10px] font-medium">
+                                                <AlertTriangle className="w-2.5 h-2.5" />
+                                                Update
+                                            </span>
                                         )}
                                     </div>
+                                    <p className="text-xs text-muted-foreground truncate">{integration.description}</p>
 
+                                    {/* Connected accounts */}
                                     {integration.id === "Gmail" && gmailAccounts.length > 0 && (
-                                        <div className="mt-2 space-y-2">
+                                        <div className="mt-1.5 space-y-1">
                                             {gmailAccounts.map(acc => (
-                                                <div key={acc.email} className="flex items-center justify-between text-sm py-2 border-t border-slate-200/60">
-                                                    <span className="text-slate-700 font-medium truncate pr-2">{acc.email}</span>
+                                                <div key={acc.email} className="flex items-center gap-2">
+                                                    <span className="text-xs text-muted-foreground truncate">{acc.email}</span>
                                                     <button
                                                         onClick={() => onDisconnectGmail(acc.email)}
-                                                        className="text-red-500 hover:text-red-700 font-medium whitespace-nowrap"
+                                                        className="text-[11px] text-destructive hover:underline shrink-0"
                                                     >
                                                         Trennen
                                                     </button>
@@ -236,27 +154,59 @@ export function IntegrationsSection({
                                             ))}
                                         </div>
                                     )}
-
                                     {integration.id === "Google Calendar" && calendarAccounts.length > 0 && (
-                                        <div className="mt-2 space-y-2">
+                                        <div className="mt-1.5 space-y-1">
                                             {calendarAccounts.map(acc => (
-                                                <div key={acc.email} className="flex items-center justify-between text-sm py-2 border-t border-slate-200/60">
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span
-                                                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                                                            style={{ backgroundColor: getAccountColor(acc.email) }}
-                                                        />
-                                                        <span className="text-slate-700 font-medium truncate">{acc.email}</span>
-                                                    </div>
+                                                <div key={acc.email} className="flex items-center gap-2">
+                                                    <span
+                                                        className="w-2 h-2 rounded-full shrink-0"
+                                                        style={{ backgroundColor: getAccountColor(acc.email) }}
+                                                    />
+                                                    <span className="text-xs text-muted-foreground truncate">{acc.email}</span>
                                                     <button
                                                         onClick={() => onDisconnectCalendar(acc.email)}
-                                                        className="text-red-500 hover:text-red-700 font-medium whitespace-nowrap ml-2"
+                                                        className="text-[11px] text-destructive hover:underline shrink-0"
                                                     >
                                                         Trennen
                                                     </button>
                                                 </div>
                                             ))}
                                         </div>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <a
+                                        href={`https://${integration.domain}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                    {(integration.id === "Gmail" || integration.id === "Google Calendar") ? (
+                                        <button
+                                            onClick={() => onConnect(integration.id)}
+                                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                        >
+                                            + Konto
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => onConnect(integration.id)}
+                                            className={cn(
+                                                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200",
+                                                isConnected ? "bg-success" : "bg-muted"
+                                            )}
+                                            role="switch"
+                                            aria-checked={isConnected}
+                                        >
+                                            <span
+                                                className="absolute inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
+                                                style={{ transform: isConnected ? "translateX(18px)" : "translateX(2px)" }}
+                                            />
+                                        </button>
                                     )}
                                 </div>
                             </div>

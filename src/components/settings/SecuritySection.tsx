@@ -2,20 +2,19 @@
 
 export function SecuritySection() {
     return (
-        <section id="Sicherheit" className="space-y-6 scroll-mt-28">
-            <div className="space-y-1">
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Sicherheit</h2>
-                <p className="text-sm text-slate-500">Schütze deinen Account.</p>
-            </div>
+        <section id="Sicherheit" className="space-y-4 scroll-mt-20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">Sicherheit</p>
 
-            <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex items-center justify-between">
-                <div>
-                    <h3 className="font-medium text-sm text-slate-900">Passwort ändern</h3>
-                    <p className="text-sm text-slate-500 mt-1">Aktualisiere dein Passwort, um dein Konto zu schützen.</p>
+            <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+                <div className="flex items-center justify-between px-4 py-3 bg-card">
+                    <div>
+                        <p className="text-sm font-medium text-foreground">Passwort</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Aktualisiere dein Passwort regelmäßig.</p>
+                    </div>
+                    <button className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-muted hover:bg-accent text-foreground transition-colors">
+                        Ändern
+                    </button>
                 </div>
-                <button className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-all duration-300 bg-white shadow-sm">
-                    Passwort ändern
-                </button>
             </div>
         </section>
     );

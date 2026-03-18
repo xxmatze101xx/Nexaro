@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Mail, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
@@ -56,70 +56,62 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
     };
 
     return (
-        <section id="Zusammenfassungen" className="scroll-mt-28">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                    <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-900">Zusammenfassungen</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">Erhalte regelmäßige E-Mail-Zusammenfassungen deiner wichtigsten Nachrichten.</p>
-                </div>
-            </div>
+        <section id="Zusammenfassungen" className="space-y-4 scroll-mt-20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">Zusammenfassungen</p>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+            <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
                 {/* Daily toggle */}
-                <label className="flex items-center justify-between gap-4 cursor-pointer">
+                <div className="flex items-center justify-between px-4 py-3 bg-card">
                     <div>
-                        <p className="text-sm font-semibold text-slate-800">Tägliche Zusammenfassung</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Top-10 wichtigste Nachrichten der letzten 24 Stunden</p>
+                        <p className="text-sm font-medium text-foreground">Täglich</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Top-10 wichtigste Nachrichten der letzten 24 h</p>
                     </div>
                     <button
                         role="switch"
                         aria-checked={settings.daily}
                         onClick={() => setSettings(prev => ({ ...prev, daily: !prev.daily }))}
                         className={cn(
-                            "relative w-11 h-6 rounded-full transition-colors shrink-0",
-                            settings.daily ? "bg-blue-600" : "bg-slate-200"
+                            "relative w-9 h-5 rounded-full transition-colors shrink-0",
+                            settings.daily ? "bg-primary" : "bg-muted"
                         )}
                     >
                         <span className={cn(
-                            "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform",
-                            settings.daily ? "translate-x-5" : "translate-x-0"
+                            "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform",
+                            settings.daily ? "left-[calc(100%-18px)]" : "left-0.5"
                         )} />
                     </button>
-                </label>
+                </div>
 
                 {/* Weekly toggle */}
-                <label className="flex items-center justify-between gap-4 cursor-pointer">
+                <div className="flex items-center justify-between px-4 py-3 bg-card">
                     <div>
-                        <p className="text-sm font-semibold text-slate-800">Wöchentliche Zusammenfassung</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Jeden Montag — Übersicht der Vorwoche</p>
+                        <p className="text-sm font-medium text-foreground">Wöchentlich</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Jeden Montag — Übersicht der Vorwoche</p>
                     </div>
                     <button
                         role="switch"
                         aria-checked={settings.weekly}
                         onClick={() => setSettings(prev => ({ ...prev, weekly: !prev.weekly }))}
                         className={cn(
-                            "relative w-11 h-6 rounded-full transition-colors shrink-0",
-                            settings.weekly ? "bg-blue-600" : "bg-slate-200"
+                            "relative w-9 h-5 rounded-full transition-colors shrink-0",
+                            settings.weekly ? "bg-primary" : "bg-muted"
                         )}
                     >
                         <span className={cn(
-                            "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform",
-                            settings.weekly ? "translate-x-5" : "translate-x-0"
+                            "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform",
+                            settings.weekly ? "left-[calc(100%-18px)]" : "left-0.5"
                         )} />
                     </button>
-                </label>
+                </div>
 
-                {/* Time picker */}
-                <div className="flex items-center gap-4">
+                {/* Time + Email */}
+                <div className="flex items-center gap-4 px-4 py-3 bg-card">
                     <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800 mb-1">Versandzeitpunkt</p>
+                        <p className="text-xs text-muted-foreground mb-1">Versandzeit</p>
                         <select
                             value={settings.time}
                             onChange={e => setSettings(prev => ({ ...prev, time: e.target.value }))}
-                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                            className="w-full border border-border rounded-lg px-3 py-1.5 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
                         >
                             {TIME_OPTIONS.map(t => (
                                 <option key={t} value={t}>{t} Uhr</option>
@@ -127,34 +119,27 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
                         </select>
                     </div>
                     <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-800 mb-1">Empfänger-E-Mail</p>
+                        <p className="text-xs text-muted-foreground mb-1">Empfänger</p>
                         <input
                             type="email"
                             value={settings.email}
                             onChange={e => setSettings(prev => ({ ...prev, email: e.target.value }))}
-                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                            className="w-full border border-border rounded-lg px-3 py-1.5 text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
                         />
                     </div>
                 </div>
+            </div>
 
-                {/* Save */}
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-                            "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-                        )}
-                    >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {isSaving ? "Speichern..." : "Einstellungen speichern"}
-                    </button>
-                    {saved && <span className="text-sm text-emerald-600 font-medium">✓ Gespeichert</span>}
-                    <span className="text-xs text-slate-400 ml-auto">
-                        Manuelle Auslösung: <code className="bg-slate-100 px-1 rounded">/api/digest</code>
-                    </span>
-                </div>
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50"
+                >
+                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    {isSaving ? "Speichern..." : "Speichern"}
+                </button>
+                {saved && <span className="text-xs text-success font-medium">✓ Gespeichert</span>}
             </div>
         </section>
     );

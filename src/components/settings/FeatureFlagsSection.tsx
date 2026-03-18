@@ -14,16 +14,9 @@ export function FeatureFlagsSection({ uid }: FeatureFlagsSectionProps) {
 
     return (
         <section id="feature-flags">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Beaker className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                    <h2 className="text-lg font-semibold text-foreground">Feature Flags</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Enable or disable features without redeploying.
-                    </p>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">Feature Flags</p>
+                <Beaker className="w-3.5 h-3.5 text-muted-foreground" />
             </div>
 
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -87,8 +80,8 @@ export function FeatureFlagsSection({ uid }: FeatureFlagsSectionProps) {
                 )}
             </div>
 
-            <p className="mt-3 text-xs text-muted-foreground">
-                Changes take effect immediately — no redeploy required.
+            <p className="mt-2 text-xs text-muted-foreground">
+                Änderungen werden sofort wirksam — kein Redeploy nötig.
             </p>
         </section>
     );

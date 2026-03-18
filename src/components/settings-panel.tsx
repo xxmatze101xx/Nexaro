@@ -363,21 +363,16 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
 
     return (
         <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-            {/* Panel Header */}
-            <div className="px-6 py-4 border-b border-border shrink-0">
-                <h2 className="text-base font-semibold">Einstellungen</h2>
-            </div>
-
             {/* Body: sidebar nav + scrollable content */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Left nav */}
-                <div className="w-44 shrink-0 border-r border-border flex flex-col py-4 px-2 gap-1">
+                <div className="w-40 shrink-0 border-r border-border flex flex-col py-3 px-2 gap-0.5">
                     {NAV_ITEMS.map(item => (
                         <button
                             key={item.id}
                             onClick={() => scrollToSection(item.id)}
                             className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
                                 activeSection === item.id
                                     ? "bg-primary/10 text-primary"
                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -387,13 +382,13 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                             {item.id}
                         </button>
                     ))}
-                    <div className="mt-auto pt-4 border-t border-border">
+                    <div className="mt-auto pt-3 border-t border-border">
                         <button
                             onClick={async () => {
                                 try { await auth.signOut(); window.location.href = "/login"; }
                                 catch (error) { console.error("Logout error", error); }
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                         >
                             <LogOut className="w-4 h-4" />
                             Abmelden
@@ -403,7 +398,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
 
                 {/* Scrollable content */}
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
-                    <div className="p-6 space-y-12 pb-16">
+                    <div className="p-5 space-y-8 pb-16">
                         <div id="settings-Konto">
                             <AccountSection
                                 user={user}
