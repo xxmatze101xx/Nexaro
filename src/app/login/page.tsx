@@ -44,7 +44,7 @@ export default function LoginPage() {
                     displayName: name,
                 });
             }
-            window.location.href = "/";
+            window.location.href = "/dashboard";
         } catch (err: unknown) {
             console.error(err);
             const code = (err as { code?: string }).code;
@@ -75,7 +75,7 @@ export default function LoginPage() {
                 displayName: userCredential.user.displayName || "",
                 photoURL: userCredential.user.photoURL || "",
             });
-            window.location.href = "/";
+            window.location.href = "/dashboard";
         } catch (err: unknown) {
             console.error(err);
             setError((err as { message?: string }).message ?? "Google Login fehlgeschlagen.");
