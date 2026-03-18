@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Mockup, MockupFrame } from "@/components/ui/mockup"
 
@@ -57,17 +58,7 @@ const Hero = React.forwardRef<HTMLDivElement, HeroProps>(
             >
               <div className="flex items-center justify-between w-full pl-[22px] pr-[17px]">
                 <span className="text-[19px] whitespace-nowrap">{ctaText}</span>
-                <div className="flex items-center gap-[14px]">
-                  <div className="w-[36px] h-[15px] relative">
-                    <Image
-                      src="https://res.cloudinary.com/ducqjmtlk/image/upload/v1737918196/Arrow_1_tacbar.svg"
-                      alt="Arrow"
-                      width={36}
-                      height={15}
-                      className="object-contain brightness-0 invert"
-                    />
-                  </div>
-                </div>
+                <ArrowRight className="w-5 h-5 flex-shrink-0" />
               </div>
             </div>
           </Link>
