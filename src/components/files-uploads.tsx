@@ -16,6 +16,9 @@ import {
   Trash2,
   Download,
   File,
+  FileText,
+  FileCode,
+  FileJson,
   Image as ImageIcon,
   RefreshCw,
   FolderOpen,
@@ -36,6 +39,23 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function FileTypeIcon({ contentType, name }: { contentType: string; name: string }) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (contentType.startsWith("image/")) return <ImageIcon className="w-6 h-6 text-blue-500" />;
+  if (contentType === "application/pdf" || ext === "pdf") return <FileText className="w-6 h-6 text-red-500" />;
+  if (contentType === "application/json" || ext === "json") return <FileJson className="w-6 h-6 text-yellow-500" />;
+  if (
+    contentType.startsWith("text/") ||
+    ["md", "txt", "csv", "xml", "html", "yaml", "yml", "toml", "log"].includes(ext)
+  ) return <FileText className="w-6 h-6 text-green-500" />;
+  if (
+    contentType.includes("javascript") ||
+    contentType.includes("typescript") ||
+    ["js", "ts", "jsx", "tsx", "py", "rb", "go", "rs", "java", "cs", "cpp", "c", "sh", "css", "scss"].includes(ext)
+  ) return <FileCode className="w-6 h-6 text-purple-500" />;
+  return <File className="w-6 h-6 text-muted-foreground" />;
 }
 
 interface FilesUploadsProps {
@@ -195,11 +215,7 @@ export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsPro
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center">
-                    {file.contentType.startsWith("image/") ? (
-                      <ImageIcon className="w-6 h-6 text-blue-500" />
-                    ) : (
-                      <File className="w-6 h-6 text-muted-foreground" />
-                    )}
+                    <FileTypeIcon contentType={file.contentType} name={file.name} />
                   </div>
                 )}
 
