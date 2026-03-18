@@ -6,6 +6,7 @@ import { Hero } from "@/components/ui/hero";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
+import { Footer7 } from "@/components/ui/footer-7";
 
 
 const PRICING_PLANS = [
@@ -253,21 +254,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-border py-8 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Nexaro" width={24} height={24} className="object-contain" />
-            <span className="font-semibold text-sm text-foreground">Nexaro</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Nexaro. All rights reserved.
-          </p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Imprint</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-          </div>
-        </div>
+      <footer className="border-t border-border">
+        <Footer7 />
       </footer>
     </div>
   );
