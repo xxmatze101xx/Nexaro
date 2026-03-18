@@ -566,6 +566,8 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const [mentionQuery, setMentionQuery] = useState("");
     const [mentionStart, setMentionStart] = useState(0);
     const [mentionIndex, setMentionIndex] = useState(0);
+    // Files explicitly attached via @mention — their content will be sent to the AI
+    const [attachedFiles, setAttachedFiles] = useState<MentionableFile[]>([]);
 
     // Keep a ref so async callbacks always see the latest sessions without stale closures
     const sessionsRef = useRef<ChatSession[]>([]);
@@ -692,7 +694,31 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         setInput("");
         setIsLoading(true);
 
-        const context = precomputedContext;
+        // Fetch content of any @mentioned files and append to context
+        let fileContext = "";
+        if (attachedFiles.length > 0) {
+            const TEXT_MIME_TYPES = ["text/", "application/json", "application/xml", "application/csv"];
+            const fileSections = await Promise.all(
+                attachedFiles.map(async (file) => {
+                    const isText = TEXT_MIME_TYPES.some(t => file.mimeType.startsWith(t));
+                    if (!isText) {
+                        return `### Attached file: ${file.filename}\n(Binary file — content not available as text)`;
+                    }
+                    try {
+                        const res = await fetch(file.url);
+                        const text = await res.text();
+                        const preview = text.slice(0, 8000); // cap at ~8k chars
+                        return `### Attached file: ${file.filename}\n\`\`\`\n${preview}\n\`\`\``;
+                    } catch {
+                        return `### Attached file: ${file.filename}\n(Could not load file content)`;
+                    }
+                }),
+            );
+            fileContext = fileSections.join("\n\n");
+            setAttachedFiles([]);
+        }
+
+        const context = [precomputedContext, fileContext].filter(Boolean).join("\n\n");
 
         // Get a live Calendar access token so the AI can call the Calendar API as a tool.
         // Only fetched when the user has enabled calendar permission and an account is connected.
@@ -769,7 +795,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
             setIsLoading(false);
             inputRef.current?.focus();
         }
-    }, [input, isLoading, activeId, uid, precomputedContext]);
+    }, [input, isLoading, activeId, uid, precomputedContext, attachedFiles]);
 
     const filteredMentions = useMemo(() =>
         mentionActive
@@ -785,6 +811,8 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         setInput(`${before}@${file.filename}${after}`);
         setMentionActive(false);
         setMentionQuery("");
+        // Track the file so its content can be sent to the AI
+        setAttachedFiles(prev => prev.some(f => f.url === file.url) ? prev : [...prev, file]);
         setTimeout(() => inputRef.current?.focus(), 0);
     }, [input, mentionStart, mentionQuery]);
 
