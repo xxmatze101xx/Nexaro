@@ -742,7 +742,7 @@ function CalendarContent() {
                 {/* Header */}
                 <header className="h-14 border-b border-border flex items-center justify-between px-5 bg-background shrink-0 gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                        <Link href="/" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50 shrink-0 transition-colors">
+                        <Link href="/dashboard" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50 shrink-0 transition-colors">
                             <ChevronLeft className="w-3.5 h-3.5" /> Dashboard
                         </Link>
                         <h1 className="text-sm font-bold tracking-tight capitalize truncate">{headerLabel}</h1>

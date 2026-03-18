@@ -457,7 +457,7 @@ function SettingsContent() {
                 <div className="flex items-center justify-between w-full max-w-5xl mx-auto">
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => (window.location.href = "/")}
+                            onClick={() => (window.location.href = "/dashboard")}
                             className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
