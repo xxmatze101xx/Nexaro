@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const upstream = await fetch(url);
+    const upstream = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!upstream.ok) {
       return NextResponse.json(
         { error: `Upstream HTTP ${upstream.status}` },
@@ -29,6 +31,7 @@ export async function GET(req: NextRequest) {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

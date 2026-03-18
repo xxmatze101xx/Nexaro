@@ -274,8 +274,11 @@ function TextViewer({ file }: { file: PreviewFile }) {
     setContent(null);
     setError(null);
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
     const fetchUrl = `/api/files/text?url=${encodeURIComponent(file.url)}`;
-    fetch(fetchUrl)
+    fetch(fetchUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
@@ -293,8 +296,15 @@ function TextViewer({ file }: { file: PreviewFile }) {
         }
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : String(err));
-      });
+        if (err instanceof Error && err.name === "AbortError") {
+          setError("Request timed out. The file may be unavailable.");
+        } else {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      })
+      .finally(() => clearTimeout(timer));
+
+    return () => { controller.abort(); clearTimeout(timer); };
   }, [file.url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
