@@ -281,7 +281,8 @@ function TextViewer({ file }: { file: PreviewFile }) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
 
-    fetch(file.url, { signal: controller.signal })
+    const proxyUrl = `/api/files/text?url=${encodeURIComponent(file.url)}`;
+    fetch(proxyUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
