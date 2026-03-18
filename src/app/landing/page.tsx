@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Hero } from "@/components/ui/hero";
+import { ArrowRight } from "lucide-react";
 import { FloatingPaths } from "@/components/ui/background-paths";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
@@ -102,25 +102,32 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <div className="relative min-h-screen overflow-hidden bg-background">
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-16">
         <FloatingPaths position={1} />
         <FloatingPaths position={-1} />
-        <Hero
-          className="min-h-screen pt-16 relative z-10 bg-transparent"
-          eyebrow="INTRODUCING NEXARO"
-          title={
-            <>
-              <span>Your entire </span>
-              <span className="text-primary">communication</span>
-              <br />
-              <span>at a glance.</span>
-            </>
-          }
-          subtitle="Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters."
-          ctaText="Get started"
-          ctaLink="/login"
-        />
-      </div>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full">
+          <p className="uppercase tracking-[0.51em] leading-[133%] text-center text-[19px] mb-8 text-muted-foreground animate-appear opacity-0">
+            INTRODUCING NEXARO
+          </p>
+          <h1 className="text-[64px] leading-[83px] text-center px-4 lg:px-[314px] text-foreground font-semibold animate-appear opacity-0 delay-100">
+            <span>Your entire </span>
+            <span className="text-primary">communication</span>
+            <br />
+            <span>at a glance.</span>
+          </h1>
+          <p className="text-[28px] text-center font-light px-4 lg:px-[314px] mt-[25px] mb-[48px] leading-[133%] text-muted-foreground animate-appear opacity-0 delay-300">
+            Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters.
+          </p>
+          <Link href="/login" className="mb-20 animate-appear opacity-0 delay-500">
+            <div className="inline-flex items-center bg-primary text-primary-foreground rounded-[10px] hover:bg-primary-hover transition-colors w-[227px] h-[49px]">
+              <div className="flex items-center justify-between w-full pl-[22px] pr-[17px]">
+                <span className="text-[19px] whitespace-nowrap">Get started</span>
+                <ArrowRight className="w-5 h-5 flex-shrink-0" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      </section>
 
       {/* ── Why Section ── */}
       <section id="why" className="bg-zinc-950 text-white py-32 px-4 sm:px-6">
