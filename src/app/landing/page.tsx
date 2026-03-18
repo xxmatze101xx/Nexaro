@@ -100,7 +100,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <Hero
-        className="min-h-screen"
+        className="min-h-screen pt-16"
         eyebrow="INTRODUCING NEXARO"
         title={
           <>
@@ -116,7 +116,7 @@ export default function LandingPage() {
       />
 
       {/* ── Radar Section ── */}
-      <section className="relative z-0 py-24 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
+      <section className="relative z-0 pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
         <div className="max-w-6xl mx-auto text-center mb-16">
           <p className="text-xs font-semibold uppercase tracking-widest text-sky-600 mb-3">
             Real-time Intelligence
@@ -128,7 +128,8 @@ export default function LandingPage() {
             Nexaro monitors every channel simultaneously — so nothing critical ever slips through.
           </p>
         </div>
-        <div className="relative mx-auto flex h-[26rem] w-full max-w-4xl flex-col items-center justify-center space-y-6 overflow-hidden px-4">
+        {/* Icon rows */}
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-6 px-4 pb-48">
           {/* Row 1 */}
           <div className="mx-auto w-full max-w-4xl">
             <div className="flex w-full items-center justify-center gap-6 md:justify-between">
@@ -155,10 +156,12 @@ export default function LandingPage() {
               <IconContainer text="Telegram" delay={1.1} icon={<img src="/ServiceLogos/Telegram.svg" alt="Telegram" className="h-7 w-7 object-contain" />} />
             </div>
           </div>
-
-          <Radar className="absolute -bottom-12" />
-          <div className="absolute bottom-0 z-[4] h-px w-full bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
         </div>
+        {/* Radar anchored at section bottom — shows as a dome */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-[2]">
+          <Radar />
+        </div>
+        <div className="absolute bottom-0 z-[4] h-px w-full bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
       </section>
 
       {/* ── Bento Feature Grid ── */}
