@@ -7,31 +7,17 @@ import {
   Zap,
   Shield,
   Brain,
-  ChevronRight,
   Star,
   CheckCircle,
   ArrowRight,
   Inbox,
   Clock,
   TrendingUp,
-  Sparkles,
 } from "lucide-react";
 import { Hero } from "@/components/ui/hero";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 
-const INTEGRATIONS = [
-  { name: "Gmail",           logo: "/service-logos/gmail.svg" },
-  { name: "Slack",           logo: "/service-logos/slack.svg" },
-  { name: "Microsoft Teams", logo: "/service-logos/microsoft-teams.svg" },
-  { name: "Outlook",         logo: "/service-logos/outlook.svg" },
-  { name: "Google Calendar", logo: "/service-logos/google-calendar.svg" },
-  { name: "Zoom",            logo: "/service-logos/zoom.svg" },
-  { name: "HubSpot",         logo: "/service-logos/hubspot.svg" },
-  { name: "Jira",            logo: "/service-logos/jira.svg" },
-  { name: "Linear",          logo: "/service-logos/linear.svg" },
-  { name: "Telegram",        logo: "/service-logos/telegram.svg" },
-];
 
 const FEATURES = [
   {
@@ -183,6 +169,7 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <Hero
+        className="min-h-screen"
         eyebrow="INTRODUCING NEXARO"
         title={
           <>
@@ -196,37 +183,6 @@ export default function LandingPage() {
         ctaText="Get started"
         ctaLink="/login"
       />
-
-      {/* ── Integrations ── */}
-      <section id="integrations" className="py-16 px-4 sm:px-6 border-y border-border bg-muted/30">
-        <div className="max-w-5xl mx-auto text-center">
-          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest mb-10">
-            Connects with your tools
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            {INTEGRATIONS.map((integration) => (
-              <div
-                key={integration.name}
-                className="flex items-center gap-2.5 bg-background border border-border rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md transition-all"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={integration.logo}
-                  alt={integration.name}
-                  width={22}
-                  height={22}
-                  className="object-contain w-[22px] h-[22px]"
-                />
-                <span className="text-sm font-medium text-foreground">{integration.name}</span>
-              </div>
-            ))}
-            <div className="flex items-center gap-2 bg-background border border-dashed border-border rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground">
-              <Sparkles className="w-4 h-4" />
-              And way more
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── Radar Section ── */}
       <section className="relative z-0 py-24 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
