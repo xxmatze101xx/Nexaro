@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
     Plus,
     Send,
@@ -608,7 +608,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         void saveSessionToFirestore(uid, newSession);
         setActiveId(newSession.id);
         setInput("");
-        inputRef.current?.focus();
+        setTimeout(() => inputRef.current?.focus(), 0);
     }, [uid]);
 
     const deleteSession = useCallback((id: string) => {
@@ -626,6 +626,12 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const enabledIntegrationCount = Object.values(permissions).filter(
         (v, i) => v && Object.values(resolvedConnected)[i],
     ).length;
+
+    // Pre-compute context so it's ready instantly when the user hits send
+    const precomputedContext = useMemo(
+        () => buildContext(permissions, allMessages, upcomingMeetings),
+        [permissions, allMessages, upcomingMeetings],
+    );
 
     const sendMessage = useCallback(async () => {
         const trimmed = input.trim();
@@ -665,7 +671,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         setInput("");
         setIsLoading(true);
 
-        const context = buildContext(permissions, allMessages, upcomingMeetings);
+        const context = precomputedContext;
 
         try {
             const res = await fetch("/api/ai/chat", {
@@ -720,13 +726,15 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
             setIsLoading(false);
             inputRef.current?.focus();
         }
-    }, [input, isLoading, activeId, uid, permissions, allMessages, upcomingMeetings]);
+    }, [input, isLoading, activeId, uid, precomputedContext]);
 
-    const filteredMentions = mentionActive
-        ? mentionFiles
-            .filter(f => f.filename.toLowerCase().includes(mentionQuery.toLowerCase()))
-            .slice(0, 8)
-        : [];
+    const filteredMentions = useMemo(() =>
+        mentionActive
+            ? mentionFiles
+                .filter(f => f.filename.toLowerCase().includes(mentionQuery.toLowerCase()))
+                .slice(0, 8)
+            : [],
+    [mentionActive, mentionFiles, mentionQuery]);
 
     const insertMention = useCallback((file: MentionableFile) => {
         const before = input.slice(0, mentionStart);
@@ -737,7 +745,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         setTimeout(() => inputRef.current?.focus(), 0);
     }, [input, mentionStart, mentionQuery]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const value = e.target.value;
         setInput(value);
 
@@ -757,7 +765,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
         }
         setMentionActive(false);
         setMentionQuery("");
-    };
+    }, []);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (mentionActive && filteredMentions.length > 0) {
