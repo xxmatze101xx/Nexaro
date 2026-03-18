@@ -21,7 +21,11 @@ import {
     FileText,
     Image as ImageIcon,
     File,
+    Mic,
+    CornerDownLeft,
 } from "lucide-react";
+import { ChatInput } from "@/components/ui/chat-input";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
@@ -1093,27 +1097,57 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             ))}
                         </div>
                     )}
-                    <div className="flex gap-2 items-end bg-muted/50 border border-border rounded-xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
-                            <textarea
-                                ref={inputRef}
-                                value={input}
-                                onChange={handleInputChange}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Ask anything… (Enter to send, Shift+Enter for newline)"
-                                rows={1}
-                                className="flex-1 bg-transparent text-sm resize-none outline-none placeholder:text-muted-foreground max-h-40 leading-relaxed"
-                                style={{ fieldSizing: "content" } as React.CSSProperties}
+                    <form
+                        className="relative rounded-xl border border-border bg-background focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all p-1 shadow-sm"
+                        onSubmit={(e) => { e.preventDefault(); void sendMessage(); }}
+                    >
+                        <ChatInput
+                            ref={inputRef}
+                            value={input}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Ask anything…"
+                            disabled={isLoading}
+                            className="min-h-12 max-h-40 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0 text-sm leading-relaxed"
+                        />
+                        <div className="flex items-center px-2 pb-2 pt-0 gap-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
                                 disabled={isLoading}
-                            />
-                            <button
-                                onClick={() => void sendMessage()}
-                                disabled={!input.trim() || isLoading}
-                                className="p-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors shrink-0 self-end"
-                                aria-label="Send message"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                                aria-label="Attach file"
                             >
-                                <Send className="w-4 h-4" />
-                            </button>
+                                <Paperclip className="size-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                disabled={isLoading}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                                aria-label="Use microphone"
+                            >
+                                <Mic className="size-4" />
+                            </Button>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                className="ml-auto gap-1.5"
+                                disabled={!input.trim() || isLoading}
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                    <>
+                                        Send
+                                        <CornerDownLeft className="size-3.5" />
+                                    </>
+                                )}
+                            </Button>
                         </div>
+                    </form>
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
                         Nexaro AI can make mistakes. Verify important information.
                     </p>
