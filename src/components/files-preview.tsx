@@ -274,7 +274,8 @@ function TextViewer({ file }: { file: PreviewFile }) {
     setContent(null);
     setError(null);
 
-    fetch(file.url)
+    const fetchUrl = `/api/files/text?url=${encodeURIComponent(file.url)}`;
+    fetch(fetchUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
