@@ -15,14 +15,14 @@ export function FeaturesSectionWithBentoGrid() {
         "Gmail, Slack, Teams, and Outlook — every channel unified in one AI-powered view. No tab-switching, no lost context.",
       skeleton: <SkeletonOne />,
       className:
-        "col-span-1 md:col-span-4 lg:col-span-4 border-b md:border-r dark:border-neutral-800",
+        "col-span-1 md:col-span-4 lg:col-span-4 border-b md:border-r border-neutral-200",
     },
     {
       title: "AI scores what matters",
       description:
         "Every message is automatically ranked by importance. You see critical decisions first — not just what arrived last.",
       skeleton: <SkeletonTwo />,
-      className: "col-span-1 md:col-span-2 lg:col-span-2 border-b dark:border-neutral-800",
+      className: "col-span-1 md:col-span-2 lg:col-span-2 border-b border-neutral-200",
     },
     {
       title: "Reply in one click",
@@ -30,7 +30,7 @@ export function FeaturesSectionWithBentoGrid() {
         "Nexaro generates context-aware AI drafts that are ready to send. Built for executives who value every minute.",
       skeleton: <SkeletonThree />,
       className:
-        "col-span-1 md:col-span-3 lg:col-span-3 border-b md:border-r dark:border-neutral-800",
+        "col-span-1 md:col-span-3 lg:col-span-3 border-b md:border-r border-neutral-200",
     },
     {
       title: "Works everywhere",
@@ -44,17 +44,17 @@ export function FeaturesSectionWithBentoGrid() {
   return (
     <div className="relative z-20 py-10 lg:py-40 max-w-7xl mx-auto">
       <div className="px-8">
-        <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black dark:text-white">
+        <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black">
           Everything executives need
         </h4>
-        <p className="text-sm lg:text-base max-w-2xl my-4 mx-auto text-neutral-500 text-center font-normal dark:text-neutral-300">
+        <p className="text-sm lg:text-base max-w-2xl my-4 mx-auto text-neutral-500 text-center font-normal">
           Nexaro was built from the ground up for decision-makers — not for teams, not
           for IT, but for you. Less time in your inbox. More time leading.
         </p>
       </div>
 
       <div className="relative">
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-6 mt-12 xl:border rounded-md dark:border-neutral-800">
+        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-6 mt-12 xl:border border-neutral-200 rounded-md">
           {features.map((feature) => (
             <FeatureCard key={feature.title} className={feature.className}>
               <FeatureTitle>{feature.title}</FeatureTitle>
@@ -84,7 +84,7 @@ const FeatureCard = ({
 
 const FeatureTitle = ({ children }: { children?: React.ReactNode }) => {
   return (
-    <p className="max-w-5xl mx-auto text-left tracking-tight text-black dark:text-white text-xl md:text-2xl md:leading-snug">
+    <p className="max-w-5xl mx-auto text-left tracking-tight text-black text-xl md:text-2xl md:leading-snug">
       {children}
     </p>
   );
@@ -95,7 +95,7 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
     <p
       className={cn(
         "text-sm md:text-base max-w-4xl text-left mx-auto",
-        "text-neutral-500 font-normal dark:text-neutral-300",
+        "text-neutral-500 font-normal",
         "text-left max-w-sm mx-0 md:text-sm my-2"
       )}
     >
@@ -116,14 +116,14 @@ export const SkeletonOne = () => {
 
   return (
     <div className="relative flex py-8 px-2 gap-10 h-full">
-      <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full rounded-sm">
+      <div className="w-full p-5 mx-auto bg-white shadow-2xl group h-full rounded-sm">
         <div className="flex flex-1 w-full h-full flex-col space-y-2">
           {/* Header bar */}
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-neutral-700 uppercase tracking-wider">
               Unified Inbox
             </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500">
+            <span className="text-xs text-neutral-400">
               {messages.length} critical
             </span>
           </div>
@@ -131,31 +131,31 @@ export const SkeletonOne = () => {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-50 transition-colors"
             >
               <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
                 {msg.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
+                <p className="text-xs font-medium text-neutral-800 truncate">
                   {msg.from}
                 </p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                <p className="text-xs text-neutral-500 truncate">
                   {msg.subject}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                <span className="text-xs text-neutral-400">
                   {msg.channel}
                 </span>
                 <span
                   className={cn(
                     "text-xs font-bold px-1.5 py-0.5 rounded-full",
                     msg.score >= 97
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                      ? "bg-red-100 text-red-700"
                       : msg.score >= 94
-                      ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
-                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400"
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-yellow-100 text-yellow-700"
                   )}
                 >
                   {msg.score}
@@ -165,8 +165,8 @@ export const SkeletonOne = () => {
           ))}
         </div>
       </div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-60 bg-gradient-to-t from-white dark:from-black via-white dark:via-black to-transparent w-full pointer-events-none" />
-      <div className="absolute top-0 z-40 inset-x-0 h-20 bg-gradient-to-b from-white dark:from-black via-transparent to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-60 bg-gradient-to-t from-white via-white to-transparent w-full pointer-events-none" />
+      <div className="absolute top-0 z-40 inset-x-0 h-20 bg-gradient-to-b from-white via-transparent to-transparent w-full pointer-events-none" />
     </div>
   );
 };
@@ -174,11 +174,11 @@ export const SkeletonOne = () => {
 // ── Skeleton: Animated priority badges ───────────────────────────────────────
 export const SkeletonTwo = () => {
   const cards = [
-    { label: "Gmail", count: 12, color: "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800" },
-    { label: "Slack", count: 7, color: "bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800" },
-    { label: "Teams", count: 4, color: "bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800" },
-    { label: "Outlook", count: 9, color: "bg-cyan-100 dark:bg-cyan-900/30 border-cyan-200 dark:border-cyan-800" },
-    { label: "Calendar", count: 3, color: "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800" },
+    { label: "Gmail", count: 12, color: "bg-red-100 border-red-200" },
+    { label: "Slack", count: 7, color: "bg-purple-100 border-purple-200" },
+    { label: "Teams", count: 4, color: "bg-blue-100 border-blue-200" },
+    { label: "Outlook", count: 9, color: "bg-cyan-100 border-cyan-200" },
+    { label: "Calendar", count: 3, color: "bg-emerald-100 border-emerald-200" },
   ];
 
   const cardVariants = {
@@ -201,10 +201,10 @@ export const SkeletonTwo = () => {
               card.color
             )}
           >
-            <span className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
+            <span className="text-2xl font-bold text-neutral-800">
               {card.count}
             </span>
-            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+            <span className="text-xs font-medium text-neutral-600">
               {card.label}
             </span>
           </motion.div>
@@ -223,17 +223,17 @@ export const SkeletonTwo = () => {
               card.color
             )}
           >
-            <span className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">
+            <span className="text-2xl font-bold text-neutral-800">
               {card.count}
             </span>
-            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+            <span className="text-xs font-medium text-neutral-600">
               {card.label}
             </span>
           </motion.div>
         ))}
       </div>
-      <div className="absolute left-0 z-[100] inset-y-0 w-10 bg-gradient-to-r from-white dark:from-black to-transparent h-full pointer-events-none" />
-      <div className="absolute right-0 z-[100] inset-y-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent h-full pointer-events-none" />
+      <div className="absolute left-0 z-[100] inset-y-0 w-10 bg-gradient-to-r from-white to-transparent h-full pointer-events-none" />
+      <div className="absolute right-0 z-[100] inset-y-0 w-10 bg-gradient-to-l from-white to-transparent h-full pointer-events-none" />
     </div>
   );
 };
@@ -253,15 +253,15 @@ export const SkeletonThree = () => {
 
   return (
     <div className="relative flex gap-10 h-full group/draft">
-      <div className="w-full mx-auto bg-white dark:bg-neutral-900 group h-full rounded-sm shadow-2xl p-4">
+      <div className="w-full mx-auto bg-white group h-full rounded-sm shadow-2xl p-4">
         <div className="flex flex-col h-full space-y-2">
-          <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-700">
-            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
+            <span className="text-xs font-semibold text-neutral-600 uppercase tracking-wider">
               AI Draft
             </span>
             <div className="flex items-center gap-1">
               <Zap className="w-3 h-3 text-amber-500" />
-              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <span className="text-xs text-amber-600 font-medium">
                 Ready
               </span>
             </div>
@@ -273,18 +273,18 @@ export const SkeletonThree = () => {
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08, duration: 0.3 }}
-                className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed min-h-[1.2rem]"
+                className="text-xs text-neutral-700 leading-relaxed min-h-[1.2rem]"
               >
                 {line}
               </motion.p>
             ))}
           </div>
-          <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 flex gap-2">
+          <div className="pt-2 border-t border-neutral-200 flex gap-2">
             <div className="flex-1 h-7 rounded-md bg-primary/10 flex items-center justify-center">
               <span className="text-xs font-medium text-primary">Send</span>
             </div>
-            <div className="h-7 px-3 rounded-md bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">Edit</span>
+            <div className="h-7 px-3 rounded-md bg-neutral-100 flex items-center justify-center">
+              <span className="text-xs text-neutral-500">Edit</span>
             </div>
           </div>
         </div>
@@ -296,7 +296,7 @@ export const SkeletonThree = () => {
 // ── Skeleton: Globe ───────────────────────────────────────────────────────────
 export const SkeletonFour = () => {
   return (
-    <div className="h-60 md:h-60 flex flex-col items-center relative bg-transparent dark:bg-transparent mt-10">
+    <div className="h-60 md:h-60 flex flex-col items-center relative bg-transparent mt-10">
       <Globe className="absolute -right-10 md:-right-10 -bottom-80 md:-bottom-72" />
     </div>
   );
@@ -315,13 +315,13 @@ export const Globe = ({ className }: { className?: string }) => {
       height: 600 * 2,
       phi: 0,
       theta: 0,
-      dark: 1,
-      diffuse: 1.2,
+      dark: 0,
+      diffuse: 0.8,
       mapSamples: 16000,
-      mapBrightness: 6,
-      baseColor: [0.2, 0.2, 0.25],
-      markerColor: [0.4, 0.6, 1],
-      glowColor: [0.5, 0.5, 1],
+      mapBrightness: 8,
+      baseColor: [0.88, 0.88, 0.92],
+      markerColor: [0.3, 0.4, 0.9],
+      glowColor: [0.7, 0.7, 1],
       markers: [
         { location: [48.2082, 16.3738], size: 0.05 }, // Vienna
         { location: [51.5074, -0.1278], size: 0.06 }, // London

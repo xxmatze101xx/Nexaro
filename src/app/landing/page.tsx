@@ -270,7 +270,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Bento Feature Grid ── */}
-      <section className="bg-white dark:bg-black border-y border-border overflow-hidden">
+      <section className="bg-white border-y border-border overflow-hidden">
         <FeaturesSectionWithBentoGrid />
       </section>
 
