@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Hero } from "@/components/ui/hero";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
+import { Radar, IconContainer } from "@/components/ui/radar-effect";
 
 const INTEGRATIONS = [
   { name: "Gmail",           logo: "/service-logos/gmail.svg" },
@@ -224,6 +225,76 @@ export default function LandingPage() {
               And way more
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Radar Section ── */}
+      <section className="py-24 px-4 sm:px-6 bg-black border-b border-slate-800 overflow-hidden">
+        <div className="max-w-6xl mx-auto text-center mb-16">
+          <p className="text-xs font-semibold uppercase tracking-widest text-sky-500 mb-3">
+            Real-time Intelligence
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Always watching. Always connected.
+          </h2>
+          <p className="text-slate-400 text-lg max-w-xl mx-auto">
+            Nexaro monitors every channel simultaneously — so nothing critical ever slips through.
+          </p>
+        </div>
+        <div className="relative mx-auto flex h-96 w-full max-w-3xl flex-col items-center justify-center space-y-4 overflow-hidden px-4">
+          {/* Row 1 */}
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="flex w-full items-center justify-center space-x-10 md:justify-between md:space-x-0">
+              <IconContainer
+                text="Gmail"
+                delay={0.2}
+                icon={<img src="/ServiceLogos/Gmail.svg" alt="Gmail" className="h-7 w-7 object-contain" />}
+              />
+              <IconContainer
+                text="Slack"
+                delay={0.4}
+                icon={<img src="/ServiceLogos/Slack.svg" alt="Slack" className="h-7 w-7 object-contain" />}
+              />
+              <IconContainer
+                text="MS Teams"
+                delay={0.3}
+                icon={<img src="/ServiceLogos/Microsoft Teams.svg" alt="Microsoft Teams" className="h-7 w-7 object-contain" />}
+              />
+            </div>
+          </div>
+          {/* Row 2 */}
+          <div className="mx-auto w-full max-w-md">
+            <div className="flex w-full items-center justify-center space-x-10 md:justify-between md:space-x-0">
+              <IconContainer
+                text="Google Calendar"
+                delay={0.5}
+                icon={<img src="/ServiceLogos/Google Calendar.svg" alt="Google Calendar" className="h-7 w-7 object-contain" />}
+              />
+              <IconContainer
+                text="HubSpot"
+                delay={0.8}
+                icon={<img src="/ServiceLogos/HubSpot.svg" alt="HubSpot" className="h-7 w-7 object-contain" />}
+              />
+            </div>
+          </div>
+          {/* Row 3 */}
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="flex w-full items-center justify-center space-x-10 md:justify-between md:space-x-0">
+              <IconContainer
+                text="Jira"
+                delay={0.6}
+                icon={<img src="/ServiceLogos/Jira.svg" alt="Jira" className="h-7 w-7 object-contain" />}
+              />
+              <IconContainer
+                text="Outlook"
+                delay={0.7}
+                icon={<img src="/ServiceLogos/Outlook.svg" alt="Outlook" className="h-7 w-7 object-contain" />}
+              />
+            </div>
+          </div>
+
+          <Radar className="absolute -bottom-12" />
+          <div className="absolute bottom-0 z-[41] h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
         </div>
       </section>
 
