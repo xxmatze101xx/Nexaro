@@ -422,8 +422,9 @@ function getDownloadUrl(file: PreviewFile): string | null {
 
 export function FilesPreview({ file, onClose, className }: FilesPreviewProps) {
   const isImg = isImage(file);
-  const isText = isTextFile(file);
-  const embedUrl = !isText ? getEmbedUrl(file) : null;
+  const isMd = isMarkdownFile(file);
+  const isText = !isMd && isTextFile(file);
+  const embedUrl = !isText && !isMd ? getEmbedUrl(file) : null;
   const downloadUrl = getDownloadUrl(file);
   const openUrl =
     file.url ??
@@ -483,8 +484,28 @@ export function FilesPreview({ file, onClose, className }: FilesPreviewProps) {
               className="max-w-full max-h-full object-contain rounded-md shadow-sm"
             />
           </div>
+        ) : isMd ? (
+          // Markdown — no inline preview, offer download
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-8">
+            <FileText className="w-12 h-12 opacity-20" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Markdown-Vorschau nicht verfügbar</p>
+              <p className="text-xs opacity-60 mt-1">Diese Datei kann nicht direkt angezeigt werden.</p>
+            </div>
+            {downloadUrl && (
+              <a
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Herunterladen
+              </a>
+            )}
+          </div>
         ) : isText ? (
-          // Text / Markdown viewer
+          // Text viewer
           <TextViewer file={file} />
         ) : embedUrl ? (
           // Iframe embed (PDF, Drive, Office Online)
