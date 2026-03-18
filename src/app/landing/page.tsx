@@ -8,7 +8,6 @@ import {
   Shield,
   Brain,
   Star,
-  CheckCircle,
   ArrowRight,
   Inbox,
   Clock,
@@ -17,6 +16,7 @@ import {
 import { Hero } from "@/components/ui/hero";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
+import { Pricing } from "@/components/blocks/pricing";
 
 
 const FEATURES = [
@@ -91,47 +91,61 @@ const TESTIMONIALS = [
   },
 ];
 
-const PRICING = [
+const PRICING_PLANS = [
   {
-    name: "Starter",
+    name: "STARTER",
     price: "29",
-    description: "Perfect for individuals",
+    yearlyPrice: "23",
+    period: "per month",
     features: [
-      "2 integrations (e.g. Gmail + Slack)",
+      "2 integrations (Gmail + Slack)",
       "AI prioritization",
       "AI draft generator",
       "Daily briefing",
+      "Community support",
     ],
-    cta: "Start for free",
-    highlight: false,
+    description: "Perfect for individuals getting started",
+    buttonText: "Start for free",
+    href: "/login",
+    isPopular: false,
   },
   {
-    name: "Executive",
+    name: "EXECUTIVE",
     price: "79",
-    description: "For busy CEOs",
+    yearlyPrice: "63",
+    period: "per month",
     features: [
       "All integrations",
       "Unlimited AI drafts",
       "Decision tracking",
       "Calendar sync",
       "Priority support",
+      "Privacy by Design",
+      "Advanced AI insights",
     ],
-    cta: "Get started",
-    highlight: true,
+    description: "The go-to plan for busy CEOs and executives",
+    buttonText: "Get started",
+    href: "/login",
+    isPopular: true,
   },
   {
-    name: "Team",
+    name: "TEAM",
     price: "199",
-    description: "For leadership teams",
+    yearlyPrice: "159",
+    period: "per month",
     features: [
       "Everything in Executive",
       "Up to 10 users",
       "Team inbox",
       "Admin dashboard",
       "Dedicated onboarding",
+      "SSO Authentication",
+      "SLA agreement",
     ],
-    cta: "Contact us",
-    highlight: false,
+    description: "For leadership teams that move fast together",
+    buttonText: "Contact sales",
+    href: "/login",
+    isPopular: false,
   },
 ];
 
@@ -289,60 +303,11 @@ export default function LandingPage() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Simple, transparent pricing
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              All plans include a 14-day free trial. No credit card required.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PRICING.map((plan) => (
-              <div
-                key={plan.name}
-                className={`p-6 rounded-2xl border flex flex-col transition-all ${
-                  plan.highlight
-                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/10 relative"
-                    : "border-border bg-card"
-                }`}
-              >
-                {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-                    Recommended
-                  </div>
-                )}
-                <div className="mb-6">
-                  <h3 className="font-bold text-foreground text-lg mb-1">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                  <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold text-foreground">€{plan.price}</span>
-                    <span className="text-muted-foreground text-sm mb-1">/month</span>
-                  </div>
-                </div>
-                <ul className="space-y-3 flex-1 mb-6">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                      <CheckCircle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/login"
-                  className={`w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    plan.highlight
-                      ? "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm"
-                      : "border border-border bg-background hover:bg-muted text-foreground"
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Pricing
+          plans={PRICING_PLANS}
+          title="Simple, transparent pricing"
+          description="All plans include a 14-day free trial. No credit card required."
+        />
       </section>
 
       {/* ── Final CTA ── */}
