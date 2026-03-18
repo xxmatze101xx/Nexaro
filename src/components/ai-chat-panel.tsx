@@ -981,7 +981,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                             ? "bg-primary text-primary-foreground rounded-tr-sm"
                                             : "bg-muted text-foreground rounded-tl-sm",
                                     )}>
-                                        {msg.role === "assistant" ? renderMarkdown(msg.content) : <p>{msg.content}</p>}
+                                        {msg.role === "assistant" ? renderMarkdown(msg.content) : <p className="text-sm leading-relaxed">{renderUserMessage(msg.content)}</p>}
                                     </div>
                                 </div>
                             ))}
