@@ -242,7 +242,7 @@ export async function POST(request: Request) {
             `Today's date and time: ${new Date().toLocaleString("de-AT", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} (Timezone: ${timezone}).\n` +
             (calendarToken
                 ? `You have direct access to the user's Google Calendar. When asked to create, modify, or query events, use the available tools — do NOT tell the user you cannot access the calendar.\n`
-                : "") +
+                : `You do NOT have access to the user's Google Calendar — no calendar tools are available. If the user asks to add, create, schedule, or modify calendar events or appointments, clearly inform them that you don't have calendar access and that they need to enable it in the Nexaro settings. Do NOT claim to have added or created any event.\n`) +
             contextSection,
     };
 

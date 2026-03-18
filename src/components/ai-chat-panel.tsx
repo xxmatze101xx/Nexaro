@@ -365,6 +365,24 @@ function renderMarkdown(text: string): React.ReactNode[] {
     return nodes;
 }
 
+function renderUserMessage(text: string): React.ReactNode {
+    const parts = text.split(/(@\S+)/g);
+    return parts.map((part, i) => {
+        if (part.startsWith("@") && part.length > 1) {
+            return (
+                <span
+                    key={i}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-medium text-xs leading-normal"
+                >
+                    <Paperclip className="w-2.5 h-2.5 shrink-0" />
+                    {part.slice(1)}
+                </span>
+            );
+        }
+        return part;
+    });
+}
+
 function inlineFormat(text: string): React.ReactNode {
     const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
     return parts.map((part, i) => {
