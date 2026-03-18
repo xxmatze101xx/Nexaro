@@ -26,12 +26,12 @@ const Hero = React.forwardRef<HTMLDivElement, HeroProps>(
     return (
       <div
         ref={ref}
-        className={cn("flex flex-col items-center bg-background", className)}
+        className={cn("flex flex-col items-center justify-center bg-background", className)}
         {...props}
       >
         {eyebrow && (
           <p
-            className="uppercase tracking-[0.51em] leading-[133%] text-center text-[19px] mt-[100px] mb-8 text-muted-foreground animate-appear opacity-0"
+            className="uppercase tracking-[0.51em] leading-[133%] text-center text-[19px] mb-8 text-muted-foreground animate-appear opacity-0"
           >
             {eyebrow}
           </p>
