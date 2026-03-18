@@ -2,94 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import {
-  MessageSquare,
-  Zap,
-  Shield,
-  Brain,
-  Star,
-  ArrowRight,
-  Inbox,
-  Clock,
-  TrendingUp,
-} from "lucide-react";
 import { Hero } from "@/components/ui/hero";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
 
-
-const FEATURES = [
-  {
-    icon: <Brain className="w-6 h-6" />,
-    title: "AI Prioritization",
-    description:
-      "Nexaro scores every message automatically by importance. You see what truly matters first — not just what arrived last.",
-    color: "text-primary",
-    bg: "bg-primary/10",
-  },
-  {
-    icon: <Inbox className="w-6 h-6" />,
-    title: "Unified Inbox",
-    description:
-      "Gmail, Slack, Teams, Outlook — every channel in one view. No more tab-switching, no more lost context.",
-    color: "text-blue-500",
-    bg: "bg-blue-500/10",
-  },
-  {
-    icon: <Zap className="w-6 h-6" />,
-    title: "AI Drafts in Seconds",
-    description:
-      "One click is all it takes: Nexaro generates context-aware replies that are ready to send.",
-    color: "text-amber-500",
-    bg: "bg-amber-500/10",
-  },
-  {
-    icon: <Clock className="w-6 h-6" />,
-    title: "Daily Briefing",
-    description:
-      "Every morning an AI-curated summary: what happened, what needs your attention today.",
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
-  },
-  {
-    icon: <Shield className="w-6 h-6" />,
-    title: "Privacy by Design",
-    description:
-      "All personal data is anonymized before any AI API call. No raw data ever leaves your system.",
-    color: "text-red-500",
-    bg: "bg-red-500/10",
-  },
-  {
-    icon: <TrendingUp className="w-6 h-6" />,
-    title: "Decision Insights",
-    description:
-      "Nexaro tracks decisions and open tasks from your communication — automatically, without extra effort.",
-    color: "text-purple-500",
-    bg: "bg-purple-500/10",
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: "Stefan B.",
-    role: "CEO, Technology Company",
-    text: "I save 45 minutes every day that I used to spend sorting emails and switching between tools. Nexaro is the first tool that actually simplifies my workday.",
-    stars: 5,
-  },
-  {
-    name: "Anna K.",
-    role: "Managing Director, Consulting",
-    text: "The AI prioritization is surprisingly accurate. I no longer miss critical messages, even when I'm in meetings.",
-    stars: 5,
-  },
-  {
-    name: "Michael R.",
-    role: "Founder & CEO, SaaS Startup",
-    text: "Finally a tool built for executives, not IT departments. Setup was done in 10 minutes.",
-    stars: 5,
-  },
-];
 
 const PRICING_PLANS = [
   {
@@ -244,61 +161,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section id="features" className="py-24 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Everything a CEO needs
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Nexaro was built from the ground up for decision-makers — not for teams, not for IT, but for you.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature) => (
-              <div key={feature.title} className="p-6 rounded-2xl border border-border bg-card hover:shadow-md transition-all">
-                <div className={`w-12 h-12 rounded-xl ${feature.bg} flex items-center justify-center mb-4 ${feature.color}`}>
-                  {feature.icon}
-                </div>
-                <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── Bento Feature Grid ── */}
       <section className="bg-white border-y border-border overflow-hidden">
         <FeaturesSectionWithBentoGrid />
-      </section>
-
-      {/* ── Social Proof ── */}
-      <section className="py-24 px-4 sm:px-6 bg-muted/30 border-y border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              What executives say
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="p-6 rounded-2xl border border-border bg-card">
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-sm text-foreground leading-relaxed mb-4">&ldquo;{t.text}&rdquo;</p>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* ── Pricing ── */}
@@ -308,31 +173,6 @@ export default function LandingPage() {
           title="Simple, transparent pricing"
           description="All plans include a 14-day free trial. No credit card required."
         />
-      </section>
-
-      {/* ── Final CTA ── */}
-      <section className="py-24 px-4 sm:px-6 border-t border-border bg-muted/30">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-6">
-            <MessageSquare className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Ready to transform your inbox?
-          </h2>
-          <p className="text-muted-foreground text-lg mb-8">
-            Start for free today. Setup in under 5 minutes.
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-xl font-semibold text-sm hover:bg-primary-hover transition-all shadow-lg shadow-primary/25 active:scale-[0.98]"
-          >
-            Start for free
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-          <p className="mt-4 text-xs text-muted-foreground">
-            No credit card. No setup fee. 14 days free.
-          </p>
-        </div>
       </section>
 
       {/* ── Footer ── */}
