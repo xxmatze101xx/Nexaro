@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { ChatInput } from "@/components/ui/chat-input";
 import { Button } from "@/components/ui/button";
+import { AIVoiceInput } from "@/components/ui/ai-voice-input";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
@@ -558,6 +559,8 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const [activeId, setActiveId] = useState<string | null>(null);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [voiceActive, setVoiceActive] = useState(false);
+    const interimRef = useRef("");
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [showPermissions, setShowPermissions] = useState(false);
     const [permissions, setPermissions] = useState<AIChatPermissions>({ ...DEFAULT_PERMISSIONS });
@@ -1097,6 +1100,39 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             ))}
                         </div>
                     )}
+                    {/* Voice input overlay */}
+                    {voiceActive && (
+                        <div className="mb-2 rounded-xl border border-primary/30 bg-background shadow-sm overflow-hidden">
+                            <AIVoiceInput
+                                language="de-DE"
+                                onTranscript={(text, isFinal) => {
+                                    if (isFinal) {
+                                        setInput(prev => {
+                                            const base = prev.endsWith(interimRef.current)
+                                                ? prev.slice(0, prev.length - interimRef.current.length)
+                                                : prev;
+                                            interimRef.current = "";
+                                            return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
+                                        });
+                                    } else {
+                                        setInput(prev => {
+                                            const base = prev.endsWith(interimRef.current)
+                                                ? prev.slice(0, prev.length - interimRef.current.length)
+                                                : prev;
+                                            interimRef.current = text;
+                                            return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
+                                        });
+                                    }
+                                }}
+                                onStop={() => {
+                                    interimRef.current = "";
+                                    setVoiceActive(false);
+                                    setTimeout(() => inputRef.current?.focus(), 50);
+                                }}
+                                className="py-3"
+                            />
+                        </div>
+                    )}
                     <form
                         className="relative rounded-xl border border-border bg-background focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all p-1 shadow-sm"
                         onSubmit={(e) => { e.preventDefault(); void sendMessage(); }}
@@ -1126,8 +1162,14 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                 size="icon"
                                 type="button"
                                 disabled={isLoading}
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-                                aria-label="Use microphone"
+                                onClick={() => setVoiceActive(v => !v)}
+                                className={cn(
+                                    "h-8 w-8 shrink-0 transition-colors",
+                                    voiceActive
+                                        ? "text-primary bg-primary/10 hover:bg-primary/20"
+                                        : "text-muted-foreground hover:text-foreground",
+                                )}
+                                aria-label={voiceActive ? "Stop voice input" : "Start voice input"}
                             >
                                 <Mic className="size-4" />
                             </Button>

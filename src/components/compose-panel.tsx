@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { sendEmail } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
-import { Paperclip, Sparkles, Send, X, Loader2 } from "lucide-react";
+import { Paperclip, Sparkles, Send, X, Loader2, Mic } from "lucide-react";
+import { AIVoiceInput } from "@/components/ui/ai-voice-input";
 
 interface ComposePanelProps {
     uid: string;
@@ -23,7 +24,9 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     const [attachments, setAttachments] = useState<File[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [voiceActive, setVoiceActive] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const interimRef = useRef("");
 
     const handleGenerateDraft = async () => {
         if (!subject.trim() && !body.trim()) {
@@ -161,6 +164,39 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                     </div>
                 )}
 
+                {/* Voice overlay */}
+                {voiceActive && (
+                    <div className="mx-4 mt-3 rounded-xl border border-primary/30 bg-background shadow-sm shrink-0">
+                        <AIVoiceInput
+                            language="de-DE"
+                            onTranscript={(text, isFinal) => {
+                                if (isFinal) {
+                                    setBody(prev => {
+                                        const base = prev.endsWith(interimRef.current)
+                                            ? prev.slice(0, prev.length - interimRef.current.length)
+                                            : prev;
+                                        interimRef.current = "";
+                                        return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
+                                    });
+                                } else {
+                                    setBody(prev => {
+                                        const base = prev.endsWith(interimRef.current)
+                                            ? prev.slice(0, prev.length - interimRef.current.length)
+                                            : prev;
+                                        interimRef.current = text;
+                                        return (base + (base && !base.endsWith(" ") ? " " : "") + text).trimStart();
+                                    });
+                                }
+                            }}
+                            onStop={() => {
+                                interimRef.current = "";
+                                setVoiceActive(false);
+                            }}
+                            className="py-3"
+                        />
+                    </div>
+                )}
+
                 {/* Body */}
                 <div className="flex-1 overflow-hidden px-4 pt-3 pb-1">
                     <textarea
@@ -211,6 +247,21 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                         >
                             <Paperclip className="w-3 h-3" />
                             {attachments.length > 0 ? `Anhänge (${attachments.length})` : "Anhang"}
+                        </button>
+                        <div className="w-px h-4 bg-border mx-1" />
+                        <button
+                            onClick={() => setVoiceActive(v => !v)}
+                            className={cn(
+                                "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium transition-all shadow-sm",
+                                voiceActive
+                                    ? "border-primary/40 bg-primary/5 text-primary"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                            )}
+                            title="Per Sprache diktieren"
+                            type="button"
+                        >
+                            <Mic className="w-3 h-3" />
+                            {voiceActive ? "Diktieren aktiv" : "Diktieren"}
                         </button>
                         <div className="w-px h-4 bg-border mx-1" />
                         <button
