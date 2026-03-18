@@ -102,11 +102,11 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden">
+      <div className="relative min-h-screen overflow-hidden bg-background">
         <FloatingPaths position={1} />
         <FloatingPaths position={-1} />
         <Hero
-          className="min-h-screen pt-16 relative z-10"
+          className="min-h-screen pt-16 relative z-10 bg-transparent"
           eyebrow="INTRODUCING NEXARO"
           title={
             <>
