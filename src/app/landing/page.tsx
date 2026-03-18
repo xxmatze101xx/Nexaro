@@ -19,16 +19,16 @@ import {
 import { Hero } from "@/components/ui/hero";
 
 const INTEGRATIONS = [
-  { name: "Gmail",           logo: "/service-logos/Gmail.svg" },
-  { name: "Slack",           logo: "/service-logos/Slack.svg" },
-  { name: "Microsoft Teams", logo: "/service-logos/Microsoft Teams.svg" },
-  { name: "Outlook",         logo: "/service-logos/Outlook.svg" },
-  { name: "Google Calendar", logo: "/service-logos/Google Calendar.svg" },
-  { name: "Zoom",            logo: "/service-logos/Zoom.svg" },
-  { name: "HubSpot",         logo: "/service-logos/HubSpot.svg" },
-  { name: "Jira",            logo: "/service-logos/Jira.svg" },
-  { name: "Linear",          logo: "/service-logos/Linear.svg" },
-  { name: "Telegram",        logo: "/service-logos/Telegram.svg" },
+  { name: "Gmail",           logo: "/service-logos/gmail.svg" },
+  { name: "Slack",           logo: "/service-logos/slack.svg" },
+  { name: "Microsoft Teams", logo: "/service-logos/microsoft-teams.svg" },
+  { name: "Outlook",         logo: "/service-logos/outlook.svg" },
+  { name: "Google Calendar", logo: "/service-logos/google-calendar.svg" },
+  { name: "Zoom",            logo: "/service-logos/zoom.svg" },
+  { name: "HubSpot",         logo: "/service-logos/hubspot.svg" },
+  { name: "Jira",            logo: "/service-logos/jira.svg" },
+  { name: "Linear",          logo: "/service-logos/linear.svg" },
+  { name: "Telegram",        logo: "/service-logos/telegram.svg" },
 ];
 
 const FEATURES = [
@@ -207,12 +207,13 @@ export default function LandingPage() {
                 key={integration.name}
                 className="flex items-center gap-2.5 bg-background border border-border rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md transition-all"
               >
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={integration.logo}
                   alt={integration.name}
                   width={22}
                   height={22}
-                  className="object-contain"
+                  className="object-contain w-[22px] h-[22px]"
                 />
                 <span className="text-sm font-medium text-foreground">{integration.name}</span>
               </div>
