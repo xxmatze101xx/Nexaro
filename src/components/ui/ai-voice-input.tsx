@@ -1,71 +1,21 @@
 "use client";
 
-import { Mic, MicOff } from "lucide-react";
+import { Mic } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
-// ── Web Speech API types ─────────────────────────────────────────────────────
-
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-}
-
-interface SpeechRecognitionInstance extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  onstart: ((event: Event) => void) | null;
-  onend: ((event: Event) => void) | null;
-  onerror: ((event: Event) => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition: new () => SpeechRecognitionInstance;
-  }
-}
-
-// ── Props ────────────────────────────────────────────────────────────────────
-
 interface AIVoiceInputProps {
-  /** Called when recording starts */
   onStart?: () => void;
-  /** Called when recording stops, with total duration in seconds */
   onStop?: (duration: number) => void;
-  /**
-   * Called whenever the recognizer produces a result.
-   * `isFinal=true` means the word/sentence is confirmed; `false` means it's interim.
-   */
+  /** Called with the final transcript once Whisper returns */
   onTranscript?: (text: string, isFinal: boolean) => void;
-  /** BCP-47 language tag, default "de-DE" */
+  /** BCP-47 tag sent to Whisper, e.g. "de-DE" or "en-US" */
   language?: string;
   visualizerBars?: number;
-  /** Demo mode: cycles through animated state automatically */
   demoMode?: boolean;
   demoInterval?: number;
   className?: string;
 }
-
-// ── Component ────────────────────────────────────────────────────────────────
 
 export function AIVoiceInput({
   onStart,
@@ -77,33 +27,30 @@ export function AIVoiceInput({
   demoInterval = 3000,
   className,
 }: AIVoiceInputProps) {
-  const [isListening, setIsListening] = useState(false);
+  const [submitted, setSubmitted] = useState(false);   // recording
+  const [transcribing, setTranscribing] = useState(false);
   const [time, setTime] = useState(0);
   const [isClient, setIsClient] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
   const [isDemo, setIsDemo] = useState(demoMode);
+  const [error, setError] = useState<string | null>(null);
 
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeRef = useRef(0);
 
-  useEffect(() => {
-    setIsClient(true);
-    if (typeof window !== "undefined") {
-      const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-      if (!SR) setIsSupported(false);
-    }
-  }, []);
+  useEffect(() => { setIsClient(true); }, []);
 
-  // Demo cycling
+  // Demo mode cycling (visual only)
   useEffect(() => {
     if (!isDemo) return;
     let t1: ReturnType<typeof setTimeout>;
     let t2: ReturnType<typeof setTimeout>;
     const run = () => {
-      setIsListening(true);
+      setSubmitted(true);
       t1 = setTimeout(() => {
-        setIsListening(false);
+        setSubmitted(false);
         t2 = setTimeout(run, 1000);
       }, demoInterval);
     };
@@ -111,68 +58,80 @@ export function AIVoiceInput({
     return () => { clearTimeout(init); clearTimeout(t1); clearTimeout(t2); };
   }, [isDemo, demoInterval]);
 
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
+  const stopRecording = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     onStop?.(timeRef.current);
-    setIsListening(false);
+    setSubmitted(false);
     setTime(0);
     timeRef.current = 0;
+    mediaRecorderRef.current?.stop(); // triggers onstop → transcription
   }, [onStop]);
 
-  const startListening = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!SR) return;
+  const startRecording = useCallback(async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
 
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = language;
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
 
-    rec.onstart = () => {
-      setIsListening(true);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        // Stop all tracks to release mic
+        stream.getTracks().forEach((t) => t.stop());
+
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (blob.size < 100) return; // nothing recorded
+
+        setTranscribing(true);
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "recording.webm");
+          form.append("language", language);
+
+          const res = await fetch("/api/ai/transcribe", { method: "POST", body: form });
+          const data = (await res.json()) as { text?: string; error?: string };
+
+          if (data.text) {
+            onTranscript?.(data.text.trim(), true);
+          } else {
+            setError(data.error ?? "Transcription failed.");
+          }
+        } catch {
+          setError("Could not reach transcription service.");
+        } finally {
+          setTranscribing(false);
+        }
+      };
+
+      recorder.start();
+      setSubmitted(true);
       onStart?.();
+
       timeRef.current = 0;
       timerRef.current = setInterval(() => {
         timeRef.current += 1;
         setTime((t) => t + 1);
       }, 1000);
-    };
-
-    rec.onresult = (event: SpeechRecognitionEvent) => {
-      let interim = "";
-      let final = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) final += result[0].transcript;
-        else interim += result[0].transcript;
-      }
-      if (final) onTranscript?.(final, true);
-      else if (interim) onTranscript?.(interim, false);
-    };
-
-    rec.onerror = () => { stopListening(); };
-
-    rec.onend = () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setIsListening(false);
-      setTime(0);
-      timeRef.current = 0;
-    };
-
-    recognitionRef.current = rec;
-    rec.start();
-  }, [language, onStart, onTranscript, stopListening]);
+    } catch {
+      setError("Microphone access denied.");
+    }
+  }, [language, onStart, onTranscript]);
 
   const handleClick = () => {
     if (isDemo) {
       setIsDemo(false);
-      setIsListening(false);
+      setSubmitted(false);
       return;
     }
-    if (isListening) stopListening();
-    else startListening();
+    if (transcribing) return; // busy
+    if (submitted) stopRecording();
+    else void startRecording();
   };
 
   const formatTime = (seconds: number) => {
@@ -181,36 +140,27 @@ export function AIVoiceInput({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (!isSupported) {
-    return (
-      <div className={cn("w-full py-4", className)}>
-        <div className="flex flex-col items-center gap-2 text-center">
-          <MicOff className="w-6 h-6 text-muted-foreground" />
-          <p className="text-xs text-muted-foreground">
-            Speech recognition is not supported in this browser.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={cn("w-full py-4", className)}>
       <div className="relative max-w-xl w-full mx-auto flex items-center flex-col gap-2">
         <button
           className={cn(
             "group w-16 h-16 rounded-xl flex items-center justify-center transition-colors",
-            isListening
+            submitted
               ? "bg-none"
               : "bg-none hover:bg-black/10 dark:hover:bg-white/10",
           )}
           type="button"
           onClick={handleClick}
-          aria-label={isListening ? "Stop recording" : "Start recording"}
+          disabled={transcribing}
+          aria-label={submitted ? "Stop recording" : "Start recording"}
         >
-          {isListening ? (
+          {transcribing ? (
+            <div className="w-6 h-6 rounded-sm animate-spin bg-black dark:bg-white opacity-60"
+              style={{ animationDuration: "1s" }} />
+          ) : submitted ? (
             <div
-              className="w-6 h-6 rounded-sm animate-spin bg-primary cursor-pointer"
+              className="w-6 h-6 rounded-sm animate-spin bg-black dark:bg-white cursor-pointer pointer-events-auto"
               style={{ animationDuration: "3s" }}
             />
           ) : (
@@ -221,12 +171,12 @@ export function AIVoiceInput({
         <span
           className={cn(
             "font-mono text-sm transition-opacity duration-300",
-            isListening
+            submitted
               ? "text-black/70 dark:text-white/70"
               : "text-black/30 dark:text-white/30",
           )}
         >
-          {formatTime(time)}
+          {transcribing ? "Transcribing…" : formatTime(time)}
         </span>
 
         <div className="h-4 w-64 flex items-center justify-center gap-0.5">
@@ -235,12 +185,12 @@ export function AIVoiceInput({
               key={i}
               className={cn(
                 "w-0.5 rounded-full transition-all duration-300",
-                isListening
-                  ? "bg-primary/50 animate-pulse"
+                submitted
+                  ? "bg-black/50 dark:bg-white/50 animate-pulse"
                   : "bg-black/10 dark:bg-white/10 h-1",
               )}
               style={
-                isListening && isClient
+                submitted && isClient
                   ? {
                       height: `${20 + Math.random() * 80}%`,
                       animationDelay: `${i * 0.05}s`,
@@ -252,8 +202,16 @@ export function AIVoiceInput({
         </div>
 
         <p className="h-4 text-xs text-black/70 dark:text-white/70">
-          {isListening ? "Listening…" : "Click to speak"}
+          {transcribing
+            ? "Processing your voice…"
+            : submitted
+            ? "Listening…"
+            : "Click to speak"}
         </p>
+
+        {error && (
+          <p className="text-xs text-destructive text-center max-w-[240px]">{error}</p>
+        )}
       </div>
     </div>
   );
