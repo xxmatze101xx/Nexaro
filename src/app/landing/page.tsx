@@ -77,6 +77,7 @@ export default function LandingPage() {
             <span className="font-bold text-lg text-foreground">Nexaro</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="#why" className="hover:text-foreground transition-colors">Why</a>
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#integrations" className="hover:text-foreground transition-colors">Integrations</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
@@ -114,6 +115,79 @@ export default function LandingPage() {
         ctaText="Get started"
         ctaLink="/login"
       />
+
+      {/* ── Why Section ── */}
+      <section id="why" className="bg-zinc-950 text-white py-32 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Eyebrow */}
+          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-10">
+            Why we built this
+          </p>
+
+          {/* Opening statement */}
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight mb-16">
+            The average CEO spends{" "}
+            <span className="text-white">28 hours a week</span>{" "}
+            <span className="text-zinc-500">on communication.</span>
+          </h2>
+
+          {/* Body copy */}
+          <div className="grid md:grid-cols-2 gap-12 mb-20">
+            <div>
+              <p className="text-zinc-300 text-lg leading-relaxed">
+                That's not leadership. That's noise management. Somewhere between
+                the 200 unread emails and the Slack notifications is the one
+                message that actually matters — the one that changes everything.
+              </p>
+            </div>
+            <div>
+              <p className="text-zinc-300 text-lg leading-relaxed">
+                We built Nexaro because we believe your attention is the scarcest
+                resource in any organization. Every minute you spend triaging
+                inboxes is a minute you're not spending on the decisions only you
+                can make.
+              </p>
+            </div>
+          </div>
+
+          {/* Belief statements */}
+          <div className="border-t border-zinc-800 pt-16 grid sm:grid-cols-3 gap-10">
+            <div>
+              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-3">
+                We believe
+              </p>
+              <p className="text-white text-xl font-semibold leading-snug">
+                Leaders should lead — not manage their inbox.
+              </p>
+            </div>
+            <div>
+              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-3">
+                We believe
+              </p>
+              <p className="text-white text-xl font-semibold leading-snug">
+                Every tool you use should earn its place in your day.
+              </p>
+            </div>
+            <div>
+              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-3">
+                We believe
+              </p>
+              <p className="text-white text-xl font-semibold leading-snug">
+                The right message, at the right moment, changes outcomes.
+              </p>
+            </div>
+          </div>
+
+          {/* Closing line */}
+          <div className="border-t border-zinc-800 mt-16 pt-16">
+            <p className="text-zinc-400 text-2xl sm:text-3xl font-medium leading-snug max-w-2xl">
+              That's why we built Nexaro. Not to replace how you communicate —
+              but to give you back the time to do it{" "}
+              <span className="text-white font-semibold">better.</span>
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* ── Radar Section ── */}
       <section className="relative z-0 pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
