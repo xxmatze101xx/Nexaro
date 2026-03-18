@@ -187,7 +187,7 @@ export function FilesAttachments({ userId, onSelect, selectedFile }: FilesAttach
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 transition-colors text-left",
                     isSelected
-                      ? "bg-primary/10 border-l-2 border-primary"
+                      ? "bg-indigo-50 border-l-2 border-indigo-500 dark:bg-indigo-950/40 dark:border-indigo-400"
                       : "hover:bg-muted/40 border-l-2 border-transparent"
                   )}
                 >

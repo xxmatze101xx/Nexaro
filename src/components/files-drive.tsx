@@ -201,7 +201,7 @@ export function FilesDrive({ userId, onSelect, selectedFile }: FilesDriveProps) 
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left border-l-2",
                     isSelected
-                      ? "bg-primary/10 border-primary"
+                      ? "bg-indigo-50 border-indigo-500 dark:bg-indigo-950/40 dark:border-indigo-400"
                       : "hover:bg-muted/40 border-transparent"
                   )}
                 >

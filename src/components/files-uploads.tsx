@@ -181,7 +181,7 @@ export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsPro
                 className={cn(
                   "group relative flex flex-col items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
                   isSelected
-                    ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                    ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-400 dark:ring-indigo-800"
                     : "border-border hover:border-primary/40 hover:bg-muted/40"
                 )}
               >
