@@ -246,14 +246,16 @@ function renderMarkdown(md: string): string {
       !lines[i].startsWith("> ") &&
       !/^[*\-+] /.test(lines[i].trim()) &&
       !/^\d+[.)]\s/.test(lines[i].trim()) &&
-      !/^(-{3,}|\*{3,}|_{3,})$/.test(lines[i].trim()) &&
-      !lines[i].trim().includes("|")
+      !/^(-{3,}|\*{3,}|_{3,})$/.test(lines[i].trim())
     ) {
       paraLines.push(lines[i]);
       i++;
     }
     if (paraLines.length > 0) {
       out.push(`<p class="my-3 leading-relaxed">${applyInline(escapeHtml(paraLines.join("<br />")))}</p>`);
+    } else {
+      // Safety: no handler matched this line — advance to prevent infinite loop
+      i++;
     }
   }
 
