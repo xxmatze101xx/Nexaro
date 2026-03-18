@@ -27,6 +27,7 @@ import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
 import { useAuth } from "@/contexts/AuthContext";
 import { db, storage } from "@/lib/firebase";
+import { getCalendarAccessToken } from "@/lib/calendar";
 import {
     collection,
     doc,
@@ -523,9 +524,11 @@ interface AIChatPanelProps {
     allMessages?: Message[];
     upcomingMeetings?: UpcomingMeeting[];
     connected?: Partial<AIChatConnected>;
+    /** Gmail/Calendar accounts — used to obtain a live Calendar access token for tool calling */
+    gmailAccounts?: { email: string; token: string }[];
 }
 
-export function AIChatPanel({ className, allMessages = [], upcomingMeetings = [], connected = {} }: AIChatPanelProps) {
+export function AIChatPanel({ className, allMessages = [], upcomingMeetings = [], connected = {}, gmailAccounts = [] }: AIChatPanelProps) {
     const { user } = useAuth();
     const uid = user?.uid ?? null;
 
@@ -673,6 +676,25 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
 
         const context = precomputedContext;
 
+        // Get a live Calendar access token so the AI can call the Calendar API as a tool.
+        // Only fetched when the user has enabled calendar permission and an account is connected.
+        let calendarToken: string | undefined;
+        let calendarEmail: string | undefined;
+        if (permissions.calendar && uid && gmailAccounts.length > 0) {
+            try {
+                const email = gmailAccounts[0].email;
+                const token = await getCalendarAccessToken(uid, email);
+                if (token) {
+                    calendarToken = token;
+                    calendarEmail = email;
+                }
+            } catch {
+                // Non-fatal: fall back to context-only mode without tool calling
+            }
+        }
+
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
         try {
             const res = await fetch("/api/ai/chat", {
                 method: "POST",
@@ -680,6 +702,9 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                 body: JSON.stringify({
                     messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
                     context: context || undefined,
+                    calendarToken,
+                    calendarEmail,
+                    timezone,
                 }),
             });
 

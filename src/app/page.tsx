@@ -1214,6 +1214,7 @@ function DashboardContent() {
                 className="flex-1"
                 allMessages={allMessages}
                 upcomingMeetings={upcomingMeetings}
+                gmailAccounts={gmailAccounts}
                 connected={{
                   gmail: gmailAccounts.length > 0,
                   slack: slackConnected,
