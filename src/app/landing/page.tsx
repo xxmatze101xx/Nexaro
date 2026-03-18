@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Hero } from "@/components/ui/hero";
+import { FloatingPaths } from "@/components/ui/background-paths";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
@@ -101,21 +102,25 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <Hero
-        className="min-h-screen pt-16"
-        eyebrow="INTRODUCING NEXARO"
-        title={
-          <>
-            <span>Your entire </span>
-            <span className="text-primary">communication</span>
-            <br />
-            <span>at a glance.</span>
-          </>
-        }
-        subtitle="Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters."
-        ctaText="Get started"
-        ctaLink="/login"
-      />
+      <div className="relative overflow-hidden">
+        <FloatingPaths position={1} />
+        <FloatingPaths position={-1} />
+        <Hero
+          className="min-h-screen pt-16 relative z-10"
+          eyebrow="INTRODUCING NEXARO"
+          title={
+            <>
+              <span>Your entire </span>
+              <span className="text-primary">communication</span>
+              <br />
+              <span>at a glance.</span>
+            </>
+          }
+          subtitle="Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters."
+          ctaText="Get started"
+          ctaLink="/login"
+        />
+      </div>
 
       {/* ── Why Section ── */}
       <section id="why" className="bg-zinc-950 text-white py-32 px-4 sm:px-6">
