@@ -8,6 +8,8 @@ import { type Message } from "@/lib/mock-data";
 import { getCachedEmails, fetchRecentEmailsAndCache, fetchEmailsPage, parseGmailToNexaroMessage, clearEmailCache, markEmailStatus, archiveEmail, unarchiveEmail, starEmail, trashEmail, saveEmailsToCache, subscribeToGmailScores } from "@/lib/gmail";
 import { db } from "@/lib/firebase";
 import { getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection } from "@/lib/user";
+import { subscribeToMessageMeta, snoozeMessage, unsnoozeMessage, togglePin, type MessageMeta } from "@/lib/message-meta";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import type { SlackChannel } from "@/lib/slack";
 import { useSyncEngine } from "@/hooks/useSyncEngine";
 import { useSemanticSearch } from "@/hooks/useSemanticSearch";
@@ -61,7 +63,9 @@ import {
   RefreshCw,
   Pencil,
   Trash2,
-  Bot
+  Bot,
+  Menu,
+  ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +114,10 @@ function DashboardContent() {
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
+  // Snooze/Pin metadata from Firestore
+  const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
+  // Mobile sidebar open/close
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   // Semantic search — enhances keyword filter with embedding-based ranking
   const { results: semanticResults, isSearching: isSemanticSearching, isFallback: semanticFallback } = useSemanticSearch(searchQuery);
   // Toast system
@@ -183,6 +191,16 @@ function DashboardContent() {
     const unsub = subscribeToGmailScores(setFirestoreGmailScores, user.uid);
     return () => unsub();
   }, [user]);
+
+  // Subscribe to snooze/pin metadata
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeToMessageMeta(user.uid, setMessageMeta);
+    return () => unsub();
+  }, [user]);
+
+  // Register FCM push notifications
+  usePushNotifications(user);
 
   // Subscribe to real-time messages from Firestore (only when authenticated)
   useEffect(() => {
@@ -398,6 +416,16 @@ function DashboardContent() {
       msgs = msgs.filter(m => m.labels?.includes('INBOX'));
     }
 
+    // Filter out snoozed messages (only in inbox/all-messages view, not in search)
+    if (!searchQuery) {
+      const now = Date.now();
+      msgs = msgs.filter(m => {
+        const meta = messageMeta[m.id];
+        if (!meta?.snoozedUntil) return true;
+        return new Date(meta.snoozedUntil).getTime() <= now;
+      });
+    }
+
     // Filter by source/account when no folder is active (all-messages view)
     if (!searchQuery && selectedSidebarItem && !selectedSidebarItem.folder) {
       if (selectedSidebarItem.source) msgs = msgs.filter(m => m.source === selectedSidebarItem.source);
@@ -435,8 +463,15 @@ function DashboardContent() {
       msgs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
 
+    // Pinned messages always float to the top
+    msgs.sort((a, b) => {
+      const aPinned = messageMeta[a.id]?.pinned ? 1 : 0;
+      const bPinned = messageMeta[b.id]?.pinned ? 1 : 0;
+      return bPinned - aPinned;
+    });
+
     return msgs;
-  }, [displayMessages, allMessages, selectedSidebarItem, searchQuery, searchScope, sortOrder, semanticResults, semanticFallback]);
+  }, [displayMessages, allMessages, selectedSidebarItem, searchQuery, searchScope, sortOrder, semanticResults, semanticFallback, messageMeta]);
 
   // ── Daily Briefing ──────────────────────────────────────────────────────
   const {
@@ -657,6 +692,29 @@ function DashboardContent() {
     }
   };
 
+  const handleSnooze = async (message: Message, until: string) => {
+    if (!user) return;
+    try {
+      await snoozeMessage(user.uid, message.id, until);
+      if (selectedMessage?.id === message.id) setSelectedMessage(null);
+      const d = new Date(until);
+      const label = d.toLocaleString("de-AT", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+      showToast(`Erinnert am ${label}`, "🔕");
+    } catch (err) {
+      console.error("Failed to snooze message", err);
+    }
+  };
+
+  const handlePin = async (message: Message, pinned: boolean) => {
+    if (!user) return;
+    try {
+      await togglePin(user.uid, message.id, pinned);
+      showToast(pinned ? "Angeheftet" : "Nicht mehr angeheftet", pinned ? "📌" : "📍");
+    } catch (err) {
+      console.error("Failed to pin message", err);
+    }
+  };
+
   const handleToggleRead = async (message: Message) => {
     if (message.source !== "gmail" || !user || !message.accountId) return;
     const newStatus = message.status === "unread" ? "read" : "unread";
@@ -778,6 +836,14 @@ function DashboardContent() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-black/50"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Keyboard Shortcuts Overlay */}
       {showShortcuts && (
         <div
@@ -816,8 +882,13 @@ function DashboardContent() {
           </div>
         </div>
       )}
-      {/* Sidebar */}
-      <aside className="w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col h-full shrink-0">
+      {/* Sidebar — fixed drawer on mobile, in-flow on md+ */}
+      <aside className={cn(
+        "w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col h-full",
+        "fixed inset-y-0 left-0 z-40 transition-transform duration-300",
+        "md:relative md:z-auto md:translate-x-0",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-14 shrink-0 mt-2">
           <Image src="/logo.png" alt="Nexaro Logo" width={32} height={32} className="object-contain" />
@@ -875,7 +946,7 @@ function DashboardContent() {
         {/* Main Navigation */}
         <div className="px-2 mb-4 space-y-0.5 shrink-0">
           <button
-            onClick={() => { setShowDashboard(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSelectedMessage(null); }}
+            onClick={() => { setShowDashboard(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSelectedMessage(null); setSidebarOpen(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showDashboard && !showFiles && !showAIChat && !showDecisions ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <LayoutDashboard className="w-4 h-4 shrink-0" />
@@ -938,7 +1009,7 @@ function DashboardContent() {
                     return (
                       <button
                         key={item.name}
-                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); setShowSettings(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); }}
+                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); setShowSettings(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setSidebarOpen(false); }}
                         className={cn(
                           "w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors",
                           isActive
@@ -995,9 +1066,17 @@ function DashboardContent() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-14 border-b border-border flex items-center justify-between px-6 bg-card">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-foreground font-[Inter]">
+        <header className="h-14 border-b border-border flex items-center justify-between px-3 md:px-6 bg-card">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              className="md:hidden p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0"
+              onClick={() => setSidebarOpen(v => !v)}
+              aria-label="Menü öffnen"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-base md:text-lg font-semibold text-foreground font-[Inter] truncate">
               {headerTitle}
             </h1>
             <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold">
@@ -1172,7 +1251,12 @@ function DashboardContent() {
           ) : (
           <>
           {/* ── Gmail Message List ─────────────────────────────────────── */}
-          <div className="w-[480px] border-r border-border flex flex-col overflow-hidden">
+          <div className={cn(
+            "border-r border-border flex flex-col overflow-hidden",
+            "w-full md:w-[480px]",
+            // On mobile: hide list when a message/compose is open
+            (selectedMessage || isComposing) ? "hidden md:flex" : "flex"
+          )}>
 
             {/* List Header / Sort */}
             <div className="px-4 py-2 border-b border-border/50 bg-muted/20 flex items-center justify-between shrink-0">
@@ -1218,6 +1302,9 @@ function DashboardContent() {
                         onToggleRead={handleToggleRead}
                         onStar={handleStar}
                         onDelete={handleDelete}
+                        onSnooze={handleSnooze}
+                        onPin={handlePin}
+                        isPinned={messageMeta[message.id]?.pinned ?? false}
                       />
                     </ErrorBoundary>
                   ))}
@@ -1242,31 +1329,47 @@ function DashboardContent() {
 
           {/* Detail / Compose Panel */}
           <ErrorBoundary>
-          {isComposing ? (
-            <ComposePanel
-              uid={user?.uid || ""}
-              gmailAccounts={gmailAccounts}
-              onClose={() => setIsComposing(false)}
-              className="flex-1"
-            />
-          ) : (
-            <AIDraftPanel
-              message={selectedMessage}
-              onClose={() => setSelectedMessage(null)}
-              onArchived={handleArchive}
-              onStatusChanged={(msg, newStatus) => {
-                setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
-                setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
-              }}
-              onReplied={(msg) => {
-                const newStatus = "replied" as const;
-                setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
-                setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
-                showToast("Antwort gesendet", "✉️");
-              }}
-              className="flex-1"
-            />
-          )}
+          <div className={cn(
+            "flex-1 flex flex-col overflow-hidden",
+            // On mobile: only show when a message/compose is active
+            (selectedMessage || isComposing) ? "flex" : "hidden md:flex"
+          )}>
+            {/* Mobile back button */}
+            <div className="md:hidden flex items-center gap-2 px-3 py-2 border-b border-border bg-card shrink-0">
+              <button
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => { setSelectedMessage(null); setIsComposing(false); }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Zurück
+              </button>
+            </div>
+            {isComposing ? (
+              <ComposePanel
+                uid={user?.uid || ""}
+                gmailAccounts={gmailAccounts}
+                onClose={() => setIsComposing(false)}
+                className="flex-1"
+              />
+            ) : (
+              <AIDraftPanel
+                message={selectedMessage}
+                onClose={() => setSelectedMessage(null)}
+                onArchived={handleArchive}
+                onStatusChanged={(msg, newStatus) => {
+                  setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
+                  setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
+                }}
+                onReplied={(msg) => {
+                  const newStatus = "replied" as const;
+                  setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
+                  setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
+                  showToast("Antwort gesendet", "✉️");
+                }}
+                className="flex-1"
+              />
+            )}
+          </div>
           </ErrorBoundary>
           </>
           )}{/* end Slack/Gmail conditional */}

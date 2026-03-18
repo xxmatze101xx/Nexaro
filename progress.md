@@ -51,3 +51,11 @@
 |------|--------|-----------|
 | UI-P1 Email-Body Platz | ✅ | `ai-draft-panel.tsx`: 1 großer Scroll-Container → 3 Sektionen: Header (flex-shrink-0), Body (flex-1 overflow-y-auto min-h-[400px]), AI Draft (flex-shrink-0 max-h-[280px] overflow-y-auto) |
 | Bonus: alert() entfernt | ✅ | handleSend, handleArchive, handleToggleRead nutzen jetzt `setDraftError()` statt `alert()` |
+
+## Phase 6 Polish — ✅ Abgeschlossen (2026-03-18)
+
+| Task | Status | Änderungen |
+|------|--------|-----------|
+| Snooze / Pin | ✅ | `src/lib/message-meta.ts` (Firestore ops); `snoozeMessage`, `unsnoozeMessage`, `togglePin`, `snoozeUntil`; Firestore path `users/{uid}/message_meta/{messageId}`; MessageCard: Pin + Snooze-Dropdown (4 Optionen); page.tsx: `handleSnooze`, `handlePin`, snoozed-Filter, pinned floaten nach oben; cron route `/api/cron/unsnooze` (15min); vercel.json aktualisiert |
+| Mobile Responsive | ✅ | Sidebar: `fixed inset-y-0 left-0 z-40` mit `translate-x` Transition; Hamburger-Button (Menu Icon) im Header; Backdrop Overlay; Message List: `w-full md:w-[480px]`, bei offenem Detail `hidden md:flex`; Detail Panel: mobiler "← Zurück" Button; Sidebar schließt bei Nav-Klick |
+| Push Notifications | ✅ | `public/firebase-messaging-sw.js`: FCM compat SW mit postMessage Config-Injection; `hooks/usePushNotifications.ts`: Notification-Permission, SW-Registrierung, FCM-Token via NEXT_PUBLIC_FIREBASE_VAPID_KEY, Token in Firestore `users/{uid}/fcm_tokens/{tokenKey}`, Foreground-Message-Handler; Integration in page.tsx |

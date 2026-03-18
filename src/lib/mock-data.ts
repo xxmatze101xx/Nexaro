@@ -17,6 +17,10 @@ export interface Message {
     status: "unread" | "read" | "replied" | "archived";
     threadId?: string;
     rfcMessageId?: string;
+    /** ISO timestamp — message is hidden from inbox until this time passes. */
+    snoozedUntil?: string | null;
+    /** If true, message is always sorted to the top of the inbox. */
+    pinned?: boolean;
 }
 
 export const mockMessages: Message[] = [

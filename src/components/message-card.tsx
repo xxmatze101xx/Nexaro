@@ -3,7 +3,16 @@
 import { cn } from "@/lib/utils";
 import { ImportanceBadge } from "./importance-badge";
 import type { Message } from "@/lib/mock-data";
-import { Sparkles, Clock, CheckCheck, Archive, Star, Trash2, Inbox } from "lucide-react";
+import { Sparkles, Clock, CheckCheck, Archive, Star, Trash2, Inbox, Pin, BellOff } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { snoozeUntil } from "@/lib/message-meta";
+
+const SNOOZE_OPTIONS: { label: string; value: "1h" | "3h" | "tomorrow" | "next-week" }[] = [
+    { label: "1 Stunde", value: "1h" },
+    { label: "3 Stunden", value: "3h" },
+    { label: "Morgen früh (8:00)", value: "tomorrow" },
+    { label: "Nächste Woche (Mo, 8:00)", value: "next-week" },
+];
 
 interface MessageCardProps {
     message: Message;
@@ -13,6 +22,9 @@ interface MessageCardProps {
     onToggleRead?: (message: Message) => void;
     onStar?: (message: Message) => void;
     onDelete?: (message: Message) => void;
+    onSnooze?: (message: Message, until: string) => void;
+    onPin?: (message: Message, pinned: boolean) => void;
+    isPinned?: boolean;
     className?: string;
 }
 
@@ -40,10 +52,25 @@ function getStatusIcon(status: string) {
     }
 }
 
-export function MessageCard({ message, isSelected, onSelect, onArchive, onToggleRead, onStar, onDelete, className }: MessageCardProps) {
+export function MessageCard({ message, isSelected, onSelect, onArchive, onToggleRead, onStar, onDelete, onSnooze, onPin, isPinned, className }: MessageCardProps) {
     const isStarred = message.labels?.includes('STARRED') ?? false;
     // A message is "archived" if it has labels but INBOX is not among them (gmail only)
     const isArchived = message.source === 'gmail' && Array.isArray(message.labels) && message.labels.length > 0 && !message.labels.includes('INBOX');
+
+    const [snoozeOpen, setSnoozeOpen] = useState(false);
+    const snoozeRef = useRef<HTMLDivElement>(null);
+
+    // Close snooze dropdown when clicking outside
+    useEffect(() => {
+        if (!snoozeOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (snoozeRef.current && !snoozeRef.current.contains(e.target as Node)) {
+                setSnoozeOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [snoozeOpen]);
 
     return (
         <button
@@ -80,6 +107,9 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
                         <div className="flex items-center gap-1.5 truncate">
                             {message.status === "unread" && (
                                 <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                            )}
+                            {isPinned && (
+                                <Pin className="h-3 w-3 text-primary fill-current shrink-0" />
                             )}
                             <span
                                 className={cn(
@@ -132,6 +162,58 @@ export function MessageCard({ message, isSelected, onSelect, onArchive, onToggle
 
             {/* Quick Actions (Hover) — horizontal row, stays within card bounds */}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-row gap-0.5 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200">
+                {/* Pin / Unpin */}
+                {onPin && (
+                    <button
+                        title={isPinned ? "Anheften aufheben" : "Anheften"}
+                        className={cn(
+                            "p-1.5 rounded-md border border-transparent hover:border-border/50 transition-all bg-background",
+                            isPinned
+                                ? "text-primary hover:text-primary/80"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onPin(message, !isPinned);
+                        }}
+                    >
+                        <Pin className={cn("h-3.5 w-3.5", isPinned && "fill-current")} />
+                    </button>
+                )}
+
+                {/* Snooze */}
+                {onSnooze && (
+                    <div ref={snoozeRef} className="relative">
+                        <button
+                            title="Erinnern"
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border/50 transition-all bg-background"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSnoozeOpen(v => !v);
+                            }}
+                        >
+                            <BellOff className="h-3.5 w-3.5" />
+                        </button>
+                        {snoozeOpen && (
+                            <div className="absolute right-0 bottom-full mb-1 z-50 bg-card border border-border rounded-lg shadow-lg py-1 w-52">
+                                {SNOOZE_OPTIONS.map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSnoozeOpen(false);
+                                            onSnooze(message, snoozeUntil(opt.value));
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Star / Unstar */}
                 <button
                     title={isStarred ? "Markierung entfernen" : "Als wichtig markieren"}

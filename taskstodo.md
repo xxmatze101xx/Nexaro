@@ -47,13 +47,13 @@
 
 - ~~UI-P1: Email-Body bekommt zu wenig vertikalen Platz~~ ✅ Detail-Panel in 3 unabhängige Flex-Sektionen aufgeteilt; Body scrollt eigenständig
 
-## Remaining Phase 6 Polish (not started)
+## Phase 6 Polish — ✅ Abgeschlossen (2026-03-18)
 
-| Task | Notes |
-|------|-------|
-| Push Notifications | Firebase Cloud Messaging + service worker required |
-| Mobile Responsive | Audit and fix grid layouts for small screens |
-| Snooze / Pin | Add `snoozedUntil` Firestore field + cron to re-activate |
+| Task | Status |
+|------|--------|
+| ~~Push Notifications~~ | ✅ FCM service worker + usePushNotifications hook + Firestore token storage |
+| ~~Mobile Responsive~~ | ✅ Sidebar drawer on mobile, hamburger button, single-panel navigation |
+| ~~Snooze / Pin~~ | ✅ message-meta.ts + Firestore snooze/pin + cron route + MessageCard UI |
 
 ~~Bug: "Summarize Thread" button threw "input.messages array is required"~~ ✅ Fixed: `processThreadSummary` now falls back to building a single-message array from `sender`+`body` when no `messages` array is passed.
 
