@@ -17,6 +17,7 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react";
+import { Hero } from "@/components/ui/hero";
 
 const INTEGRATIONS = [
   {
@@ -216,76 +217,20 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="pt-32 pb-20 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-8 border border-primary/20">
-            <Zap className="w-3 h-3" />
-            KI-gestützte Unified Inbox für Executives
-          </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-6 font-[Plus_Jakarta_Sans]">
-            Deine gesamte{" "}
+      <Hero
+        eyebrow="INTRODUCING NEXARO"
+        title={
+          <>
+            <span>Deine gesamte </span>
             <span className="text-primary">Kommunikation</span>
             <br />
-            auf einen Blick.
-          </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Nexaro bündelt Gmail, Slack, Teams, Outlook und Kalender in einer KI-priorisierten Oberfläche. Entwickelt für CEOs, die weniger Zeit im Postfach verbringen wollen.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/login"
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-semibold text-sm hover:bg-primary-hover transition-all shadow-lg shadow-primary/25 active:scale-[0.98]"
-            >
-              Jetzt kostenlos starten
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <a
-              href="#features"
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Mehr erfahren
-              <ChevronRight className="w-4 h-4" />
-            </a>
-          </div>
-
-          {/* Mockup Preview */}
-          <div className="mt-16 relative">
-            <div className="rounded-2xl border border-border bg-card shadow-2xl overflow-hidden max-w-3xl mx-auto">
-              <div className="bg-muted/50 border-b border-border px-4 py-3 flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-400" />
-                <div className="w-3 h-3 rounded-full bg-amber-400" />
-                <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                <span className="text-xs text-muted-foreground ml-2">Nexaro Dashboard</span>
-              </div>
-              <div className="p-6 space-y-3">
-                {[
-                  { from: "Sarah M.", subject: "Q4 Budget-Freigabe erforderlich", source: "Gmail", score: 95, badge: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-                  { from: "Luca B.", subject: "Investoren-Call: Folien fertig", source: "Slack", score: 88, badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-                  { from: "Teams", subject: "Standup in 15 Minuten", source: "Teams", score: 72, badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-                  { from: "Anna K.", subject: "Vertragsentwurf zur Prüfung", source: "Outlook", score: 65, badge: "bg-muted text-muted-foreground" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer border border-transparent hover:border-border">
-                    <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
-                      {item.from.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-foreground">{item.from}</span>
-                        <span className="text-xs text-muted-foreground">{item.source}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{item.subject}</p>
-                    </div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${item.badge}`}>
-                      {item.score}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-2/3 h-8 bg-primary/20 blur-2xl rounded-full" />
-          </div>
-        </div>
-      </section>
+            <span>auf einen Blick.</span>
+          </>
+        }
+        subtitle="Nexaro bündelt Gmail, Slack, Teams und Outlook in einer KI-priorisierten Oberfläche — entwickelt für CEOs, die weniger Zeit im Postfach verbringen wollen."
+        ctaText="Jetzt starten"
+        ctaLink="/login"
+      />
 
       {/* ── Integrations ── */}
       <section id="integrations" className="py-16 px-4 sm:px-6 border-y border-border bg-muted/30">
