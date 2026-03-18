@@ -40,7 +40,7 @@ const PRICING_PLANS = [
       "Privacy by Design",
       "Advanced AI insights",
     ],
-    description: "The go-to plan for busy CEOs and executives",
+    description: "The go-to plan for founders, managers, and busy professionals",
     buttonText: "Get started",
     href: "/login",
     isPopular: true,
@@ -111,7 +111,7 @@ export default function LandingPage() {
             <span>at a glance.</span>
           </>
         }
-        subtitle="Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for CEOs who want to spend less time in their inbox."
+        subtitle="Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters."
         ctaText="Get started"
         ctaLink="/login"
       />
@@ -126,7 +126,7 @@ export default function LandingPage() {
 
           {/* Opening statement */}
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight mb-16">
-            The average CEO spends{" "}
+            Most professionals spend{" "}
             <span className="text-white">28 hours a week</span>{" "}
             <span className="text-zinc-500">on communication.</span>
           </h2>
@@ -135,7 +135,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-12 mb-20">
             <div>
               <p className="text-zinc-300 text-lg leading-relaxed">
-                That's not leadership. That's noise management. Somewhere between
+                That's not work. That's noise management. Somewhere between
                 the 200 unread emails and the Slack notifications is the one
                 message that actually matters — the one that changes everything.
               </p>
@@ -143,9 +143,9 @@ export default function LandingPage() {
             <div>
               <p className="text-zinc-300 text-lg leading-relaxed">
                 We built Nexaro because we believe your attention is the scarcest
-                resource in any organization. Every minute you spend triaging
-                inboxes is a minute you're not spending on the decisions only you
-                can make.
+                resource you have. Whether you're a founder, a manager, or
+                anyone who owns their inbox — every minute triaging is a minute
+                not spent on what only you can do.
               </p>
             </div>
           </div>

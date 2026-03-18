@@ -27,7 +27,7 @@ export function FeaturesSectionWithBentoGrid() {
     {
       title: "Reply in one click",
       description:
-        "Nexaro generates context-aware AI drafts that are ready to send. Built for executives who value every minute.",
+        "Nexaro generates context-aware AI drafts that are ready to send. Built for anyone who values every minute.",
       skeleton: <SkeletonThree />,
       className:
         "col-span-1 md:col-span-3 lg:col-span-3 border-b md:border-r border-neutral-200",
@@ -45,11 +45,11 @@ export function FeaturesSectionWithBentoGrid() {
     <div className="relative z-20 py-10 lg:py-40 max-w-7xl mx-auto">
       <div className="px-8">
         <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black">
-          Everything executives need
+          Everything you need to cut the noise
         </h4>
         <p className="text-sm lg:text-base max-w-2xl my-4 mx-auto text-neutral-500 text-center font-normal">
-          Nexaro was built from the ground up for decision-makers — not for teams, not
-          for IT, but for you. Less time in your inbox. More time leading.
+          Nexaro was built for anyone who has too many messages and too little time —
+          founders, managers, operators. Less inbox. More impact.
         </p>
       </div>
 
