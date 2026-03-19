@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
 import { Star, Loader2, X, Plus } from "lucide-react";
 import { auth } from "@/lib/firebase";
+import { RichButton } from "@/components/ui/rich-button";
 
 interface VipSendersSectionProps {
     uid: string | undefined;
@@ -106,17 +106,15 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
                     placeholder="chef@company.com"
                     className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-foreground bg-background placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
-                <button
+                <RichButton
+                    color="purple"
+                    size="sm"
                     onClick={handleAdd}
                     disabled={isAdding || !input.trim()}
-                    className={cn(
-                        "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                        "bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
-                    )}
                 >
                     {isAdding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                     Hinzufügen
-                </button>
+                </RichButton>
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
 

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { RichButton } from "@/components/ui/rich-button";
 
 interface DigestSettings {
     daily: boolean;
@@ -131,14 +132,15 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
             </div>
 
             <div className="flex items-center gap-3">
-                <button
+                <RichButton
+                    color="purple"
+                    size="default"
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50"
                 >
                     {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                     {isSaving ? "Speichern..." : "Speichern"}
-                </button>
+                </RichButton>
                 {saved && <span className="text-xs text-success font-medium">✓ Gespeichert</span>}
             </div>
         </section>

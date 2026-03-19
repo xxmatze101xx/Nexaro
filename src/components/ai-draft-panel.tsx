@@ -9,6 +9,7 @@ import { Sparkles, Send, RefreshCw, X, Copy, CheckCheck, Loader2, Archive, Eye, 
 import { useState, useRef, useEffect } from "react";
 import { sendEmail, archiveEmail, markEmailStatus, type EmailAttachment } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
+import { RichButton } from "@/components/ui/rich-button";
 
 interface AIDraftPanelProps {
     message: Message | null;
@@ -680,18 +681,15 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                                         >
                                             Abbrechen
                                         </button>
-                                        <button
+                                        <RichButton
+                                            color="purple"
+                                            size="sm"
                                             onClick={handleSend}
                                             disabled={isSending}
-                                            className={cn(
-                                                "flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-[11px] font-semibold transition-all",
-                                                "bg-primary text-primary-foreground hover:bg-primary/90",
-                                                "shadow-sm active:translate-y-[1px] disabled:opacity-50 disabled:pointer-events-none"
-                                            )}
                                         >
                                             {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                                             {isSending ? "Senden..." : "Senden"}
-                                        </button>
+                                        </RichButton>
                                     </>
                                 )}
                             </div>
@@ -774,20 +772,17 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
                     <div className="px-3 py-2 flex flex-col gap-1">
                         <div className="flex items-center justify-between">
                             <span className="text-xs text-muted-foreground">AI-Entwurf generieren</span>
-                            <button
+                            <RichButton
+                                color="purple"
+                                size="sm"
                                 onClick={handleGenerateDraft}
                                 disabled={isGenerating}
-                                className={cn(
-                                    "flex items-center gap-1.5 rounded-sm border border-border/80 bg-background px-2.5 py-1.5 text-[11px] font-medium",
-                                    "text-primary hover:bg-primary/5 hover:border-primary/40 transition-all shadow-sm",
-                                    "disabled:opacity-50 disabled:pointer-events-none"
-                                )}
                             >
                                 {isGenerating
                                     ? <Loader2 className="h-3 w-3 animate-spin" />
                                     : <Sparkles className="h-3 w-3" />}
                                 {isGenerating ? "Generiere..." : "Generate Draft"}
-                            </button>
+                            </RichButton>
                         </div>
                         <div
                             className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 cursor-help self-end"

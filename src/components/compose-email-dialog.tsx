@@ -3,6 +3,7 @@ import { X, Send, Paperclip, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendEmail } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
+import { RichButton } from "@/components/ui/rich-button";
 
 interface ComposeEmailDialogProps {
     isOpen: boolean;
@@ -225,14 +226,11 @@ export function ComposeEmailDialog({ isOpen, onClose, uid, gmailAccounts, defaul
                         >
                             Abbrechen
                         </button>
-                        <button
+                        <RichButton
+                            color="purple"
+                            size="sm"
                             onClick={handleSend}
                             disabled={isSending || !to || !subject || !body || !fromAccount}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold transition-all",
-                                "hover:bg-primary/90 active:scale-95 shadow-sm",
-                                (isSending || !to || !subject || !body || !fromAccount) && "opacity-50 cursor-not-allowed pointer-events-none"
-                            )}
                         >
                             {isSending ? (
                                 <>Senden...</>
@@ -242,7 +240,7 @@ export function ComposeEmailDialog({ isOpen, onClose, uid, gmailAccounts, defaul
                                     Senden
                                 </>
                             )}
-                        </button>
+                        </RichButton>
                     </div>
                 </div>
                 </div>

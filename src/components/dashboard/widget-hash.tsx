@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { RichButton } from "@/components/ui/rich-button";
 
 async function sha256(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -42,7 +43,7 @@ export function WidgetHash() {
       <div className="flex gap-1.5 shrink-0">
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && compute()}
           placeholder="Text eingeben..." className="flex-1 text-xs px-2.5 py-1.5 rounded-lg bg-muted border border-border/50 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50" />
-        <button onClick={compute} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-80">Berechnen</button>
+        <RichButton onClick={() => void compute()} size="sm" color="purple">Berechnen</RichButton>
       </div>
       <p className="text-[9px] text-muted-foreground">* MD5 ist ein vereinfachter Hash für Demozwecke</p>
       <div className="flex-1 flex flex-col gap-2">

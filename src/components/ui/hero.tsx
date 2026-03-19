@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Mockup, MockupFrame } from "@/components/ui/mockup"
+import { RichButton } from "@/components/ui/rich-button"
 
 interface HeroProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title: React.ReactNode
@@ -52,16 +53,14 @@ const Hero = React.forwardRef<HTMLDivElement, HeroProps>(
         )}
 
         {ctaText && ctaLink && (
-          <Link href={ctaLink} className="mb-20 animate-appear opacity-0 delay-500">
-            <div
-              className="inline-flex items-center bg-primary text-primary-foreground rounded-[10px] hover:bg-primary-hover transition-colors w-[227px] h-[49px]"
-            >
-              <div className="flex items-center justify-between w-full pl-[22px] pr-[17px]">
-                <span className="text-[19px] whitespace-nowrap">{ctaText}</span>
+          <div className="mb-20 animate-appear opacity-0 delay-500">
+            <RichButton asChild color="purple" size="lg">
+              <Link href={ctaLink}>
+                {ctaText}
                 <ArrowRight className="w-5 h-5 flex-shrink-0" />
-              </div>
-            </div>
-          </Link>
+              </Link>
+            </RichButton>
+          </div>
         )}
 
         {mockupImage && (

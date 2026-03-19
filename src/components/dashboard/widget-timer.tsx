@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Play, Pause, RotateCcw } from "lucide-react";
+import { RichButton } from "@/components/ui/rich-button";
 
 export function WidgetTimer() {
   const [inputMins, setInputMins] = useState(25);
@@ -54,9 +55,9 @@ export function WidgetTimer() {
       )}
       <div className="flex gap-2">
         {!started ? (
-          <button onClick={start} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-80">
+          <RichButton onClick={start} size="sm" color="purple">
             <Play className="w-3 h-3" /> Starten
-          </button>
+          </RichButton>
         ) : (
           <>
             <button onClick={() => setRunning((v) => !v)} className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-80">

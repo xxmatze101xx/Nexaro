@@ -2,8 +2,8 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
 import type { User } from "firebase/auth";
+import { RichButton } from "@/components/ui/rich-button";
 
 interface AccountSectionProps {
     user: User | null;
@@ -96,17 +96,14 @@ export function AccountSection({
             </div>
 
             <div className="flex justify-end">
-                <button
+                <RichButton
+                    color="purple"
+                    size="default"
                     onClick={onSave}
                     disabled={isSaving}
-                    className={cn(
-                        "px-4 py-2 text-sm font-medium rounded-lg",
-                        "bg-primary text-primary-foreground hover:bg-primary-hover",
-                        "transition-colors disabled:opacity-50"
-                    )}
                 >
                     {isSaving ? "Speichern..." : "Änderungen speichern"}
-                </button>
+                </RichButton>
             </div>
         </section>
     );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { QrCode } from "lucide-react";
+import { RichButton } from "@/components/ui/rich-button";
 
 export function WidgetQrGenerator() {
   const [url, setUrl] = useState("https://nexaro.io");
@@ -20,9 +21,9 @@ export function WidgetQrGenerator() {
         <input value={url} onChange={(e) => { setUrl(e.target.value); setGenerated(false); }}
           onKeyDown={(e) => e.key === "Enter" && setGenerated(true)}
           placeholder="URL oder Text..." className="flex-1 text-xs px-2.5 py-1.5 rounded-lg bg-muted border border-border/50 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50" />
-        <button onClick={() => setGenerated(true)} className="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-80">
+        <RichButton onClick={() => setGenerated(true)} size="sm" color="purple">
           QR
-        </button>
+        </RichButton>
       </div>
       <div className="flex-1 flex items-center justify-center">
         {generated && url ? (

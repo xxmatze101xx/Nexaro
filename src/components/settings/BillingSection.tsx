@@ -1,6 +1,7 @@
 "use client";
 
 import { CreditCard, Sparkles, Zap } from "lucide-react";
+import { RichButton } from "@/components/ui/rich-button";
 
 export function BillingSection() {
     return (
@@ -25,10 +26,10 @@ export function BillingSection() {
                 </div>
 
                 <div className="px-4 pb-4 flex gap-2">
-                    <button className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg text-xs font-medium transition-colors">
+                    <RichButton color="purple" size="sm">
                         <Zap className="w-3.5 h-3.5" />
                         Enterprise upgraden
-                    </button>
+                    </RichButton>
                     <button className="px-3 py-2 border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg text-xs font-medium transition-colors">
                         Kündigen
                     </button>

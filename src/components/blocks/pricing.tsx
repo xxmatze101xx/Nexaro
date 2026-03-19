@@ -1,6 +1,6 @@
 "use client";
 
-import { buttonVariants } from "@/components/ui/button";
+import { RichButton } from "@/components/ui/rich-button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -180,21 +180,13 @@ export function Pricing({
 
               <hr className="w-full my-4" />
 
-              <Link
-                href={plan.href}
-                className={cn(
-                  buttonVariants({
-                    variant: "outline",
-                  }),
-                  "group relative w-full gap-2 overflow-hidden text-lg font-semibold tracking-tighter",
-                  "transform-gpu ring-offset-current transition-all duration-300 ease-out hover:ring-2 hover:ring-primary hover:ring-offset-1 hover:bg-primary hover:text-primary-foreground",
-                  plan.isPopular
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-foreground"
-                )}
+              <RichButton
+                asChild
+                color={plan.isPopular ? "purple" : "default"}
+                className="w-full text-base font-semibold"
               >
-                {plan.buttonText}
-              </Link>
+                <Link href={plan.href}>{plan.buttonText}</Link>
+              </RichButton>
               <p className="mt-6 text-xs leading-5 text-muted-foreground">
                 {plan.description}
               </p>

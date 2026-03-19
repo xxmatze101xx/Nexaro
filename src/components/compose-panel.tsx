@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
 import { Paperclip, Sparkles, Send, X, Loader2, Mic } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import { RichButton } from "@/components/ui/rich-button";
 
 interface ComposePanelProps {
     uid: string;
@@ -319,14 +320,11 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                         >
                             Verwerfen
                         </button>
-                        <button
+                        <RichButton
+                            color="purple"
+                            size="sm"
                             onClick={handleSend}
                             disabled={isSending || !to || !subject || !body || !fromAccount || success}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold transition-all",
-                                "hover:bg-primary/90 active:scale-95 shadow-sm",
-                                (isSending || !to || !subject || !body || !fromAccount || success) && "opacity-50 cursor-not-allowed pointer-events-none"
-                            )}
                         >
                             {isSending ? (
                                 <>Senden...</>
@@ -336,7 +334,7 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
                                     Senden
                                 </>
                             )}
-                        </button>
+                        </RichButton>
                     </div>
                 </div>
             </div>
