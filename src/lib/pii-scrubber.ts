@@ -8,12 +8,16 @@
  * or returned in any API response. It lives only in the scope of the request handler.
  *
  * Pattern application order (most specific first):
- *   IBAN → Email → Phone → Amount → Address → Org → Person
+ *   IBAN → API keys → Password context → Contract numbers → Tax IDs →
+ *   URLs → Email → Phone → Amount → Address → Org → Person
  *
- * Test-Case:
+ * Test-Cases:
  *   Input:  "Hallo Max Mustermann, dein Vertrag #V-2024-991 ueber EUR 45.000 wurde geprueft."
  *   Output: "Hallo [PERSON_1], dein Vertrag [SECRET_1] ueber [AMOUNT_1] wurde geprueft."
  *   Mapping: { "[PERSON_1]": "Max Mustermann", "[SECRET_1]": "#V-2024-991", "[AMOUNT_1]": "EUR 45.000" }
+ *
+ *   Input:  "API-Key: sk_live_7Hf82KlmPq93XzA1bC\nPasswort: V7!kL9#pQ2sZ\nURL: https://intra.corp/api/v2\nVertragsnummer: NI-2026-AX-77421"
+ *   Output: "API-Key: [SECRET_1]\nPasswort: [SECRET_2]\nURL: [URL_1]\nVertragsnummer: [SECRET_3]"
  *
  * Round-trip guarantee:
  *   restoreText(scrubText(original).anonymized, mapping) === original
@@ -30,7 +34,7 @@ export interface ScrubResult {
 
 // Patterns ordered from most specific to least specific.
 // Each entry: [category label, regex source string, regex flags]
-// The same category label shares a counter, so SECRET_1, SECRET_2, ... across IBAN + contract numbers.
+// The same category label shares a counter, so SECRET_1, SECRET_2, ... across all secret types.
 const PATTERNS: Array<[string, string, string]> = [
   // --- IBAN (DE89 3704 0044 0532 0130 00, AT61 1904 3002 3457 3201) ---
   [
@@ -38,16 +42,34 @@ const PATTERNS: Array<[string, string, string]> = [
     String.raw`\b[A-Z]{2}\d{2}[\s]?(?:\d{4}[\s]?){2,6}\d{1,4}\b`,
     "g",
   ],
-  // --- Contract / project numbers (#V-2024-991, #P-2023-001) ---
+  // --- API / service keys (sk_live_..., sk_test_..., pk_live_..., api_prod_...) ---
   [
     "SECRET",
-    String.raw`#[A-Z]-\d{4}-\d+`,
+    String.raw`\b[a-z]{2,6}_(?:live|test|prod|dev|secret)_[A-Za-z0-9]{8,}\b`,
+    "g",
+  ],
+  // --- Password values: the value that follows "Passwort:", "Password:", "Kennwort:" ---
+  [
+    "SECRET",
+    String.raw`(?<=(?:Passwort|Password|Kennwort|Passphrase):\s{0,10})\S+`,
+    "gi",
+  ],
+  // --- Contract / project numbers (#V-2024-991, NI-2026-AX-77421, PRJ-2025-X-001) ---
+  [
+    "SECRET",
+    String.raw`(?:#[A-Z]-\d{4}-\d+|\b[A-Z]{2,4}-\d{4}-[A-Z]{2,4}-\d+\b)`,
     "g",
   ],
   // --- Tax / reference numbers (12/345/67890) ---
   [
     "SECRET",
     String.raw`\b\d{2}\/\d{3}\/\d{5}\b`,
+    "g",
+  ],
+  // --- URLs (http / https) ---
+  [
+    "URL",
+    String.raw`https?://[^\s<>"'{}|\\^\[\]]+`,
     "g",
   ],
   // --- E-mail addresses (RFC-ish) ---
@@ -80,10 +102,27 @@ const PATTERNS: Array<[string, string, string]> = [
     String.raw`[A-ZÄÖÜ][A-Za-zäöüÄÖÜß&.\s,]{1,40}\s+(?:GmbH|AG|KG|OG|OHG|UG|Ltd\.?|Inc\.?|Corp\.?|S\.A\.|SE|PLC|LLC)`,
     "g",
   ],
-  // --- Full names: optional title + First + Last (both capitalised) ---
+  // --- Full names: optional title + First + Last (both capitalised, same line only)
+  //
+  // Restrictions to cut false positives in German text:
+  //   • Uses [ \t]+ instead of \s+ → prevents cross-line matches ("Atlas-X\nInterner Codename")
+  //   • Negative lookahead on WORD1 → excludes common German pronouns, articles, adjectives,
+  //     job-title words, and greeting words that are never first names
+  //   • Negative lookbehind on WORD2 → excludes words ending in typical German noun/plural
+  //     suffixes that real family names never have (ationen, zahlen, gabe, grüße, …)
+  // ---
   [
     "PERSON",
-    String.raw`(?:(?:Dr|Prof|Mag|Ing|DI|Dkfm)\.?\s+)?[A-ZÄÖÜ][a-zäöüß]{1,20}\s+(?:[A-ZÄÖÜ][a-zäöüß]+-)?[A-ZÄÖÜ][a-zäöüß]{1,20}`,
+    String.raw`(?:(?:Dr|Prof|Mag|Ing|DI|Dkfm|Herr|Frau)\.?[ \t]+)?` +
+    String.raw`(?!(?:Diese[rns]?|Eine[rs]?|Alle[rns]?|Keine[rns]?|Jede[rns]?|` +
+    String.raw`Beste[rns]?|Gute[rns]?|Hallo|Liebe[rns]?|Sehr|Bitte|Vielen|Mit|` +
+    String.raw`Freundlichen?|Herzlichen?|Danke|` +
+    String.raw`Intern(?:e[rns]?)?|Extern(?:e[rns]?)?|` +
+    String.raw`Finanzielle?[rns]?|Technische?[rns]?|Vertrauliche?[rns]?|` +
+    String.raw`Senior|Junior|Manager|Operations|` +
+    String.raw`Gesamt|Weitere[rns]?|Letzt(?:e[rns]?)?|Erst(?:e[rns]?)?)\b)` +
+    String.raw`[A-ZÄÖÜ][a-zäöüß]{1,20}[ \t]+(?:[A-ZÄÖÜ][a-zäöüß]+-)?[A-ZÄÖÜ][a-zäöüß]{1,20}` +
+    String.raw`(?<!ationen|ionen|ungen|keiten|heiten|ahlen|zahlen|grüße|grüsse|namen|codename|daten|gaben|gabe|tions|ations)`,
     "g",
   ],
 ];
