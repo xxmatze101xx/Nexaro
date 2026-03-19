@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import { FloatingPaths } from "@/components/ui/background-paths";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
@@ -87,7 +86,7 @@ export default function LandingPage() {
             <a href="#integrations" className="hover:text-foreground transition-colors">Integrations</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {!isLoading && user ? (
               <Link
                 href="/dashboard"
@@ -99,7 +98,7 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/login"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Sign in
                 </Link>
@@ -117,19 +116,17 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-16">
-        <FloatingPaths position={1} />
-        <FloatingPaths position={-1} />
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full">
-          <p className="uppercase tracking-[0.51em] leading-[133%] text-center text-[19px] mb-8 text-muted-foreground animate-appear opacity-0">
+          <p className="uppercase tracking-[0.51em] leading-[133%] text-center text-sm sm:text-base lg:text-[19px] mb-8 text-muted-foreground animate-appear opacity-0">
             INTRODUCING NEXARO
           </p>
-          <h1 className="text-[64px] leading-[83px] text-center px-4 lg:px-[314px] text-foreground font-semibold animate-appear opacity-0 delay-100">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[64px] leading-tight lg:leading-[83px] text-center px-4 lg:px-[314px] text-foreground font-semibold animate-appear opacity-0 delay-100">
             <span>Your entire </span>
             <span className="text-primary">communication</span>
             <br />
             <span>at a glance.</span>
           </h1>
-          <p className="text-[28px] text-center font-light px-4 lg:px-[314px] mt-[25px] mb-[48px] leading-[133%] text-muted-foreground animate-appear opacity-0 delay-300">
+          <p className="text-base sm:text-lg md:text-xl lg:text-[28px] text-center font-light px-4 sm:px-8 lg:px-[314px] mt-[25px] mb-[48px] leading-[133%] text-muted-foreground animate-appear opacity-0 delay-300">
             Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters.
           </p>
           <Link href="/login" className="mb-20 animate-appear opacity-0 delay-500">
@@ -144,7 +141,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Why Section ── */}
-      <section id="why" className="bg-zinc-950 text-white py-32 px-4 sm:px-6">
+      <section id="why" className="bg-zinc-950 text-white py-16 sm:py-24 lg:py-32 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           {/* Eyebrow */}
           <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-10">
@@ -217,8 +214,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Radar Section ── */}
-      <section className="relative z-0 pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
-        <div className="max-w-6xl mx-auto text-center mb-16">
+      <section className="relative z-0 pt-12 sm:pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
+        <div className="max-w-6xl mx-auto text-center mb-8 sm:mb-16">
           <p className="text-xs font-semibold uppercase tracking-widest text-sky-600 mb-3">
             Real-time Intelligence
           </p>
@@ -230,10 +227,10 @@ export default function LandingPage() {
           </p>
         </div>
         {/* Icon rows */}
-        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-6 px-4 pb-48">
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-4 px-4 pb-8">
           {/* Row 1 */}
           <div className="mx-auto w-full max-w-4xl">
-            <div className="flex w-full items-center justify-center gap-6 md:justify-between">
+            <div className="flex w-full flex-wrap items-center justify-center gap-4 md:flex-nowrap md:justify-between">
               <IconContainer text="Gmail" delay={0.1} icon={<img src="/ServiceLogos/Gmail.svg" alt="Gmail" className="h-7 w-7 object-contain" />} />
               <IconContainer text="Slack" delay={0.2} icon={<img src="/ServiceLogos/Slack.svg" alt="Slack" className="h-7 w-7 object-contain" />} />
               <IconContainer text="MS Teams" delay={0.3} icon={<img src="/ServiceLogos/Microsoft Teams.svg" alt="Microsoft Teams" className="h-7 w-7 object-contain" />} />
@@ -242,7 +239,7 @@ export default function LandingPage() {
           </div>
           {/* Row 2 */}
           <div className="mx-auto w-full max-w-2xl">
-            <div className="flex w-full items-center justify-center gap-6 md:justify-between">
+            <div className="flex w-full flex-wrap items-center justify-center gap-4 md:flex-nowrap md:justify-between">
               <IconContainer text="Google Calendar" delay={0.5} icon={<img src="/ServiceLogos/Google Calendar.svg" alt="Google Calendar" className="h-7 w-7 object-contain" />} />
               <IconContainer text="HubSpot" delay={0.6} icon={<img src="/ServiceLogos/HubSpot.svg" alt="HubSpot" className="h-7 w-7 object-contain" />} />
               <IconContainer text="Salesforce" delay={0.7} icon={<img src="/ServiceLogos/Salesforce.svg" alt="Salesforce" className="h-7 w-7 object-contain" />} />
@@ -250,7 +247,7 @@ export default function LandingPage() {
           </div>
           {/* Row 3 */}
           <div className="mx-auto w-full max-w-4xl">
-            <div className="flex w-full items-center justify-center gap-6 md:justify-between">
+            <div className="flex w-full flex-wrap items-center justify-center gap-4 md:flex-nowrap md:justify-between">
               <IconContainer text="Jira" delay={0.8} icon={<img src="/ServiceLogos/Jira.svg" alt="Jira" className="h-7 w-7 object-contain" />} />
               <IconContainer text="Linear" delay={0.9} icon={<img src="/ServiceLogos/Linear.svg" alt="Linear" className="h-7 w-7 object-contain" />} />
               <IconContainer text="Outlook" delay={1.0} icon={<img src="/ServiceLogos/Outlook.svg" alt="Outlook" className="h-7 w-7 object-contain" />} />
@@ -271,7 +268,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-24 px-4 sm:px-6">
+      <section id="pricing" className="py-12 sm:py-24 px-4 sm:px-6">
         <Pricing
           plans={PRICING_PLANS}
           title="Simple, transparent pricing"

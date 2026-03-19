@@ -41,5 +41,19 @@ export async function POST(req: NextRequest) {
     }
 
     const data = (await res.json()) as { text?: string };
-    return NextResponse.json({ text: data.text ?? "" });
+    const rawText = data.text?.trim() ?? "";
+
+    // Filter known Whisper hallucinations (silence / empty audio artefacts)
+    const HALLUCINATIONS = [
+        "Untertitel der Amara.org-Community",
+        "Untertitel von",
+        "Amara.org",
+        "Vielen Dank für das Zuschauen",
+        "Thank you for watching",
+        "Subtitles by",
+        "Subtitled by",
+        "♪",
+    ];
+    const isHallucination = !rawText || HALLUCINATIONS.some((h) => rawText.includes(h));
+    return NextResponse.json({ text: isHallucination ? "" : rawText });
 }

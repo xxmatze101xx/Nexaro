@@ -69,12 +69,12 @@ export function Pricing({
   };
 
   return (
-    <div className="container py-20">
+    <div className="w-full max-w-5xl mx-auto px-4 py-12 sm:py-20">
       <div className="text-center space-y-4 mb-12">
-        <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
           {title}
         </h2>
-        <p className="text-muted-foreground text-lg whitespace-pre-line">
+        <p className="text-muted-foreground text-base sm:text-lg whitespace-pre-line">
           {description}
         </p>
       </div>
@@ -90,12 +90,12 @@ export function Pricing({
             />
           </Label>
         </label>
-        <span className="ml-2 font-semibold">
+        <span className="ml-2 font-semibold text-sm sm:text-base">
           Annual billing <span className="text-primary">(Save 20%)</span>
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 sm:2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan, index) => (
           <motion.div
             key={index}
@@ -105,8 +105,8 @@ export function Pricing({
                 ? {
                     y: plan.isPopular ? -20 : 0,
                     opacity: 1,
-                    x: index === 2 ? -30 : index === 0 ? 30 : 0,
-                    scale: index === 0 || index === 2 ? 0.94 : 1.0,
+                    x: index === 2 ? -20 : index === 0 ? 20 : 0,
+                    scale: index === 0 || index === 2 ? 0.95 : 1.0,
                   }
                 : {}
             }
@@ -120,15 +120,10 @@ export function Pricing({
               opacity: { duration: 0.5 },
             }}
             className={cn(
-              `rounded-2xl border-[1px] p-6 bg-background text-center lg:flex lg:flex-col lg:justify-center relative`,
+              `rounded-2xl border-[1px] p-6 bg-background text-center flex flex-col relative`,
               plan.isPopular ? "border-primary border-2" : "border-border",
-              "flex flex-col",
-              !plan.isPopular && "mt-5",
-              index === 0 || index === 2
-                ? "z-0 transform translate-x-0 translate-y-0 -translate-z-[50px] rotate-y-[10deg]"
-                : "z-10",
-              index === 0 && "origin-right",
-              index === 2 && "origin-left"
+              !plan.isPopular && "md:mt-5",
+              index === 0 || index === 2 ? "z-0" : "z-10",
             )}
           >
             {plan.isPopular && (
