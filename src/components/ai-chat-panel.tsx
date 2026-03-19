@@ -24,8 +24,10 @@ import {
     Mic,
     CornerDownLeft,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChatInput } from "@/components/ui/chat-input";
 import { Button } from "@/components/ui/button";
+import { RichButton } from "@/components/ui/rich-button";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/mock-data";
 import type { UpcomingMeeting } from "@/hooks/useMeetingPrep";
@@ -1055,19 +1057,27 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                     <span className="text-xs">Datenzugriff aktivieren für persönliche Antworten</span>
                                 </button>
                             )}
-                            <div className="flex flex-wrap gap-2 justify-center mt-1">
+                            <div className="grid grid-cols-2 gap-2 w-full max-w-sm mt-1">
                                 {[
-                                    "What are my top priorities today?",
-                                    "Summarize my unread emails",
-                                    "Help me draft a quick update",
-                                ].map(suggestion => (
-                                    <button
-                                        key={suggestion}
-                                        onClick={() => { setInput(suggestion); inputRef.current?.focus(); }}
-                                        className="text-xs px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                    { title: "What are my top", label: "priorities today?", action: "What are my top priorities today?" },
+                                    { title: "Summarize my", label: "unread emails", action: "Summarize my unread emails" },
+                                    { title: "Help me draft", label: "a quick update", action: "Help me draft a quick update" },
+                                    { title: "What meetings", label: "do I have today?", action: "What meetings do I have today?" },
+                                ].map((suggestion, index) => (
+                                    <motion.div
+                                        key={suggestion.action}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.05 * index }}
                                     >
-                                        {suggestion}
-                                    </button>
+                                        <button
+                                            onClick={() => { setInput(suggestion.action); inputRef.current?.focus(); }}
+                                            className="text-left border rounded-xl px-4 py-3.5 text-sm flex flex-col gap-1 w-full h-auto border-border bg-background hover:bg-muted transition-colors"
+                                        >
+                                            <span className="font-medium text-foreground">{suggestion.title}</span>
+                                            <span className="text-muted-foreground text-xs">{suggestion.label}</span>
+                                        </button>
+                                    </motion.div>
                                 ))}
                             </div>
                         </div>
@@ -1272,9 +1282,10 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                     : <Mic className={cn("size-4", isRecording && "animate-pulse")} />
                                 }
                             </Button>
-                            <Button
+                            <RichButton
                                 type="submit"
                                 size="sm"
+                                color="purple"
                                 className="ml-auto gap-1.5"
                                 disabled={!input.trim() || isLoading}
                             >
@@ -1286,7 +1297,7 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                         <CornerDownLeft className="size-3.5" />
                                     </>
                                 )}
-                            </Button>
+                            </RichButton>
                         </div>
                     </form>
                     <p className="text-[10px] text-muted-foreground text-center mt-2">
