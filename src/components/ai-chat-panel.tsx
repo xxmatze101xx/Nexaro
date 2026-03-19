@@ -42,7 +42,7 @@ import {
     orderBy,
     where,
 } from "firebase/firestore";
-import { ref, listAll, getDownloadURL, getMetadata } from "firebase/storage";
+import { ref, listAll, getDownloadURL, getMetadata, uploadBytesResumable } from "firebase/storage";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -569,6 +569,8 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     const [permissions, setPermissions] = useState<AIChatPermissions>({ ...DEFAULT_PERMISSIONS });
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const chatFileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploadingFile, setIsUploadingFile] = useState(false);
 
     // @ mention state
     const [mentionFiles, setMentionFiles] = useState<MentionableFile[]>([]);
@@ -808,6 +810,26 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
     }, [input, isLoading, activeId, uid, precomputedContext, attachedFiles]);
 
     const formatRecTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+    const handleChatFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !uid) return;
+        e.target.value = "";
+        setIsUploadingFile(true);
+        const storageRef = ref(storage, `users/${uid}/uploads/${file.name}`);
+        const task = uploadBytesResumable(storageRef, file);
+        task.on("state_changed", null,
+            (err) => { console.error("[chat-upload]", err.message); setIsUploadingFile(false); },
+            async () => {
+                const url = await getDownloadURL(storageRef);
+                setAttachedFiles(prev =>
+                    prev.some(f => f.url === url) ? prev : [...prev, { filename: file.name, mimeType: file.type || "application/octet-stream", url, source: "upload" }]
+                );
+                setIsUploadingFile(false);
+                setTimeout(() => inputRef.current?.focus(), 50);
+            }
+        );
+    }, [uid]);
 
     const toggleRecording = useCallback(async () => {
         if (isTranscribing) return;
@@ -1177,6 +1199,30 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             )}
                         </div>
                     )}
+                    {/* Attached file pills */}
+                    {attachedFiles.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                            {attachedFiles.map((f) => (
+                                <span key={f.url} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-muted border border-border text-foreground max-w-[160px]">
+                                    <Paperclip className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">{f.filename}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAttachedFiles(prev => prev.filter(x => x.url !== f.url))}
+                                        className="shrink-0 ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                                    >
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    <input
+                        ref={chatFileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => void handleChatFileSelect(e)}
+                    />
                     <form
                         className="relative rounded-xl border border-border bg-background focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all p-1 shadow-sm"
                         onSubmit={(e) => { e.preventDefault(); void sendMessage(); }}
@@ -1195,11 +1241,15 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                                 variant="ghost"
                                 size="icon"
                                 type="button"
-                                disabled={isLoading}
+                                disabled={isLoading || isUploadingFile}
+                                onClick={() => chatFileInputRef.current?.click()}
                                 className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
                                 aria-label="Attach file"
                             >
-                                <Paperclip className="size-4" />
+                                {isUploadingFile
+                                    ? <Loader2 className="size-4 animate-spin" />
+                                    : <Paperclip className="size-4" />
+                                }
                             </Button>
                             <Button
                                 variant="ghost"

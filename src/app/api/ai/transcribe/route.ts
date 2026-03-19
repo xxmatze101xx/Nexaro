@@ -43,17 +43,33 @@ export async function POST(req: NextRequest) {
     const data = (await res.json()) as { text?: string };
     const rawText = data.text?.trim() ?? "";
 
-    // Filter known Whisper hallucinations (silence / empty audio artefacts)
-    const HALLUCINATIONS = [
+    // Filter known Whisper hallucinations that occur on silence / near-empty audio.
+    // Whisper fills silence with credits, subtitles or broadcast idents from its training data.
+    const HALLUCINATION_STRINGS = [
         "Untertitel der Amara.org-Community",
-        "Untertitel von",
         "Amara.org",
         "Vielen Dank für das Zuschauen",
         "Thank you for watching",
         "Subtitles by",
         "Subtitled by",
+        "Im Auftrag von",
+        "im Auftrag des",
+        "Eine Produktion",
+        "Ein Film von",
+        "Regie:",
+        "Produktion:",
+        "ZDF",
+        "ARD",
+        "ORF",
+        "©",
         "♪",
+        "www.",
+        "http",
     ];
-    const isHallucination = !rawText || HALLUCINATIONS.some((h) => rawText.includes(h));
+    // Also reject very short results that are clearly not real speech (< 3 chars)
+    const isHallucination =
+        !rawText ||
+        rawText.length < 3 ||
+        HALLUCINATION_STRINGS.some((h) => rawText.toLowerCase().includes(h.toLowerCase()));
     return NextResponse.json({ text: isHallucination ? "" : rawText });
 }
