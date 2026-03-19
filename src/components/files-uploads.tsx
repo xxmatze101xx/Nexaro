@@ -12,7 +12,6 @@ import {
 import { storage } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 import {
-  Upload,
   Trash2,
   Download,
   File,
@@ -23,6 +22,7 @@ import {
   RefreshCw,
   FolderOpen,
 } from "lucide-react";
+import { FileUpload } from "@/components/ui/file-upload";
 import type { PreviewFile } from "@/components/files-preview";
 
 interface UploadedFile {
@@ -69,7 +69,6 @@ export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsPro
   const [isLoading, setIsLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadFiles = async () => {
     if (!userId) return;
@@ -106,8 +105,8 @@ export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsPro
     loadFiles();
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (newFiles: File[]) => {
+    const file = newFiles[0];
     if (!file || !userId) return;
 
     const storageRef = ref(storage, `users/${userId}/uploads/${file.name}`);
@@ -125,7 +124,6 @@ export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsPro
       () => {
         setUploadProgress(null);
         loadFiles();
-        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     );
   };
@@ -144,28 +142,11 @@ export function FilesUploads({ userId, onSelect, selectedFile }: FilesUploadsPro
 
   return (
     <div className="flex flex-col h-full">
-      {/* Upload bar */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 shrink-0">
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadProgress !== null}
-          className={cn(
-            "flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-semibold transition-all hover:bg-primary/90 active:scale-95 shadow-sm",
-            uploadProgress !== null && "opacity-60 cursor-not-allowed"
-          )}
-        >
-          <Upload className="w-4 h-4" />
-          Upload File
-        </button>
-
+      {/* Upload area */}
+      <div className="px-4 pt-4 pb-2 border-b border-border/50 shrink-0">
+        <FileUpload onChange={handleFileSelect} />
         {uploadProgress !== null && (
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 mt-3">
             <div className="flex-1 bg-muted rounded-full h-1.5">
               <div
                 className="bg-primary h-1.5 rounded-full transition-all"

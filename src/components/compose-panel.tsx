@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { sendEmail } from "@/lib/gmail";
 import { auth } from "@/lib/firebase";
 import { Paperclip, Sparkles, Send, X, Loader2, Mic } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 
 interface ComposePanelProps {
     uid: string;
@@ -28,6 +29,11 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     const [recordingTime, setRecordingTime] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        noClick: true,
+        onDrop: (dropped) => setAttachments((prev) => [...prev, ...dropped]),
+    });
     const audioChunksRef = useRef<Blob[]>([]);
     const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -127,7 +133,7 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
     };
 
     return (
-        <div className={cn("flex flex-col h-full border-l border-border bg-card", className)}>
+        <div className={cn("flex flex-col h-full border-l border-border bg-card relative", className)}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20 shrink-0">
                 <div className="flex items-center gap-2">
@@ -146,7 +152,16 @@ export function ComposePanel({ uid, gmailAccounts, onClose, className }: Compose
             </div>
 
             {/* Form */}
-            <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex flex-col flex-1 overflow-hidden" {...getRootProps()}>
+                <input {...getInputProps()} />
+                {isDragActive && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm border-2 border-dashed border-primary/60 rounded-lg m-2 pointer-events-none">
+                        <div className="flex flex-col items-center gap-2 text-primary">
+                            <Paperclip className="w-8 h-8" />
+                            <p className="text-sm font-semibold">Dateien hier ablegen</p>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-col border-b border-border">
                     {/* From */}
                     {gmailAccounts.length > 0 ? (
