@@ -324,6 +324,12 @@ export function SlackChannelView({
                 await fetchMessages();
             } else {
                 console.error("Slack send error:", data.error);
+                if (data.error === "scope_upgrade_required") {
+                    setScopeUpgradeRequired(true);
+                    setInput(text);
+                } else {
+                    setError(data.error ?? "send_failed");
+                }
             }
         } catch (e: unknown) {
             console.error("Send failed:", e);
