@@ -40,23 +40,64 @@ export async function POST(request: Request) {
         fields?: {
             user_access_token?: { stringValue: string };
             access_token?: { stringValue: string };
+            user_id?: { stringValue: string };
         };
     };
 
     const userToken = fsData.fields?.user_access_token?.stringValue ?? "";
     const botToken  = fsData.fields?.access_token?.stringValue ?? "";
+    const slackUserId = fsData.fields?.user_id?.stringValue ?? "";
 
     if (!userToken && !botToken) {
         return NextResponse.json({ error: "no_token" }, { status: 400 });
     }
 
+    // Resolve the sender's Slack display name + avatar so that bot-token sends
+    // can be customized to appear as the actual user rather than "Nexaro".
+    // User-token sends already post as the user natively; this is only used
+    // when we fall back to the bot token.
+    const resolveSenderIdentity = async (): Promise<{ username?: string; icon_url?: string }> => {
+        if (!slackUserId) return {};
+        const lookupToken = userToken || botToken;
+        try {
+            const uRes = await fetch(`https://slack.com/api/users.info?user=${slackUserId}`, {
+                headers: { Authorization: `Bearer ${lookupToken}` },
+            });
+            const uData = await uRes.json() as {
+                ok: boolean;
+                user?: {
+                    real_name?: string;
+                    name?: string;
+                    profile?: {
+                        display_name?: string;
+                        real_name?: string;
+                        image_72?: string;
+                        image_48?: string;
+                    };
+                };
+            };
+            if (!uData.ok || !uData.user) return {};
+            const p = uData.user.profile ?? {};
+            const username =
+                p.display_name?.trim() ||
+                p.real_name?.trim() ||
+                uData.user.real_name?.trim() ||
+                uData.user.name?.trim() ||
+                undefined;
+            const icon_url = p.image_72 || p.image_48 || undefined;
+            return { username, icon_url };
+        } catch {
+            return {};
+        }
+    };
+
     // Try user token first — it will have chat:write after re-auth.
     // If it returns missing_scope, fall back to bot token silently.
-    const tryPost = async (token: string) => {
+    const tryPost = async (token: string, extra: Record<string, unknown> = {}) => {
         const res = await fetch("https://slack.com/api/chat.postMessage", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ channel: body.channel, text: body.text }),
+            body: JSON.stringify({ channel: body.channel, text: body.text, ...extra }),
         });
         return res.json() as Promise<{ ok: boolean; error?: string }>;
     };
@@ -65,14 +106,19 @@ export async function POST(request: Request) {
     let sendData: { ok: boolean; error?: string };
 
     if (userToken) {
+        // User token posts as the authenticated Slack user natively.
         sendData = await tryPost(userToken);
         if (!sendData.ok && sendData.error === "missing_scope" && botToken) {
-            // Silent fallback to bot token
-            sendData = await tryPost(botToken);
+            // Silent fallback to bot token — customize identity so Slack shows
+            // the user's name instead of "Nexaro".
+            const identity = await resolveSenderIdentity();
+            sendData = await tryPost(botToken, identity);
             sentAsBot = true;
         }
     } else {
-        sendData = await tryPost(botToken);
+        // Bot-token-only: customize identity to the authenticated user.
+        const identity = await resolveSenderIdentity();
+        sendData = await tryPost(botToken, identity);
         sentAsBot = true;
     }
 
