@@ -714,6 +714,18 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
             const TEXT_MIME_TYPES = ["text/", "application/json", "application/xml", "application/csv"];
             const fileSections = await Promise.all(
                 attachedFiles.map(async (file) => {
+                    const isPdf = file.mimeType === "application/pdf" || file.filename.toLowerCase().endsWith(".pdf");
+                    if (isPdf) {
+                        try {
+                            const res = await fetch(`/api/files/pdf?url=${encodeURIComponent(file.url)}`);
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            const { text, pages } = await res.json() as { text: string; pages: number };
+                            const preview = text.slice(0, 12000);
+                            return `### Attached PDF: ${file.filename} (${pages} page${pages !== 1 ? "s" : ""})\n\`\`\`\n${preview}\n\`\`\``;
+                        } catch {
+                            return `### Attached file: ${file.filename}\n(Could not extract PDF content)`;
+                        }
+                    }
                     const isText = TEXT_MIME_TYPES.some(t => file.mimeType.startsWith(t));
                     if (!isText) {
                         return `### Attached file: ${file.filename}\n(Binary file — content not available as text)`;
