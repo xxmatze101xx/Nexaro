@@ -787,7 +787,7 @@ function CalendarContent() {
                                 — {authErrorEmails.join(", ")} muss neu verbunden werden.
                             </span>
                         </div>
-                        <Link href="/settings" className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">Neu verbinden →</Link>
+                        <a href="/api/calendar/auth" className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">Neu verbinden →</a>
                     </div>
                 )}
 
