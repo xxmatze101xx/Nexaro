@@ -313,6 +313,8 @@ function SettingsContent() {
                 if (accountEmail) {
                     localStorage.setItem(`gcal_access_token_${accountEmail}`, data.access_token);
                     localStorage.setItem(`gcal_token_expiry_${accountEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
+                    localStorage.removeItem(`gcal_auth_error_${accountEmail}`);
+                    localStorage.removeItem(`gcal_refresh_backoff_${accountEmail}`);
                     if (data.refresh_token) await saveCalendarRefreshToken(uid, data.refresh_token, accountEmail);
                     setCalendarAccounts(await getCalendarAccounts(uid));
                 }
@@ -425,6 +427,8 @@ function SettingsContent() {
         await disconnectCalendar(user.uid, accEmail);
         localStorage.removeItem(`gcal_access_token_${accEmail}`);
         localStorage.removeItem(`gcal_token_expiry_${accEmail}`);
+        localStorage.removeItem(`gcal_auth_error_${accEmail}`);
+        localStorage.removeItem(`gcal_refresh_backoff_${accEmail}`);
         setCalendarAccounts(prev => prev.filter(a => a.email !== accEmail));
     };
 

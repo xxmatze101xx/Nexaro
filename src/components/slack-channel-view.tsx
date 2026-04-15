@@ -12,6 +12,7 @@ interface SlackMsg {
     ts: string;
     user: string;
     userName: string;
+    avatarUrl?: string;
     text: string;
     reactions?: Array<{ name: string; count: number; users: string[] }>;
     reply_count?: number;
@@ -174,6 +175,13 @@ function MessageRow({
                         {timeStr}
                     </span>
                 </div>
+            ) : msg.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                    src={msg.avatarUrl}
+                    alt={msg.userName}
+                    className="w-8 h-8 rounded-lg shrink-0 object-cover mt-0.5"
+                />
             ) : (
                 <div
                     className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-white text-[11px] font-bold select-none mt-0.5"
