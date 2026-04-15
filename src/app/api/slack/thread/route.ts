@@ -117,9 +117,9 @@ export async function GET(request: Request) {
 
     const raw = (repliesData.messages ?? []).filter(m => !m.subtype);
 
-    // Resolve user display names
+    // Resolve user display names and avatars
     const uniqueUsers = [...new Set(raw.map(m => m.user).filter((u): u is string => !!u))];
-    const userMap: Record<string, string> = {};
+    const userMap: Record<string, { name: string; avatar?: string }> = {};
 
     await Promise.all(
         uniqueUsers.slice(0, 15).map(async userId => {
@@ -129,10 +129,18 @@ export async function GET(request: Request) {
                 });
                 const uData = await uRes.json() as {
                     ok: boolean;
-                    user?: { real_name?: string; display_name?: string; name?: string };
+                    user?: {
+                        real_name?: string;
+                        display_name?: string;
+                        name?: string;
+                        profile?: { image_72?: string; image_48?: string };
+                    };
                 };
                 if (uData.ok && uData.user) {
-                    userMap[userId] = uData.user.real_name || uData.user.display_name || uData.user.name || userId;
+                    userMap[userId] = {
+                        name: uData.user.real_name || uData.user.display_name || uData.user.name || userId,
+                        avatar: uData.user.profile?.image_72 || uData.user.profile?.image_48,
+                    };
                 }
             } catch {
                 // ignore
@@ -143,7 +151,8 @@ export async function GET(request: Request) {
     const messages = raw.map(m => ({
         ts:          m.ts,
         user:        m.user ?? "app",
-        userName:    (m.user ? userMap[m.user] : m.username) ?? m.user ?? "Slack Bot",
+        userName:    (m.user ? userMap[m.user]?.name : m.username) ?? m.user ?? "Slack Bot",
+        avatarUrl:   m.user ? userMap[m.user]?.avatar : undefined,
         text:        m.text ?? "",
         reactions:   m.reactions,
         reply_count: m.reply_count,
