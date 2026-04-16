@@ -3,19 +3,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
     ChevronLeft, Calendar as CalendarIcon, ChevronRight,
-    Plus, Clock, MapPin, Check, Loader2, ChevronDown, X, Trash2, MoreHorizontal,
+    Plus, Clock, MapPin, Check, Loader2, ChevronDown, X, Trash2, MoreHorizontal, Search,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { getCalendarAccounts, setCalendarAccountVisibility, CalendarAccount } from "@/lib/user";
 import { fetchCalendarEvents, getAccountColor, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarAuthErrors, CalendarEvent } from "@/lib/calendar";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/useToast";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CELL_H = 64;
 const GUTTER = 56;
 const PRELOAD = 3;
-type ViewMode = "day" | "week" | "month";
+type ViewMode = "day" | "week" | "month" | "agenda";
 
 const DAY_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -72,6 +74,7 @@ function layoutDayEvents(evs: CalendarEvent[]): LayoutEv[] {
 
 // ─── Mini Calendar ────────────────────────────────────────────────────────────
 function MiniCalendar({ anchor, onSelect }: { anchor: Date; onSelect: (d: Date) => void }) {
+    const { t, locale } = useLanguage();
     const today = new Date();
     const [vy, setVY] = useState(anchor.getFullYear());
     const [vm, setVM] = useState(anchor.getMonth());
@@ -109,7 +112,7 @@ function MiniCalendar({ anchor, onSelect }: { anchor: Date; onSelect: (d: Date) 
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setPicker("month")} className="text-xs font-bold text-primary hover:underline mb-2 block">← Monate</button>
+                            <button onClick={() => setPicker("month")} className="text-xs font-bold text-primary hover:underline mb-2 block">{t("calendar.months")}</button>
                             <div className="grid grid-cols-3 gap-1 max-h-36 overflow-y-auto">
                                 {Array.from({ length: 20 }, (_, i) => today.getFullYear() - 5 + i).map(y => (
                                     <button key={y} onClick={() => { setVY(y); setPicker("month"); }}
@@ -165,6 +168,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
     editEvent?: CalendarEvent | null;
     position: { x: number, y: number };
 }) {
+    const { t, locale } = useLanguage();
     const [title, setTitle] = useState(editEvent?.title ?? "");
 
     // Parse hours correctly if we're editing an existing event
@@ -227,7 +231,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
 
     const handleDelete = async () => {
         if (!editEvent || !onDelete) return;
-        if (window.confirm("Bist du sicher, dass du diesen Termin löschen möchtest?")) {
+        if (window.confirm(t("calendar.deleteConfirm"))) {
             setDeleting(true);
             await onDelete(editEvent.id, editEvent.calendarId, editEvent.accountEmail);
             setDeleting(false);
@@ -246,7 +250,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleSave()}
-                    placeholder="Termin hinzufügen"
+                    placeholder={t("calendar.addEvent")}
                     className="w-full text-[22px] tracking-tight font-medium bg-transparent outline-none mb-5 placeholder:text-muted-foreground/40 text-foreground"
                 />
 
@@ -255,7 +259,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
                     <div className="flex items-center gap-3 text-sm py-1.5 rounded-lg">
                         <CalendarIcon className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.5} />
                         <span className="font-medium text-foreground/90 whitespace-nowrap text-[15px]">
-                            {(editEvent ? editEvent.start : day).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
+                            {(editEvent ? editEvent.start : day).toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
                         </span>
                     </div>
 
@@ -274,7 +278,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
                     {/* Location */}
                     <div className="flex items-center gap-3 text-sm py-1.5 rounded-lg">
                         <MapPin className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                        <input value={loc} onChange={e => setLoc(e.target.value)} placeholder="Ort hinzufügen"
+                        <input value={loc} onChange={e => setLoc(e.target.value)} placeholder={t("calendar.addLocation")}
                             className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-muted-foreground/50 font-medium" />
                     </div>
 
@@ -311,7 +315,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
                 {/* Actions */}
                 {accounts.length === 0 ? (
                     <div className="mt-6 pt-4 text-center">
-                        <p className="text-muted-foreground text-[13px] mb-3">Kein Kalender verbunden.</p>
+                        <p className="text-muted-foreground text-[13px] mb-3">{t("calendar.noCalendarEditor")}</p>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 mt-6">
@@ -321,7 +325,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
                             </button>
                         )}
                         <button onClick={handleSave} disabled={saving || !title.trim() || !email} className="flex-1 py-3 bg-blue-600 text-white text-[15px] font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 flex justify-center items-center">
-                            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (editEvent ? "Speichern" : "Termin erstellen")}
+                            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (editEvent ? t("calendar.saveEvent") : t("calendar.createEvent"))}
                         </button>
                     </div>
                 )}
@@ -333,17 +337,21 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
 // ─── Time Grid ────────────────────────────────────────────────────────────────
 interface DragState { dayIdx: number; startH: number; endH: number; }
 interface CreateState { day: Date; startH: number; endH: number; }
+interface RescheduleState { ev: CalendarEvent; dayIdx: number; startH: number; origDuration: number; }
 
-function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, accounts, creating }: {
+function TimeGrid({ days, events, selected, onSelect, onCreateRequest, onReschedule, uid, accounts, creating, isLoading }: {
     days: Date[];
     events: CalendarEvent[];
     selected: CalendarEvent | null;
     onSelect: (ev: CalendarEvent | null, e?: React.MouseEvent) => void;
     onCreateRequest: (s: CreateState & { x: number, y: number }) => void;
+    onReschedule?: (ev: CalendarEvent, newStart: Date, newEnd: Date) => void;
     uid: string | null;
     accounts: CalendarAccount[];
     creating?: (CreateState & { x: number, y: number }) | null;
+    isLoading?: boolean;
 }) {
+    const { t } = useLanguage();
     const scrollRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
     const today = new Date();
@@ -351,6 +359,8 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, acco
     const showNow = days.some(d => sameDay(d, today));
     const [drag, setDrag] = useState<DragState | null>(null);
     const isDragging = useRef(false);
+    const [reschedule, setReschedule] = useState<RescheduleState | null>(null);
+    const isRescheduling = useRef(false);
 
     useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 8 * CELL_H - 32; }, []);
 
@@ -372,34 +382,61 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, acco
 
     useEffect(() => {
         const move = (e: MouseEvent) => {
-            if (!isDragging.current || !drag) return;
-            const h = yToHour(e.clientY);
-            setDrag(prev => prev ? { ...prev, endH: Math.max(prev.startH + 0.25, h) } : null);
+            if (isDragging.current && drag) {
+                const h = yToHour(e.clientY);
+                setDrag(prev => prev ? { ...prev, endH: Math.max(prev.startH + 0.25, h) } : null);
+            } else if (isRescheduling.current && reschedule) {
+                const h = yToHour(e.clientY);
+                setReschedule(prev => prev ? { ...prev, startH: Math.max(0, Math.min(24 - prev.origDuration, snapH(h))) } : null);
+            }
         };
         const up = (e: MouseEvent) => {
-            if (!isDragging.current || !drag) return;
-            isDragging.current = false;
-            onCreateRequest({ day: days[drag.dayIdx], startH: drag.startH, endH: drag.endH, x: e.clientX, y: e.clientY });
-            setDrag(null);
+            if (isDragging.current && drag) {
+                isDragging.current = false;
+                onCreateRequest({ day: days[drag.dayIdx], startH: drag.startH, endH: drag.endH, x: e.clientX, y: e.clientY });
+                setDrag(null);
+            } else if (isRescheduling.current && reschedule) {
+                isRescheduling.current = false;
+                if (onReschedule) {
+                    const newStart = new Date(reschedule.ev.start);
+                    newStart.setHours(Math.floor(reschedule.startH), Math.round((reschedule.startH % 1) * 60), 0, 0);
+                    const newEnd = new Date(newStart.getTime() + reschedule.origDuration * 3_600_000);
+                    onReschedule(reschedule.ev, newStart, newEnd);
+                }
+                setReschedule(null);
+            }
         };
-        const keyUp = (e: KeyboardEvent) => { if (e.key === "Escape") { isDragging.current = false; setDrag(null); } };
+        const keyUp = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                isDragging.current = false; setDrag(null);
+                isRescheduling.current = false; setReschedule(null);
+            }
+        };
         window.addEventListener("mousemove", move);
         window.addEventListener("mouseup", up);
         window.addEventListener("keydown", keyUp);
         return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); window.removeEventListener("keydown", keyUp); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [drag, days]);
+    }, [drag, reschedule, days]);
 
     const timedEvs = (d: Date) => events.filter(ev => !ev.allDay && sameDay(ev.start, d));
     const allDayEvs = (d: Date) => events.filter(ev => ev.allDay && sameDay(ev.start, d));
     const hasAllDay = days.some(d => allDayEvs(d).length > 0);
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
+            {isLoading && (
+                <div className="absolute inset-0 z-50 pointer-events-none">
+                    {Array.from({ length: 5 }, (_, i) => (
+                        <div key={i} className="absolute left-[72px] right-4 h-10 bg-muted/60 rounded-lg animate-pulse"
+                            style={{ top: `${(i * 18 + 8) * (100 / 100)}%` }} />
+                    ))}
+                </div>
+            )}
             {hasAllDay && (
                 <div className="shrink-0 flex border-b border-border">
                     <div className="shrink-0 border-r border-border flex items-center justify-center" style={{ width: GUTTER }}>
-                        <span className="text-[9px] font-bold text-muted-foreground">Ganztg.</span>
+                        <span className="text-[9px] font-bold text-muted-foreground">{t("calendar.allDay")}</span>
                     </div>
                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
                         {days.map((d, i) => (
@@ -473,6 +510,16 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, acco
                                         </div>
                                     )}
 
+                                    {/* Reschedule ghost */}
+                                    {reschedule && reschedule.dayIdx === ci && (
+                                        <div className="absolute z-40 rounded-r-md border-2 border-primary border-dashed bg-primary/20 pointer-events-none select-none"
+                                            style={{ top: reschedule.startH * CELL_H, height: Math.max(reschedule.origDuration * CELL_H, 22), left: 3, right: 3 }}>
+                                            <p className="text-[10px] font-bold text-primary px-1.5 pt-1">
+                                                {fmtH(reschedule.startH)} – {fmtH(Math.min(24, reschedule.startH + reschedule.origDuration))}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     {/* Events with overlap layout */}
                                     {laid.map(ev => {
                                         const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
@@ -482,19 +529,28 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, uid, acco
                                         const w = 100 / ev.lanes;
                                         const left = ev.lane * w;
                                         const isSel = selected?.id === ev.id;
+                                        const isBeingRescheduled = reschedule?.ev.id === ev.id;
                                         return (
                                             <div key={ev.id}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                                onClick={(e) => { e.stopPropagation(); onSelect(isSel ? null : ev, e); }}
+                                                onMouseDown={(e) => {
+                                                    e.stopPropagation();
+                                                    if (e.button !== 0 || !onReschedule) return;
+                                                    const origDuration = (ev.end.getTime() - ev.start.getTime()) / 3_600_000;
+                                                    const h = ev.start.getHours() + ev.start.getMinutes() / 60;
+                                                    isRescheduling.current = true;
+                                                    setReschedule({ ev, dayIdx: ci, startH: h, origDuration });
+                                                }}
+                                                onClick={(e) => { e.stopPropagation(); if (!isRescheduling.current) onSelect(isSel ? null : ev, e); }}
                                                 style={{
                                                     top, height,
                                                     left: `calc(${left}% + 3px)`,
                                                     width: `calc(${w}% - 6px)`,
                                                     position: "absolute",
-                                                    backgroundColor: ev.color + "66",
+                                                    backgroundColor: ev.color + (isBeingRescheduled ? "33" : "66"),
                                                     borderLeft: `3px solid ${ev.color}`,
+                                                    opacity: isBeingRescheduled ? 0.4 : 1,
                                                 }}
-                                                className={`rounded-r-md px-1.5 py-1 cursor-pointer transition-all hover:brightness-95 z-10 ${isSel ? "ring-2 ring-primary/50 z-20 shadow-lg" : ""}`}>
+                                                className={`rounded-r-md px-1.5 py-1 cursor-grab active:cursor-grabbing transition-all hover:brightness-95 z-10 select-none ${isSel ? "ring-2 ring-primary/50 z-20 shadow-lg" : ""}`}>
                                                 <p className="text-[11px] font-bold leading-tight line-clamp-2" style={{ color: readableTextColor(ev.color + "ff") }}>{ev.title}</p>
                                                 {height > 30 && (
                                                     <p className="text-[9px] mt-0.5 font-medium opacity-80" style={{ color: readableTextColor(ev.color + "ff") }}>
@@ -561,6 +617,79 @@ function MonthView({ anchor, events, selected, onSelect, onDay }: {
     );
 }
 
+// ─── Agenda View ──────────────────────────────────────────────────────────────
+function AgendaView({ events, selected, onSelect, onCreateRequest }: {
+    events: CalendarEvent[];
+    selected: CalendarEvent | null;
+    onSelect: (ev: CalendarEvent | null, e?: React.MouseEvent) => void;
+    onCreateRequest: () => void;
+}) {
+    const { t, locale } = useLanguage();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        return d;
+    });
+    const grouped = days.map(d => ({
+        date: d,
+        evs: events.filter(ev => sameDay(ev.start, d)).sort((a, b) => a.start.getTime() - b.start.getTime()),
+    })).filter(g => g.evs.length > 0);
+
+    if (grouped.length === 0) {
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground p-8">
+                <CalendarIcon className="w-12 h-12 opacity-15" />
+                <p className="text-sm">{t("calendar.noUpcoming")}</p>
+                <button onClick={onCreateRequest}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">
+                    <Plus className="w-4 h-4" />
+                    {t("calendar.createEvent")}
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {grouped.map(({ date, evs }) => (
+                <div key={date.toISOString()}>
+                    <div className="sticky top-0 bg-background/90 backdrop-blur-sm py-1.5 mb-2 border-b border-border z-10">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                            {date.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
+                        </p>
+                    </div>
+                    <div className="space-y-1.5">
+                        {evs.map(ev => {
+                            const isSel = selected?.id === ev.id;
+                            return (
+                                <div key={ev.id}
+                                    onClick={(e) => onSelect(isSel ? null : ev, e)}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all hover:shadow-sm ${isSel ? "ring-2 ring-primary/40 shadow-md" : ""}`}
+                                    style={{ backgroundColor: ev.color + "18", borderLeft: `3px solid ${ev.color}` }}>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-foreground truncate">{ev.title}</p>
+                                        {!ev.allDay && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {ev.start.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
+                                                {" – "}
+                                                {ev.end.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
+                                            </p>
+                                        )}
+                                        {ev.location && <p className="text-xs text-muted-foreground truncate">{ev.location}</p>}
+                                    </div>
+                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ev.color }} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CalendarPage() {
     return (
@@ -572,6 +701,8 @@ export default function CalendarPage() {
 
 function CalendarContent() {
     const { user } = useAuth();
+    const { t, locale } = useLanguage();
+    const { showToast } = useToast();
     const [uid, setUid] = useState<string | null>(null);
     const [accounts, setAccounts] = useState<CalendarAccount[]>([]);
     const [authErrorEmails, setAuthErrorEmails] = useState<string[]>([]);
@@ -582,8 +713,18 @@ function CalendarContent() {
     const [anchor, setAnchor] = useState(() => new Date());
     const [view, setView] = useState<ViewMode>("week");
     const [creating, setCreating] = useState<(CreateState & { x: number, y: number }) | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
     const loadedRanges = useRef(new Set<string>());
     const today = new Date();
+
+    const filteredEvents = searchQuery.trim()
+        ? events.filter(ev => {
+            const q = searchQuery.toLowerCase();
+            return ev.title.toLowerCase().includes(q) ||
+                ev.location?.toLowerCase().includes(q) ||
+                ev.description?.toLowerCase().includes(q);
+        })
+        : events;
 
     useEffect(() => {
         if (!user) { setIsLoading(false); return; }
@@ -643,11 +784,27 @@ function CalendarContent() {
         await setCalendarAccountVisibility(uid, email, !vis);
     };
 
+    const handleReschedule = async (ev: CalendarEvent, newStart: Date, newEnd: Date) => {
+        if (!uid) return;
+        const prevStart = ev.start;
+        const prevEnd = ev.end;
+        setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, start: newStart, end: newEnd } : e));
+        try {
+            await updateCalendarEvent(uid, ev.accountEmail, ev.calendarId, ev.id, {
+                title: ev.title, start: newStart, end: newEnd, location: ev.location, description: ev.description,
+            });
+            showToast(t("calendar.reschedule"), "✅");
+        } catch {
+            setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, start: prevStart, end: prevEnd } : e));
+            showToast(t("calendar.rescheduleFailed"), "⚠️");
+        }
+    };
+
     const nav = (dir: -1 | 1) => {
         const d = new Date(anchor);
         if (view === "day") d.setDate(d.getDate() + dir);
         else if (view === "week") d.setDate(d.getDate() + dir * 7);
-        else { d.setMonth(d.getMonth() + dir); d.setDate(1); }
+        else if (view === "month") { d.setMonth(d.getMonth() + dir); d.setDate(1); }
         setAnchor(d);
     };
 
@@ -685,12 +842,13 @@ function CalendarContent() {
     const gridDays = view === "day" ? [anchor] : weekDays(anchor);
 
     const headerLabel = (() => {
-        if (view === "day") return anchor.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        if (view === "day") return anchor.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         if (view === "week") {
             const wk = weekDays(anchor);
-            return `${wk[0].toLocaleDateString("de-DE", { day: "numeric", month: "short" })} – ${wk[6].toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" })}`;
+            return `${wk[0].toLocaleDateString(locale, { day: "numeric", month: "short" })} – ${wk[6].toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
         }
-        return anchor.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+        if (view === "agenda") return t("calendar.agenda");
+        return anchor.toLocaleDateString(locale, { month: "long", year: "numeric" });
     })();
 
     return (
@@ -702,20 +860,20 @@ function CalendarContent() {
                         <CalendarIcon className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-sm font-bold">Kalender</p>
-                        <p className="text-xs text-muted-foreground">{accounts.length} Konto{accounts.length !== 1 ? "s" : ""}</p>
+                        <p className="text-sm font-bold">{t("calendar.title")}</p>
+                        <p className="text-xs text-muted-foreground">{accounts.length} {t("calendar.myCalendars").toLowerCase()}</p>
                     </div>
                 </div>
-                <MiniCalendar anchor={anchor} onSelect={(d) => { setAnchor(d); if (view === "month") setView("day"); }} />
+                <MiniCalendar anchor={anchor} onSelect={(d) => { setAnchor(d); if (view === "month" || view === "agenda") setView("day"); }} />
                 <div className="px-4 py-3 border-t border-sidebar-border">
                     <div className="flex items-center justify-between text-sm font-bold mb-3">
-                        <span>Meine Kalender</span>
-                        <Link href="/settings" className="text-xs text-muted-foreground hover:text-foreground">Verwalten</Link>
+                        <span>{t("calendar.myCalendars")}</span>
+                        <Link href="/settings" className="text-xs text-muted-foreground hover:text-foreground">{t("calendar.manage")}</Link>
                     </div>
                     {accounts.length === 0 ? (
                         <div className="text-xs text-muted-foreground text-center py-2">
-                            <p>Kein Kalender verbunden.</p>
-                            <Link href="/settings" className="text-primary hover:underline mt-1 inline-block font-semibold">Jetzt verbinden →</Link>
+                            <p>{t("calendar.noCalendar")}</p>
+                            <Link href="/settings" className="text-primary hover:underline mt-1 inline-block font-semibold">{t("calendar.connectNow")}</Link>
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -747,20 +905,35 @@ function CalendarContent() {
                         </Link>
                         <h1 className="text-sm font-bold tracking-tight capitalize truncate">{headerLabel}</h1>
                         {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground shrink-0" />}
+                        <span className="text-[10px] text-muted-foreground px-2 py-0.5 rounded-full bg-muted/60 border border-border/40 hidden xl:inline-flex items-center shrink-0">
+                            {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                        </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                        {/* Search */}
+                        <div className="relative hidden md:block">
+                            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder={t("calendar.search")}
+                                className="pl-8 pr-3 py-1.5 text-xs bg-muted/60 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30 w-44 transition-all focus:w-56"
+                            />
+                        </div>
+                        {/* View toggle */}
                         <div className="flex bg-muted rounded-lg p-0.5 gap-px border border-border/50">
-                            {(["day", "week", "month"] as ViewMode[]).map(v => (
+                            {(["day", "week", "month", "agenda"] as ViewMode[]).map(v => (
                                 <button key={v} onClick={() => setView(v)}
                                     className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${view === v ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                                    {v === "day" ? "Tag" : v === "week" ? "Woche" : "Monat"}
+                                    {v === "day" ? t("calendar.day") : v === "week" ? t("calendar.week") : v === "month" ? t("calendar.month") : t("calendar.agenda")}
                                 </button>
                             ))}
                         </div>
                         <div className="flex items-center gap-1">
-                            <button onClick={() => nav(-1)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50"><ChevronLeft className="w-4 h-4" /></button>
-                            <button onClick={() => setAnchor(new Date())} className="px-3 py-1 text-xs font-bold bg-muted/60 hover:bg-muted rounded-lg border border-border/50 transition-colors">Heute</button>
-                            <button onClick={() => nav(1)} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50"><ChevronRight className="w-4 h-4" /></button>
+                            <button onClick={() => nav(-1)} disabled={view === "agenda"} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50 disabled:opacity-30 disabled:pointer-events-none"><ChevronLeft className="w-4 h-4" /></button>
+                            <button onClick={() => setAnchor(new Date())} className="px-3 py-1 text-xs font-bold bg-muted/60 hover:bg-muted rounded-lg border border-border/50 transition-colors">{t("calendar.today")}</button>
+                            <button onClick={() => nav(1)} disabled={view === "agenda"} className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50 disabled:opacity-30 disabled:pointer-events-none"><ChevronRight className="w-4 h-4" /></button>
                         </div>
                     </div>
                 </header>
@@ -770,10 +943,10 @@ function CalendarContent() {
                     <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300">
                         <div className="flex items-center gap-2 text-sm">
                             <CalendarIcon className="w-4 h-4 shrink-0" />
-                            <span className="font-semibold">Kein Google Kalender verbunden</span>
-                            <span className="text-amber-700 dark:text-amber-400 hidden sm:inline">— verbinde deinen Kalender um Termine zu sehen.</span>
+                            <span className="font-semibold">{t("calendar.noCalendarBanner")}</span>
+                            <span className="text-amber-700 dark:text-amber-400 hidden sm:inline">{t("calendar.noCalendarBannerDetail")}</span>
                         </div>
-                        <Link href="/settings" className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">Verbinden →</Link>
+                        <Link href="/settings" className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">{t("calendar.connectNow")}</Link>
                     </div>
                 )}
 
@@ -782,18 +955,22 @@ function CalendarContent() {
                     <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-2.5 bg-red-50 dark:bg-red-950/30 border-b border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300">
                         <div className="flex items-center gap-2 text-sm">
                             <CalendarIcon className="w-4 h-4 shrink-0" />
-                            <span className="font-semibold">Kalender-Verbindung abgelaufen</span>
+                            <span className="font-semibold">{t("calendar.authExpired")}</span>
                             <span className="text-red-700 dark:text-red-400 hidden sm:inline">
-                                — {authErrorEmails.join(", ")} muss neu verbunden werden.
+                                — {authErrorEmails.join(", ")} {t("calendar.authExpiredDetail")}
                             </span>
                         </div>
-                        <a href="/api/calendar/auth" className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">Neu verbinden →</a>
+                        <a href="/api/calendar/auth" className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shrink-0 transition-colors">{t("calendar.reconnect")}</a>
                     </div>
                 )}
 
                 {/* Calendar body */}
                 <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {view !== "month" ? (
+                    {view === "agenda" ? (
+                        <AgendaView events={filteredEvents} selected={selected}
+                            onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }}
+                            onCreateRequest={() => setCreating({ day: new Date(), startH: 9, endH: 10, x: window.innerWidth / 2, y: window.innerHeight / 2 })} />
+                    ) : view !== "month" ? (
                         <>
                             {/* Day headers */}
                             <div className="shrink-0 flex border-b border-border bg-background">
@@ -805,7 +982,7 @@ function CalendarContent() {
                                             <button key={i} onClick={() => { setAnchor(d); setView("day"); }}
                                                 className={`flex flex-col items-center justify-center py-2.5 border-r border-border last:border-r-0 transition-colors hover:bg-muted/30 ${isT ? "bg-primary/5" : ""}`}>
                                                 <span className="text-[10px] font-semibold text-muted-foreground mb-0.5">
-                                                    {view === "week" ? DAY_SHORT[i] : d.toLocaleDateString("de-DE", { weekday: "short" })}
+                                                    {view === "week" ? DAY_SHORT[i] : d.toLocaleDateString(locale, { weekday: "short" })}
                                                 </span>
                                                 <span className={`text-xl font-bold leading-none ${isT ? "text-primary" : ""}`}>{d.getDate()}</span>
                                             </button>
@@ -814,12 +991,14 @@ function CalendarContent() {
                                 </div>
                                 <div className="shrink-0" style={{ width: 17 }} />
                             </div>
-                            <TimeGrid days={gridDays} events={events} selected={selected}
+                            <TimeGrid days={gridDays} events={filteredEvents} selected={selected}
                                 onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }}
-                                onCreateRequest={(req) => { setCreating(req); setSelected(null); }} uid={uid} accounts={accounts} creating={creating} />
+                                onCreateRequest={(req) => { setCreating(req); setSelected(null); }}
+                                onReschedule={handleReschedule}
+                                uid={uid} accounts={accounts} creating={creating} isLoading={isLoading} />
                         </>
                     ) : (
-                        <MonthView anchor={anchor} events={events} selected={selected}
+                        <MonthView anchor={anchor} events={filteredEvents} selected={selected}
                             onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }} onDay={(d) => { setAnchor(d); setView("day"); }} />
                     )}
                 </div>

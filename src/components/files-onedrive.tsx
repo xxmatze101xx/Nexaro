@@ -51,9 +51,11 @@ interface FilesOneDriveProps {
   userId: string;
   onSelect: (file: PreviewFile) => void;
   selectedFile: PreviewFile | null;
+  searchQuery?: string;
+  sort?: { by: string; dir: string };
 }
 
-export function FilesOneDrive({ userId, onSelect, selectedFile }: FilesOneDriveProps) {
+export function FilesOneDrive({ userId, onSelect, selectedFile, searchQuery: _searchQuery, sort: _sort }: FilesOneDriveProps) {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OneDriveItem[]>([]);

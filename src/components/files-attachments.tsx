@@ -36,6 +36,8 @@ interface FilesAttachmentsProps {
   userId: string;
   onSelect: (file: PreviewFile) => void;
   selectedFile: PreviewFile | null;
+  searchQuery?: string;
+  sort?: { by: string; dir: string };
 }
 
 function getFileIcon(mimeType: string) {
@@ -85,7 +87,7 @@ const SOURCE_COLORS: Record<string, string> = {
   outlook: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
 };
 
-export function FilesAttachments({ userId, onSelect, selectedFile }: FilesAttachmentsProps) {
+export function FilesAttachments({ userId, onSelect, selectedFile, searchQuery = "" }: FilesAttachmentsProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -124,7 +126,14 @@ export function FilesAttachments({ userId, onSelect, selectedFile }: FilesAttach
       .finally(() => setIsLoading(false));
   }, [userId]);
 
-  const filtered = attachments.filter((a) => matchesFilter(a, filter));
+  const filtered = attachments.filter((a) => {
+    if (!matchesFilter(a, filter)) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return a.filename.toLowerCase().includes(q) || a.sender.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   const filters: { id: FilterType; label: string }[] = [
     { id: "all", label: "All" },

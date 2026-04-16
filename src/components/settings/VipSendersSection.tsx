@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import { Star, Loader2, X, Plus } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { RichButton } from "@/components/ui/rich-button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface VipSendersSectionProps {
     uid: string | undefined;
 }
 
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
 export function VipSendersSection({ uid }: VipSendersSectionProps) {
+    const { t } = useLanguage();
     const [emails, setEmails] = useState<string[]>([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -38,12 +42,12 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
 
     const handleAdd = async () => {
         const email = input.trim().toLowerCase();
-        if (!email || !email.includes("@")) {
-            setError("Bitte eine gültige E-Mail-Adresse eingeben.");
+        if (!EMAIL_REGEX.test(email)) {
+            setError(t("settings.vip.invalidEmail"));
             return;
         }
         if (emails.includes(email)) {
-            setError("Diese Adresse ist bereits in der VIP-Liste.");
+            setError(t("settings.vip.duplicate"));
             return;
         }
         setError(null);
@@ -63,10 +67,10 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
                 setEmails(data.emails);
                 setInput("");
             } else {
-                setError("Fehler beim Hinzufügen.");
+                setError(t("settings.vip.addFailed"));
             }
         } catch {
-            setError("Netzwerkfehler.");
+            setError(t("settings.vip.networkError"));
         } finally {
             setIsAdding(false);
         }
@@ -94,7 +98,9 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
 
     return (
         <section id="VIP" className="space-y-4 scroll-mt-20">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">VIP-Absender</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
+                {t("settings.vip.title")}
+            </p>
 
             {/* Add input */}
             <div className="flex gap-2">
@@ -103,7 +109,7 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
                     value={input}
                     onChange={(e) => { setInput(e.target.value); setError(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-                    placeholder="chef@company.com"
+                    placeholder={t("settings.vip.placeholder")}
                     className="flex-1 border border-border rounded-lg px-3 py-2 text-sm text-foreground bg-background placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
                 <RichButton
@@ -113,7 +119,7 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
                     disabled={isAdding || !input.trim()}
                 >
                     {isAdding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    Hinzufügen
+                    {t("settings.vip.add")}
                 </RichButton>
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
@@ -122,10 +128,10 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
             {isLoading ? (
                 <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Lädt...
+                    {t("common.loading")}
                 </div>
             ) : emails.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">Noch keine VIP-Absender hinzugefügt.</p>
+                <p className="text-sm text-muted-foreground py-2">{t("settings.vip.empty")}</p>
             ) : (
                 <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
                     {emails.map((email) => (
@@ -135,7 +141,7 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
                             <button
                                 onClick={() => handleRemove(email)}
                                 className="shrink-0 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                                aria-label={`${email} entfernen`}
+                                aria-label={t("settings.vip.remove", { email })}
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>
@@ -144,9 +150,7 @@ export function VipSendersSection({ uid }: VipSendersSectionProps) {
                 </div>
             )}
 
-            <p className="text-xs text-muted-foreground">
-                VIP-Absender erhalten +3 Punkte beim Scoring. Die Liste wird nie an externe KI-Dienste weitergegeben.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("settings.vip.explainer")}</p>
         </section>
     );
 }

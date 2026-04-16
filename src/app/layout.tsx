@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ToastProvider } from "@/hooks/useToast";
+import { Toaster } from "@/components/ui/toaster";
 import { GlobalErrorHandler } from "@/components/global-error-handler";
 
 export const metadata: Metadata = {
@@ -29,7 +32,14 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen bg-background text-foreground">
         <GlobalErrorHandler />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <LanguageProvider>
+            <ToastProvider>
+              {children}
+              <Toaster />
+            </ToastProvider>
+          </LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );

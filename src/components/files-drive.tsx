@@ -57,9 +57,11 @@ interface FilesDriveProps {
   userId: string;
   onSelect: (file: PreviewFile) => void;
   selectedFile: PreviewFile | null;
+  searchQuery?: string;
+  sort?: { by: string; dir: string };
 }
 
-export function FilesDrive({ userId, onSelect, selectedFile }: FilesDriveProps) {
+export function FilesDrive({ userId, onSelect, selectedFile, searchQuery: _searchQuery, sort: _sort }: FilesDriveProps) {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);

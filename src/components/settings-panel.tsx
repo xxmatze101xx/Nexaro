@@ -10,6 +10,7 @@ import {
     LogOut,
     Mail,
     Star,
+    Globe,
 } from "lucide-react";
 import { uploadProfilePicture } from "@/lib/storage";
 import { auth } from "@/lib/firebase";
@@ -36,6 +37,9 @@ import { DigestSection } from "@/components/settings/DigestSection";
 import { FeatureFlagsSection } from "@/components/settings/FeatureFlagsSection";
 import { DataPurgeSection } from "@/components/settings/DataPurgeSection";
 import { VipSendersSection } from "@/components/settings/VipSendersSection";
+import { LanguageSection } from "@/components/settings/LanguageSection";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/useToast";
 
 interface SettingsPanelProps {
     className?: string;
@@ -43,9 +47,12 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ className }: SettingsPanelProps) {
     const { user, isLoading: isAuthLoading } = useAuth();
+    const { t } = useLanguage();
+    const { showToast } = useToast();
     const [activeSection, setActiveSection] = useState("Konto");
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState("");
+    const [savedDisplayName, setSavedDisplayName] = useState("");
     const [email, setEmail] = useState("");
     const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -57,21 +64,29 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
     const codeHandledRef = useRef(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+    const isAccountDirty = displayName.trim() !== savedDisplayName.trim();
+
     // Load profile data when user becomes available
     useEffect(() => {
         if (!user) return;
         getUserProfile(user.uid).then((profile) => {
-            if (profile) {
-                if (profile.photoURL) setProfilePic(profile.photoURL);
-                if (profile.displayName) setDisplayName(profile.displayName);
-                if (profile.email) setEmail(profile.email);
-            } else {
-                if (user.photoURL) setProfilePic(user.photoURL);
-                if (user.displayName) setDisplayName(user.displayName);
-                if (user.email) setEmail(user.email ?? "");
-            }
+            const initialName = profile?.displayName || user.displayName || "";
+            setDisplayName(initialName);
+            setSavedDisplayName(initialName);
+            if (profile?.photoURL) setProfilePic(profile.photoURL);
+            else if (user.photoURL) setProfilePic(user.photoURL);
+            if (profile?.email) setEmail(profile.email);
+            else if (user.email) setEmail(user.email);
         });
     }, [user]);
+
+    // Warn before navigating away with unsaved profile changes
+    useEffect(() => {
+        if (!isAccountDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isAccountDirty]);
 
     // OAuth callback handling
     useEffect(() => {
@@ -145,7 +160,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             }
             const errorParam = urlParams.get("slack_error") ?? urlParams.get("microsoft_error");
             if (errorParam) {
-                alert(`OAuth-Fehler: ${errorParam}`);
+                showToast(t("settings.integrations.oauthError", { error: errorParam }), "⚠️");
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
@@ -155,7 +170,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
-        const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "VIP", "Abonnement", "Sicherheit"];
+        const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "VIP", "Sprache", "Abonnement", "Sicherheit"];
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
@@ -190,7 +205,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-            if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
 
             if (data.access_token) {
                 const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
@@ -218,7 +233,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            alert(`Ein Fehler ist aufgetreten: ${msg}`);
+            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
         }
     };
 
@@ -230,7 +245,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-            if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
 
             if (data.access_token) {
                 const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -250,7 +265,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            alert(`Fehler: ${msg}`);
+            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
         }
     };
 
@@ -266,10 +281,10 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 const { updateUserProfile } = await import("@/lib/user");
                 await updateUserProfile(user.uid, { photoURL: downloadURL });
             }
-            alert("Profilbild erfolgreich aktualisiert!");
+            showToast(t("settings.account.pictureUpdated"), "🖼️");
         } catch (error) {
             console.error("Fehler beim Upload:", error);
-            alert("Fehler beim Hochladen des Bildes.");
+            showToast(t("settings.account.pictureFailed"), "⚠️");
         } finally {
             setIsUploading(false);
         }
@@ -281,33 +296,34 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             setIsSaving(true);
             const { updateUserProfile } = await import("@/lib/user");
             await updateUserProfile(user.uid, { displayName });
-            alert("Änderungen erfolgreich gespeichert!");
+            setSavedDisplayName(displayName);
+            showToast(t("settings.account.saved"), "✅");
         } catch (error) {
             console.error("Fehler beim Speichern:", error);
-            alert("Fehler beim Speichern der Änderungen.");
+            showToast(t("settings.account.saveFailed"), "⚠️");
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleConnectProvider = async (integrationId: string) => {
-        if (!user?.uid) { alert("Bitte zuerst einloggen."); return; }
+        if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "ℹ️"); return; }
 
         const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
         if (integrationId === "Gmail") {
-            if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
+            if (!googleClientId) { showToast(t("settings.integrations.connectFailed", { service: integrationId }), "⚠️"); return; }
             const redirectUri = `${window.location.origin}/settings`;
             const scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
         } else if (integrationId === "Google Calendar") {
-            if (!googleClientId) { alert("Google Client ID fehlt in den Umgebungsvariablen."); return; }
+            if (!googleClientId) { showToast(t("settings.integrations.connectFailed", { service: integrationId }), "⚠️"); return; }
             const redirectUri = `${window.location.origin}/settings`;
             const scope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=calendar`;
         } else if (integrationId === "Slack") {
             if (slackConnected) {
-                if (confirm("Slack wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
+                if (confirm(t("settings.integrations.disconnectConfirm", { service: "Slack" }))) {
                     await disconnectSlack(user.uid);
                     setSlackConnected(false);
                 }
@@ -319,7 +335,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             const idToken = await user.getIdToken(false);
             window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
         } else {
-            alert(`${integrationId} Integration ist noch nicht implementiert.`);
+            showToast(t("settings.integrations.notImplemented", { service: integrationId }), "ℹ️");
         }
     };
 
@@ -353,12 +369,13 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
     ];
 
     const NAV_ITEMS = [
-        { id: "Konto", icon: <User className="w-4 h-4" /> },
-        { id: "Dienste", icon: <LinkIcon className="w-4 h-4" /> },
-        { id: "Zusammenfassungen", icon: <Mail className="w-4 h-4" /> },
-        { id: "VIP", icon: <Star className="w-4 h-4" /> },
-        { id: "Abonnement", icon: <CreditCard className="w-4 h-4" /> },
-        { id: "Sicherheit", icon: <Shield className="w-4 h-4" /> },
+        { id: "Konto", label: t("settings.nav.account"), icon: <User className="w-4 h-4" /> },
+        { id: "Dienste", label: t("settings.nav.integrations"), icon: <LinkIcon className="w-4 h-4" /> },
+        { id: "Zusammenfassungen", label: t("settings.nav.digest"), icon: <Mail className="w-4 h-4" /> },
+        { id: "VIP", label: t("settings.nav.vip"), icon: <Star className="w-4 h-4" /> },
+        { id: "Sprache", label: t("settings.nav.language"), icon: <Globe className="w-4 h-4" /> },
+        { id: "Abonnement", label: t("settings.nav.billing"), icon: <CreditCard className="w-4 h-4" /> },
+        { id: "Sicherheit", label: t("settings.nav.security"), icon: <Shield className="w-4 h-4" /> },
     ];
 
     return (
@@ -379,7 +396,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                             )}
                         >
                             {item.icon}
-                            {item.id}
+                            {item.label}
                         </button>
                     ))}
                     <div className="mt-auto pt-3 border-t border-border">
@@ -391,7 +408,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                             className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                         >
                             <LogOut className="w-4 h-4" />
-                            Abmelden
+                            {t("settings.signOut")}
                         </button>
                     </div>
                 </div>
@@ -408,6 +425,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                                 email={email}
                                 isUploading={isUploading}
                                 isSaving={isSaving}
+                                isDirty={isAccountDirty}
                                 onDisplayNameChange={setDisplayName}
                                 onFileChange={handleFileChange}
                                 onSave={handleSaveChanges}
@@ -429,6 +447,9 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                         </div>
                         <div id="settings-VIP">
                             <VipSendersSection uid={user?.uid} />
+                        </div>
+                        <div id="settings-Sprache">
+                            <LanguageSection />
                         </div>
                         <FeatureFlagsSection uid={user?.uid} />
                         <div id="settings-Abonnement">

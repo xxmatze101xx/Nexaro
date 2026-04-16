@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
     Settings as SettingsIcon,
@@ -11,6 +12,7 @@ import {
     Shield,
     LogOut,
     Mail,
+    Globe,
 } from "lucide-react";
 import { uploadProfilePicture } from "@/lib/storage";
 import { auth } from "@/lib/firebase";
@@ -41,20 +43,29 @@ import { SecuritySection } from "@/components/settings/SecuritySection";
 import { DigestSection } from "@/components/settings/DigestSection";
 import { FeatureFlagsSection } from "@/components/settings/FeatureFlagsSection";
 import { DataPurgeSection } from "@/components/settings/DataPurgeSection";
+import { LanguageSection } from "@/components/settings/LanguageSection";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useToast } from "@/hooks/useToast";
 
 export default function SettingsPage() {
     return (
         <AuthGuard>
-            <SettingsContent />
+            <Suspense fallback={null}>
+                <SettingsContent />
+            </Suspense>
         </AuthGuard>
     );
 }
 
 function SettingsContent() {
     const { user, isLoading: isAuthLoading } = useAuth();
+    const { t } = useLanguage();
+    const { showToast } = useToast();
+    const searchParams = useSearchParams();
     const [activeSection, setActiveSection] = useState("Konto");
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState("");
+    const [savedDisplayName, setSavedDisplayName] = useState("");
     const [email, setEmail] = useState("");
     const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +77,19 @@ function SettingsContent() {
     const [driveConnected, setDriveConnected] = useState(false);
     const codeHandledRef = useRef(false);
 
+    const isAccountDirty = displayName.trim() !== savedDisplayName.trim();
+
+    // Warn the user before navigating away with unsaved changes
+    useEffect(() => {
+        if (!isAccountDirty) return;
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = "";
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isAccountDirty]);
+
     // Force light mode on this page
     useEffect(() => {
         document.documentElement.classList.remove("dark");
@@ -75,15 +99,13 @@ function SettingsContent() {
     useEffect(() => {
         if (!user) return;
         getUserProfile(user.uid).then((profile) => {
-            if (profile) {
-                if (profile.photoURL) setProfilePic(profile.photoURL);
-                if (profile.displayName) setDisplayName(profile.displayName);
-                if (profile.email) setEmail(profile.email);
-            } else {
-                if (user.photoURL) setProfilePic(user.photoURL);
-                if (user.displayName) setDisplayName(user.displayName);
-                if (user.email) setEmail(user.email ?? "");
-            }
+            const initialName = profile?.displayName || user.displayName || "";
+            setDisplayName(initialName);
+            setSavedDisplayName(initialName);
+            if (profile?.photoURL) setProfilePic(profile.photoURL);
+            else if (user.photoURL) setProfilePic(user.photoURL);
+            if (profile?.email) setEmail(profile.email);
+            else if (user.email) setEmail(user.email);
         });
     }, [user]);
 
@@ -183,11 +205,11 @@ function SettingsContent() {
             }
             const errorParam = urlParams.get("slack_error") ?? urlParams.get("microsoft_error");
             if (errorParam) {
-                alert(`OAuth-Fehler: ${errorParam}`);
+                showToast(t("settings.integrations.oauthError", { error: errorParam }), "⚠️");
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
             if (driveErrorParam) {
-                alert(`Google Drive Fehler: ${driveErrorParam}`);
+                showToast(t("settings.integrations.driveError", { error: driveErrorParam }), "⚠️");
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
@@ -196,7 +218,7 @@ function SettingsContent() {
 
     // Intersection observer for active nav section
     useEffect(() => {
-        const sectionIds = ["Konto", "Dienste", "Abonnement", "Sicherheit"];
+        const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "Sprache", "Abonnement", "Sicherheit"];
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
@@ -211,6 +233,32 @@ function SettingsContent() {
         });
         return () => observer.disconnect();
     }, []);
+
+    // Deep linking: ?section=integrations|account|security|digest|language|billing
+    useEffect(() => {
+        const sectionParam = searchParams.get("section");
+        if (!sectionParam) return;
+        const map: Record<string, string> = {
+            account: "Konto",
+            integrations: "Dienste",
+            digest: "Zusammenfassungen",
+            language: "Sprache",
+            billing: "Abonnement",
+            security: "Sicherheit",
+        };
+        const id = map[sectionParam.toLowerCase()];
+        if (!id) return;
+        // Defer until DOM is settled
+        const handle = window.setTimeout(() => {
+            const el = document.getElementById(id);
+            if (el) {
+                const y = el.getBoundingClientRect().top + window.scrollY - 100;
+                window.scrollTo({ top: y, behavior: "smooth" });
+                setActiveSection(id);
+            }
+        }, 150);
+        return () => window.clearTimeout(handle);
+    }, [searchParams]);
 
     const scrollToSection = (id: string) => {
         const element = document.getElementById(id);
@@ -234,7 +282,7 @@ function SettingsContent() {
             setDriveConnected(true);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            alert(`Drive-Verbindung konnte nicht gespeichert werden: ${msg}`);
+            showToast(t("settings.integrations.driveError", { error: msg }), "⚠️");
         }
         window.history.replaceState({}, document.title, window.location.pathname);
     };
@@ -247,7 +295,7 @@ function SettingsContent() {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-            if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
 
             if (data.access_token) {
                 const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
@@ -276,7 +324,7 @@ function SettingsContent() {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            alert(`Ein Fehler ist aufgetreten: ${msg}`);
+            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
         }
     };
 
@@ -288,7 +336,7 @@ function SettingsContent() {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; id_token?: string; error?: string };
-            if (!res.ok) { alert(`Fehler: ${data.error ?? "Unbekannter Fehler"}`); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
 
             if (data.access_token) {
                 // Extract email from id_token (JWT) — avoids extra userinfo API call
@@ -322,7 +370,7 @@ function SettingsContent() {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            alert(`Fehler: ${msg}`);
+            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
         }
     };
 
@@ -338,10 +386,10 @@ function SettingsContent() {
                 const { updateUserProfile } = await import("@/lib/user");
                 await updateUserProfile(user.uid, { photoURL: downloadURL });
             }
-            alert("Profilbild erfolgreich aktualisiert!");
+            showToast(t("settings.account.pictureUpdated"), "🖼️");
         } catch (error) {
             console.error("Fehler beim Upload:", error);
-            alert("Fehler beim Hochladen des Bildes.");
+            showToast(t("settings.account.pictureFailed"), "⚠️");
         } finally {
             setIsUploading(false);
         }
@@ -353,17 +401,18 @@ function SettingsContent() {
             setIsSaving(true);
             const { updateUserProfile } = await import("@/lib/user");
             await updateUserProfile(user.uid, { displayName });
-            alert("Änderungen erfolgreich gespeichert!");
+            setSavedDisplayName(displayName);
+            showToast(t("settings.account.saved"), "✅");
         } catch (error) {
             console.error("Fehler beim Speichern:", error);
-            alert("Fehler beim Speichern der Änderungen.");
+            showToast(t("settings.account.saveFailed"), "⚠️");
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleConnectProvider = async (integrationId: string) => {
-        if (!user?.uid) { alert("Bitte zuerst einloggen."); return; }
+        if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "ℹ️"); return; }
 
         if (integrationId === "Gmail") {
             // Server-side auth route ensures redirect_uri is always from env var (no mismatch)
@@ -372,7 +421,7 @@ function SettingsContent() {
             window.location.href = "/api/calendar/auth";
         } else if (integrationId === "Google Drive") {
             if (driveConnected) {
-                if (confirm("Google Drive wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
+                if (confirm(t("settings.integrations.disconnectConfirm", { service: "Google Drive" }))) {
                     await disconnectDrive(user.uid);
                     setDriveConnected(false);
                 }
@@ -381,7 +430,7 @@ function SettingsContent() {
             }
         } else if (integrationId === "Slack") {
             if (slackConnected) {
-                if (confirm("Slack wirklich trennen? Du kannst es jederzeit neu verbinden.")) {
+                if (confirm(t("settings.integrations.disconnectConfirm", { service: "Slack" }))) {
                     await disconnectSlack(user.uid);
                     setSlackConnected(false);
                 }
@@ -391,7 +440,7 @@ function SettingsContent() {
             }
         } else if (integrationId === "Outlook") {
             if (microsoftConnected) {
-                if (confirm("Microsoft / Outlook wirklich trennen?")) {
+                if (confirm(t("settings.integrations.disconnectConfirm", { service: "Microsoft / Outlook" }))) {
                     await disconnectMicrosoft(user.uid);
                     setMicrosoftConnected(false);
                 }
@@ -401,7 +450,7 @@ function SettingsContent() {
             }
         } else if (integrationId === "Microsoft Teams") {
             if (microsoftConnected) {
-                if (confirm("Microsoft Teams wirklich trennen?")) {
+                if (confirm(t("settings.integrations.disconnectConfirm", { service: "Microsoft Teams" }))) {
                     await disconnectMicrosoft(user.uid);
                     setMicrosoftConnected(false);
                 }
@@ -410,7 +459,7 @@ function SettingsContent() {
                 window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}&service=teams`;
             }
         } else {
-            alert(`${integrationId} Integration ist noch nicht implementiert.`);
+            showToast(t("settings.integrations.notImplemented", { service: integrationId }), "ℹ️");
         }
     };
 
@@ -447,11 +496,12 @@ function SettingsContent() {
     ];
 
     const NAV_ITEMS = [
-        { id: "Konto", icon: <User className="w-4 h-4" /> },
-        { id: "Dienste", icon: <LinkIcon className="w-4 h-4" /> },
-        { id: "Zusammenfassungen", icon: <Mail className="w-4 h-4" /> },
-        { id: "Abonnement", icon: <CreditCard className="w-4 h-4" /> },
-        { id: "Sicherheit", icon: <Shield className="w-4 h-4" /> },
+        { id: "Konto", label: t("settings.nav.account"), icon: <User className="w-4 h-4" /> },
+        { id: "Dienste", label: t("settings.nav.integrations"), icon: <LinkIcon className="w-4 h-4" /> },
+        { id: "Zusammenfassungen", label: t("settings.nav.digest"), icon: <Mail className="w-4 h-4" /> },
+        { id: "Sprache", label: t("settings.nav.language"), icon: <Globe className="w-4 h-4" /> },
+        { id: "Abonnement", label: t("settings.nav.billing"), icon: <CreditCard className="w-4 h-4" /> },
+        { id: "Sicherheit", label: t("settings.nav.security"), icon: <Shield className="w-4 h-4" /> },
     ];
 
     return (
@@ -470,7 +520,7 @@ function SettingsContent() {
                             <div className="p-1.5 bg-primary/10 text-primary rounded-lg">
                                 <SettingsIcon className="w-4 h-4" />
                             </div>
-                            <h1 className="text-sm font-semibold">Einstellungen</h1>
+                            <h1 className="text-sm font-semibold">{t("settings.title")}</h1>
                         </div>
                     </div>
                 </div>
@@ -495,7 +545,7 @@ function SettingsContent() {
                                     )}
                                 >
                                     {item.icon}
-                                    {item.id}
+                                    {item.label}
                                 </button>
                             ))}
                         </div>
@@ -509,7 +559,7 @@ function SettingsContent() {
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                             >
                                 <LogOut className="w-4 h-4" />
-                                Abmelden
+                                {t("settings.signOut")}
                             </button>
                         </div>
                     </div>
@@ -524,6 +574,7 @@ function SettingsContent() {
                             email={email}
                             isUploading={isUploading}
                             isSaving={isSaving}
+                            isDirty={isAccountDirty}
                             onDisplayNameChange={setDisplayName}
                             onFileChange={handleFileChange}
                             onSave={handleSaveChanges}
@@ -538,6 +589,7 @@ function SettingsContent() {
                             onDisconnectCalendar={handleDisconnectCalendar}
                         />
                         <DigestSection uid={user?.uid} userEmail={email} />
+                        <LanguageSection />
                         <FeatureFlagsSection uid={user?.uid} />
                         <BillingSection />
                         <SecuritySection />
