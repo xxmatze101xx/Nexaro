@@ -21,7 +21,6 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { MessageCard } from "@/components/message-card";
 import { ComposePanel } from "@/components/compose-panel";
 import { AIDraftPanel } from "@/components/ai-draft-panel";
-import { ToastContainer } from "@/components/ui/toast";
 import { NewMessageToast } from "@/components/new-message-toast";
 import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
 import { SlackChannelView } from "@/components/slack-channel-view";
@@ -121,7 +120,7 @@ function DashboardContent() {
   // Semantic search — enhances keyword filter with embedding-based ranking
   const { results: semanticResults, isSearching: isSemanticSearching, isFallback: semanticFallback } = useSemanticSearch(searchQuery);
   // Toast system
-  const { toasts: actionToasts, showToast, dismissToast } = useToast();
+  const { showToast } = useToast();
   // New-message toasts (LIVE-02) – max 3
   const [newMsgToasts, setNewMsgToasts] = useState<{ id: string; message: Message }[]>([]);
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
@@ -1376,9 +1375,6 @@ function DashboardContent() {
           )}{/* end Slack/Gmail conditional */}
         </div>
       </div>
-
-      {/* UX-V2: Action Toast (bottom center) */}
-      <ToastContainer toasts={actionToasts} onDismiss={dismissToast} />
 
       {/* LIVE-02: New Message Toast (bottom right) */}
       <NewMessageToast

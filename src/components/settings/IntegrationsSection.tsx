@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Search, ExternalLink, AlertTriangle } from "lucide-react";
 import { getAccountColor } from "@/lib/calendar";
 import type { CalendarAccount } from "@/lib/user";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Integration {
     id: string;
@@ -37,6 +38,7 @@ export function IntegrationsSection({
     onDisconnectGmail,
     onDisconnectCalendar,
 }: IntegrationsSectionProps) {
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<TabValue>("all");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -52,15 +54,17 @@ export function IntegrationsSection({
     }, [integrations, activeTab, searchQuery]);
 
     const tabs: { value: TabValue; label: string }[] = [
-        { value: "all", label: "Alle" },
-        { value: "active", label: "Aktiv" },
-        { value: "inactive", label: "Inaktiv" },
+        { value: "all", label: t("settings.integrations.all") },
+        { value: "active", label: t("settings.integrations.active") },
+        { value: "inactive", label: t("settings.integrations.inactive") },
     ];
 
     return (
         <section id="Dienste" className="space-y-4 scroll-mt-20">
             <div className="flex items-center justify-between gap-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">Dienste & Integrationen</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
+                    {t("settings.integrations.title")}
+                </p>
             </div>
 
             {/* Filter + Search */}
@@ -94,7 +98,7 @@ export function IntegrationsSection({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Suchen..."
+                        placeholder={t("settings.integrations.searchPlaceholder")}
                         className="w-full pl-8 pr-3 py-1.5 bg-card border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all"
                     />
                 </div>
@@ -102,7 +106,7 @@ export function IntegrationsSection({
 
             {/* Integration list */}
             {visibleIntegrations.length === 0 ? (
-                <p className="text-center py-10 text-sm text-muted-foreground">Keine Integrationen gefunden.</p>
+                <p className="text-center py-10 text-sm text-muted-foreground">{t("settings.integrations.searchPlaceholder")}</p>
             ) : (
                 <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
                     {visibleIntegrations.map((integration) => {
@@ -148,7 +152,7 @@ export function IntegrationsSection({
                                                         onClick={() => onDisconnectGmail(acc.email)}
                                                         className="text-[11px] text-destructive hover:underline shrink-0"
                                                     >
-                                                        Trennen
+                                                        {t("common.disconnect")}
                                                     </button>
                                                 </div>
                                             ))}
@@ -167,7 +171,7 @@ export function IntegrationsSection({
                                                         onClick={() => onDisconnectCalendar(acc.email)}
                                                         className="text-[11px] text-destructive hover:underline shrink-0"
                                                     >
-                                                        Trennen
+                                                        {t("common.disconnect")}
                                                     </button>
                                                 </div>
                                             ))}

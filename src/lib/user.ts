@@ -1,11 +1,13 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, type FieldValue, type Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
+import { type Locale, isLocale } from "./i18n/locales";
 
 export interface UserProfile {
     uid: string;
     email: string;
     displayName?: string | null;
     photoURL?: string | null;
+    language?: Locale;
     createdAt: FieldValue | Timestamp;
     updatedAt: FieldValue | Timestamp;
 }
@@ -39,9 +41,9 @@ export async function createUserProfileDoc(uid: string, data: Partial<UserProfil
 }
 
 /**
- * Updates an existing user's profile information (name, photo).
+ * Updates an existing user's profile information (name, photo, language).
  */
-export async function updateUserProfile(uid: string, data: { displayName?: string; photoURL?: string }) {
+export async function updateUserProfile(uid: string, data: { displayName?: string; photoURL?: string; language?: Locale }) {
     if (!uid) return;
 
     const userRef = doc(db, "users", uid);
@@ -53,6 +55,24 @@ export async function updateUserProfile(uid: string, data: { displayName?: strin
     } catch (error) {
         console.error("Error updating user document", error);
     }
+}
+
+/** Reads the user's preferred UI language from Firestore. */
+export async function getUserLanguage(uid: string): Promise<Locale | null> {
+    if (!uid) return null;
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return null;
+    const lang = (snap.data() as { language?: unknown }).language;
+    return isLocale(lang) ? lang : null;
+}
+
+/** Persists the user's preferred UI language to Firestore. */
+export async function setUserLanguage(uid: string, locale: Locale): Promise<void> {
+    if (!uid) return;
+    await updateDoc(doc(db, "users", uid), {
+        language: locale,
+        updatedAt: serverTimestamp(),
+    });
 }
 
 /**
