@@ -84,6 +84,8 @@ function DashboardContent() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [expandedAccounts, setExpandedAccounts] = useState<Record<string, boolean>>({
     slack: true,
@@ -183,6 +185,18 @@ function DashboardContent() {
       }
     }
   };
+
+  // Close search suggestions on outside click
+  useEffect(() => {
+    if (!searchSuggestionsOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [searchSuggestionsOpen]);
 
   // Subscribe to Python pipeline scores for Gmail messages
   useEffect(() => {
@@ -1103,20 +1117,70 @@ function DashboardContent() {
           </div>
 
           {/* Search + scope toggle (UX-V1) */}
-          <div className="flex items-center gap-2 flex-1 min-w-0 order-last md:order-none basis-full md:basis-auto md:max-w-md">
+          <div ref={searchContainerRef} className="flex items-center gap-2 flex-1 min-w-0 order-last md:order-none basis-full md:basis-auto md:max-w-md relative">
             <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 placeholder="Suchen..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setSearchSuggestionsOpen(true); }}
+                onFocus={() => { if (searchQuery) setSearchSuggestionsOpen(true); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); setSearchSuggestionsOpen(false); }
+                  else if (e.key === "Escape") setSearchSuggestionsOpen(false);
+                }}
                 className={cn(
                   "w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm",
                   "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50",
                   "transition-all"
                 )}
               />
+              {searchSuggestionsOpen && searchQuery && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+                  {filteredMessages.length === 0 ? (
+                    <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+                      Keine Treffer für „{searchQuery}"
+                    </div>
+                  ) : (
+                    <>
+                      {filteredMessages.slice(0, 5).map(msg => (
+                        <button
+                          key={msg.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            handleSelectMessage(msg);
+                            setSearchSuggestionsOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted flex flex-col gap-0.5 border-b border-border last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-sm text-foreground truncate">{msg.sender}</span>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {new Date(msg.timestamp).toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
+                            </span>
+                          </div>
+                          {msg.subject && (
+                            <span className="text-xs text-foreground truncate">{msg.subject}</span>
+                          )}
+                          <span className="text-[11px] text-muted-foreground truncate">{msg.content}</span>
+                        </button>
+                      ))}
+                      {filteredMessages.length > 5 && (
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setSearchSuggestionsOpen(false)}
+                          className="w-full px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/40 hover:bg-muted border-t border-border text-center transition-colors"
+                        >
+                          Enter drücken, um alle {filteredMessages.length} Ergebnisse zu sehen
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             {searchQuery && (
               <div className="flex gap-1 shrink-0">
