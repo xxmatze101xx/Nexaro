@@ -165,6 +165,11 @@ function DashboardContent() {
 
   const handleSelectMessage = (message: Message) => {
     setIsComposing(false);
+    setShowDashboard(false);
+    setShowSettings(false);
+    setShowFiles(false);
+    setShowAIChat(false);
+    setShowDecisions(false);
     setSelectedMessage(message);
 
     // Optimistically mark as read locally
@@ -1127,8 +1132,19 @@ function DashboardContent() {
                 onChange={(e) => { setSearchQuery(e.target.value); setSearchSuggestionsOpen(true); }}
                 onFocus={() => { if (searchQuery) setSearchSuggestionsOpen(true); }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); setSearchSuggestionsOpen(false); }
-                  else if (e.key === "Escape") setSearchSuggestionsOpen(false);
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setSearchSuggestionsOpen(false);
+                    setShowDashboard(false);
+                    setShowSettings(false);
+                    setShowFiles(false);
+                    setShowAIChat(false);
+                    setShowDecisions(false);
+                    setSelectedMessage(null);
+                    setIsComposing(false);
+                  } else if (e.key === "Escape") {
+                    setSearchSuggestionsOpen(false);
+                  }
                 }}
                 className={cn(
                   "w-full rounded-lg border border-input bg-background pl-9 pr-3 py-2 text-sm",
@@ -1171,10 +1187,19 @@ function DashboardContent() {
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => setSearchSuggestionsOpen(false)}
+                          onClick={() => {
+                            setSearchSuggestionsOpen(false);
+                            setShowDashboard(false);
+                            setShowSettings(false);
+                            setShowFiles(false);
+                            setShowAIChat(false);
+                            setShowDecisions(false);
+                            setSelectedMessage(null);
+                            setIsComposing(false);
+                          }}
                           className="w-full px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/40 hover:bg-muted border-t border-border text-center transition-colors"
                         >
-                          Enter drücken, um alle {filteredMessages.length} Ergebnisse zu sehen
+                          Alle {filteredMessages.length} Ergebnisse anzeigen
                         </button>
                       )}
                     </>
