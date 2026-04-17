@@ -1065,8 +1065,8 @@ function DashboardContent() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-14 border-b border-border flex items-center justify-between px-3 md:px-6 bg-card">
-          <div className="flex items-center gap-2 md:gap-3">
+        <header className="min-h-14 border-b border-border flex flex-wrap items-center gap-2 md:gap-4 justify-between px-3 md:px-6 py-2 bg-card">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0 min-w-0">
             {/* Hamburger — mobile only */}
             <button
               className="md:hidden p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0"
@@ -1078,14 +1078,14 @@ function DashboardContent() {
             <h1 className="text-base md:text-lg font-semibold text-foreground font-[Inter] truncate">
               {headerTitle}
             </h1>
-            <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold">
+            <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold shrink-0">
               {stats.unread} new
             </span>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
               className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground transition-colors",
+                "w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground transition-colors shrink-0",
                 isRefreshing ? "opacity-50 cursor-not-allowed" : "hover:bg-muted hover:text-foreground"
               )}
               title="Lade Emails neu"
@@ -1094,18 +1094,18 @@ function DashboardContent() {
             </button>
             <button
               onClick={() => { setIsComposing(true); setSelectedMessage(null); }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-semibold transition-all hover:bg-primary/90 active:scale-95 shadow-sm"
+              className="flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-semibold transition-all hover:bg-primary/90 active:scale-95 shadow-sm shrink-0"
               title="Neue E-Mail schreiben"
             >
               <Pencil className="w-4 h-4" />
-              Schreiben
+              <span className="hidden sm:inline">Schreiben</span>
             </button>
           </div>
 
           {/* Search + scope toggle (UX-V1) */}
-          <div className="flex flex-col gap-1">
-            <div className="relative w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 flex-1 min-w-0 order-last md:order-none basis-full md:basis-auto md:max-w-md">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 placeholder="Suchen..."
@@ -1119,24 +1119,26 @@ function DashboardContent() {
               />
             </div>
             {searchQuery && (
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 <button
                   onClick={() => setSearchScope("global")}
-                  className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors", searchScope === "global" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                  className={cn("text-[10px] px-2 py-1 rounded-full font-medium transition-colors whitespace-nowrap", searchScope === "global" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                  title="In allen Ordnern suchen"
                 >
                   Global
                 </button>
                 <button
                   onClick={() => setSearchScope("folder")}
-                  className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors", searchScope === "folder" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                  className={cn("text-[10px] px-2 py-1 rounded-full font-medium transition-colors whitespace-nowrap", searchScope === "folder" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                  title="Nur im aktuellen Ordner suchen"
                 >
-                  Nur aktueller Ordner
+                  Ordner
                 </button>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 md:gap-4 text-xs text-muted-foreground shrink-0">
             <StatPill
               icon={<Mail className="h-3.5 w-3.5" />}
               value={stats.unread}
@@ -1154,14 +1156,14 @@ function DashboardContent() {
             />
             <button
               onClick={toggleDarkMode}
-              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0"
               title="Toggle dark mode"
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
               onClick={() => setShowShortcuts(true)}
-              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground font-mono text-xs border border-border"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground font-mono text-xs border border-border shrink-0"
               title="Keyboard shortcuts (?)"
             >
               ?
