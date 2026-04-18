@@ -952,20 +952,6 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="px-4 mb-4 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Suchen..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted/70 border border-transparent rounded-lg pl-9 pr-3 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:bg-background focus:border-border transition-colors"
-            />
-          </div>
-        </div>
-
         {/* Main Navigation */}
         <div className="px-2 mb-4 space-y-0.5 shrink-0">
           <button
