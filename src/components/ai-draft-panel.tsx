@@ -61,24 +61,6 @@ export function AIDraftPanel({ message, onClose, onArchived, onStatusChanged, on
         setSuggestions([]);
     }, [message?.id, message?.ai_draft_response]);
 
-    // Listen for keyboard shortcut 'r' dispatched by the dashboard
-    useEffect(() => {
-        const handler = () => {
-            if (!message) return;
-            initReply(message);
-            if (!draftText) {
-                // UX-V3: auto-fill greeting if no draft exists
-                const firstName = message.sender.split(/[\s,]+/)[0] ?? message.sender;
-                setDraftText(`Guten Tag ${firstName},\n\n\n\nMit freundlichen Grüßen`);
-            }
-            setIsReplying(true);
-            setTimeout(() => textareaRef.current?.focus(), 50);
-        };
-        document.addEventListener("nexaro:reply", handler);
-        return () => document.removeEventListener("nexaro:reply", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [message, draftText]);
-
     if (!message) {
         return (
             <div
