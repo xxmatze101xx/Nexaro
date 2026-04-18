@@ -104,7 +104,6 @@ function DashboardContent() {
   const [inboxNextPageToken, setInboxNextPageToken] = useState<string | null>(null);
   const [isFolderLoading, setIsFolderLoading] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const [showDecisions, setShowDecisions] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
@@ -562,47 +561,6 @@ function DashboardContent() {
     localStorage.setItem("nexaro-dark-mode", String(next));
   };
 
-  // Keyboard shortcuts: e=archive, r=reply, d=delete, u=toggle-read, ?=overlay, Esc=close
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const tag = (e.target as HTMLElement).tagName.toLowerCase();
-    const isEditable = (e.target as HTMLElement).hasAttribute("contenteditable");
-    if (tag === "input" || tag === "textarea" || tag === "select" || isEditable) return;
-
-    if (e.key === "?") {
-      e.preventDefault();
-      setShowShortcuts(prev => !prev);
-      return;
-    }
-    if (e.key === "Escape") {
-      if (showShortcuts) { setShowShortcuts(false); return; }
-      if (selectedMessage) { setSelectedMessage(null); return; }
-      return;
-    }
-    if (!selectedMessage) return;
-
-    if (e.key === "e" || e.key === "E") {
-      e.preventDefault();
-      handleArchive(selectedMessage);
-    } else if (e.key === "r" || e.key === "R") {
-      e.preventDefault();
-      document.dispatchEvent(new CustomEvent("nexaro:reply"));
-    } else if (e.key === "d" || e.key === "D") {
-      e.preventDefault();
-      handleDelete(selectedMessage);
-    } else if (e.key === "u" || e.key === "U") {
-      e.preventDefault();
-      handleToggleRead(selectedMessage);
-    } else if (e.key === "s" || e.key === "S") {
-      e.preventDefault();
-      handleStar(selectedMessage);
-    }
-  }, [selectedMessage, showShortcuts]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
-
   const handleArchive = async (message: Message) => {
     if (message.source !== "gmail" || !user || !message.accountId) return;
     const isArchived = Array.isArray(message.labels) && message.labels.length > 0 && !message.labels.includes('INBOX');
@@ -856,44 +814,6 @@ function DashboardContent() {
         />
       )}
 
-      {/* Keyboard Shortcuts Overlay */}
-      {showShortcuts && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            className="bg-card border border-border rounded-xl shadow-2xl p-6 w-80"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-sm font-bold text-foreground mb-4 tracking-tight uppercase">Keyboard Shortcuts</h2>
-            <div className="space-y-3">
-              {[
-                { key: "e", description: "Archivieren" },
-                { key: "r", description: "Antworten" },
-                { key: "d", description: "Löschen" },
-                { key: "u", description: "Gelesen / Ungelesen" },
-                { key: "s", description: "Favorit markieren" },
-                { key: "?", description: "Shortcuts anzeigen/verstecken" },
-                { key: "Esc", description: "Overlay schließen / Auswahl aufheben" },
-              ].map(({ key, description }) => (
-                <div key={key} className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">{description}</span>
-                  <kbd className="px-2 py-0.5 rounded-md border border-border bg-muted text-xs font-mono text-foreground shrink-0">
-                    {key}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-            <button
-              className="mt-5 w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowShortcuts(false)}
-            >
-              Press Esc or ? to close
-            </button>
-          </div>
-        </div>
-      )}
       {/* Sidebar — fixed drawer on mobile, in-flow on md+ */}
       <aside className={cn(
         "w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col h-full",
@@ -1229,13 +1149,6 @@ function DashboardContent() {
               title="Toggle dark mode"
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            <button
-              onClick={() => setShowShortcuts(true)}
-              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground font-mono text-xs border border-border shrink-0"
-              title="Keyboard shortcuts (?)"
-            >
-              ?
             </button>
           </div>
         </header>
