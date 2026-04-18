@@ -24,8 +24,6 @@ import { AIDraftPanel } from "@/components/ai-draft-panel";
 import { NewMessageToast } from "@/components/new-message-toast";
 import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
 import { SlackChannelView } from "@/components/slack-channel-view";
-import { DailyBriefingPanel } from "@/components/daily-briefing-panel";
-import { useDailyBriefing } from "@/hooks/useDailyBriefing";
 import { MeetingPrepPanel } from "@/components/meeting-prep-panel";
 import { useMeetingPrep } from "@/hooks/useMeetingPrep";
 import { DecisionsDashboard } from "@/components/decisions-dashboard";
@@ -495,15 +493,6 @@ function DashboardContent() {
 
     return msgs;
   }, [displayMessages, allMessages, selectedSidebarItem, searchQuery, searchScope, sortOrder, semanticResults, semanticFallback, messageMeta]);
-
-  // ── Daily Briefing ──────────────────────────────────────────────────────
-  const {
-    briefing: dailyBriefing,
-    generatedAt: briefingGeneratedAt,
-    isGenerating: isBriefingGenerating,
-    error: briefingError,
-    generate: generateBriefing,
-  } = useDailyBriefing(user?.uid ?? null, allMessages);
 
   // ── Meeting Prep: upcoming meetings + AI briefings ───────────────────────
   const calendarEmails = useMemo(() => gmailAccounts.map(acc => acc.email), [gmailAccounts]);
@@ -1257,19 +1246,6 @@ function DashboardContent() {
             messages={allMessages}
             onFilter={(source) => setSelectedSidebarItem({ source })}
           />
-        )}
-
-        {/* Daily Executive Briefing — hidden on home dashboard and settings */}
-        {!showDashboard && !showSettings && allMessages.length >= 5 && (
-          <div className="px-6 pt-4 pb-0">
-            <DailyBriefingPanel
-              briefing={dailyBriefing}
-              generatedAt={briefingGeneratedAt}
-              isGenerating={isBriefingGenerating}
-              error={briefingError}
-              onGenerate={generateBriefing}
-            />
-          </div>
         )}
 
         {/* Content Area */}
