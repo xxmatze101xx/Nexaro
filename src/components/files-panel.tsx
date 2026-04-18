@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { FilesAttachments } from "@/components/files-attachments";
 import { FilesDrive } from "@/components/files-drive";
 import { FilesOneDrive } from "@/components/files-onedrive";
 import { FilesUploads } from "@/components/files-uploads";
@@ -10,7 +9,7 @@ import { FilesPreview, type PreviewFile } from "@/components/files-preview";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Search, ArrowUpDown } from "lucide-react";
 
-type Tab = "attachments" | "drive" | "onedrive" | "uploads";
+type Tab = "drive" | "onedrive" | "uploads";
 export type SortBy = "name" | "date" | "size";
 export type SortDir = "asc" | "desc";
 
@@ -21,7 +20,7 @@ interface FilesPanelProps {
 
 export function FilesPanel({ userId, className }: FilesPanelProps) {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<Tab>("attachments");
+  const [activeTab, setActiveTab] = useState<Tab>("drive");
   const [previewFile, setPreviewFile] = useState<PreviewFile | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("date");
@@ -36,7 +35,6 @@ export function FilesPanel({ userId, className }: FilesPanelProps) {
   const cycleSortDir = () => setSortDir(d => d === "asc" ? "desc" : "asc");
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "attachments", label: t("files.tabs.attachments") },
     { id: "drive", label: t("files.tabs.drive") },
     { id: "onedrive", label: t("files.tabs.onedrive") },
     { id: "uploads", label: t("files.tabs.uploads") },
@@ -104,9 +102,6 @@ export function FilesPanel({ userId, className }: FilesPanelProps) {
       <div className="flex-1 flex overflow-hidden">
         {/* File list — shrinks to fixed width when preview is open */}
         <div className={cn("flex flex-col overflow-hidden transition-all", previewFile ? "w-[380px] shrink-0 border-r border-border" : "flex-1")}>
-          {activeTab === "attachments" && (
-            <FilesAttachments userId={userId} onSelect={setPreviewFile} selectedFile={previewFile} searchQuery={searchQuery} sort={{ by: sortBy, dir: sortDir }} />
-          )}
           {activeTab === "drive" && (
             <FilesDrive userId={userId} onSelect={setPreviewFile} selectedFile={previewFile} searchQuery={searchQuery} sort={{ by: sortBy, dir: sortDir }} />
           )}
