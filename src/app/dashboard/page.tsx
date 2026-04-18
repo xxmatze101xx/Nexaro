@@ -450,27 +450,32 @@ function DashboardContent() {
       if (selectedSidebarItem.accountId) msgs = msgs.filter(m => m.accountId === selectedSidebarItem.accountId);
     }
 
-    // Filter by search — semantic results take priority over keyword filter
+    // Filter by search — keyword filter always runs so every source (Gmail, Slack,
+    // Teams, Outlook, …) stays searchable; semantic matches are unioned on top
+    // when available so we never hide a literal hit just because a message has
+    // no stored embedding yet.
     if (searchQuery) {
-      if (semanticResults && !semanticFallback) {
-        // Semantic search: rank by vector similarity score
-        const scoreMap = new Map(semanticResults.map(r => [r.messageId, r.score]));
-        msgs = msgs.filter(m => scoreMap.has(m.id) || scoreMap.has(m.external_id));
-        msgs.sort((a, b) => {
-          const sa = scoreMap.get(a.id) ?? scoreMap.get(a.external_id) ?? 0;
-          const sb = scoreMap.get(b.id) ?? scoreMap.get(b.external_id) ?? 0;
-          return sb - sa;
-        });
-      } else {
-        // Keyword fallback (semantic not yet available or no embeddings stored)
-        const q = searchQuery.toLowerCase();
-        msgs = msgs.filter(
-          (m) =>
-            m.content.toLowerCase().includes(q) ||
-            m.sender.toLowerCase().includes(q) ||
-            (m.subject ?? "").toLowerCase().includes(q)
-        );
-      }
+      const q = searchQuery.toLowerCase();
+      const stripHtml = (h: string) =>
+        h.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/gi, " ");
+      const matchesKeyword = (m: Message) =>
+        m.content.toLowerCase().includes(q) ||
+        m.sender.toLowerCase().includes(q) ||
+        (m.senderEmail ?? "").toLowerCase().includes(q) ||
+        (m.subject ?? "").toLowerCase().includes(q) ||
+        (m.htmlContent ? stripHtml(m.htmlContent).toLowerCase().includes(q) : false) ||
+        (m.labels ?? []).some(l => l.toLowerCase().includes(q));
+
+      const semanticIds =
+        semanticResults && !semanticFallback
+          ? new Set(semanticResults.map(r => r.messageId))
+          : null;
+
+      msgs = msgs.filter(m => {
+        if (matchesKeyword(m)) return true;
+        if (semanticIds) return semanticIds.has(m.id) || semanticIds.has(m.external_id);
+        return false;
+      });
     }
 
     // Sort
