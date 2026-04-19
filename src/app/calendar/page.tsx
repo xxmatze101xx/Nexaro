@@ -4,14 +4,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
     ChevronLeft, Calendar as CalendarIcon, ChevronRight,
     Plus, Clock, MapPin, Check, Loader2, ChevronDown, X, Trash2, MoreHorizontal, Search,
+    LayoutDashboard, FolderOpen, Settings as SettingsIcon, Bot,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { getCalendarAccounts, setCalendarAccountVisibility, CalendarAccount } from "@/lib/user";
 import { fetchCalendarEvents, getAccountColor, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarAuthErrors, CalendarEvent } from "@/lib/calendar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/useToast";
+import { cn } from "@/lib/utils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CELL_H = 64;
@@ -23,6 +26,7 @@ const DAY_SHORT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const MONTH_NAMES = ["Januar", "Februar", "März", "April", "Mai", "Juni",
     "Juli", "August", "September", "Oktober", "November", "Dezember"];
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+const TIME_LABELS = Array.from({ length: 25 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const sameDay = (a: Date, b: Date) =>
@@ -339,7 +343,7 @@ interface DragState { dayIdx: number; startH: number; endH: number; }
 interface CreateState { day: Date; startH: number; endH: number; }
 interface RescheduleState { ev: CalendarEvent; dayIdx: number; startH: number; origDuration: number; }
 
-function TimeGrid({ days, events, selected, onSelect, onCreateRequest, onReschedule, uid, accounts, creating, isLoading }: {
+function TimeGrid({ days, events, selected, onSelect, onCreateRequest, onReschedule, uid, accounts, creating, isLoading, view, onDayClick }: {
     days: Date[];
     events: CalendarEvent[];
     selected: CalendarEvent | null;
@@ -350,8 +354,10 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, onResched
     accounts: CalendarAccount[];
     creating?: (CreateState & { x: number, y: number }) | null;
     isLoading?: boolean;
+    view: ViewMode;
+    onDayClick: (d: Date) => void;
 }) {
-    const { t } = useLanguage();
+    const { t, locale } = useLanguage();
     const scrollRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
     const today = new Date();
@@ -362,7 +368,11 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, onResched
     const [reschedule, setReschedule] = useState<RescheduleState | null>(null);
     const isRescheduling = useRef(false);
 
-    useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 8 * CELL_H - 32; }, []);
+    useEffect(() => {
+        if (scrollRef.current && gridRef.current) {
+            scrollRef.current.scrollTop = gridRef.current.offsetTop + 8 * CELL_H - 32;
+        }
+    }, []);
 
     // ── Drag helpers ──
     const yToHour = (clientY: number) => {
@@ -433,34 +443,60 @@ function TimeGrid({ days, events, selected, onSelect, onCreateRequest, onResched
                     ))}
                 </div>
             )}
-            {hasAllDay && (
-                <div className="shrink-0 flex border-b border-border">
-                    <div className="shrink-0 border-r border-border flex items-center justify-center" style={{ width: GUTTER }}>
-                        <span className="text-[9px] font-bold text-muted-foreground">{t("calendar.allDay")}</span>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-scroll min-h-0 relative">
+                {/* Sticky day headers — placed inside scroll container so column widths exactly match the grid below */}
+                <div className="sticky top-0 z-30 bg-background">
+                    <div className="flex border-b border-border">
+                        <div className="shrink-0 border-r border-border" style={{ width: GUTTER }} />
+                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
+                            {days.map((d, i) => {
+                                const isT = sameDay(d, today);
+                                return (
+                                    <button key={i} onClick={() => onDayClick(d)}
+                                        className={`flex flex-col items-center justify-center py-2.5 border-r border-border last:border-r-0 transition-colors hover:bg-muted/30 ${isT ? "bg-primary/5" : ""}`}>
+                                        <span className="text-[10px] font-semibold text-muted-foreground mb-0.5">
+                                            {view === "week" ? DAY_SHORT[i] : d.toLocaleDateString(locale, { weekday: "short" })}
+                                        </span>
+                                        <span className={`text-xl font-bold leading-none ${isT ? "text-primary" : ""}`}>{d.getDate()}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
-                        {days.map((d, i) => (
-                            <div key={i} className="border-r border-border last:border-r-0 p-1 min-h-[28px]">
-                                {allDayEvs(d).map(ev => (
-                                    <div key={ev.id} onClick={(e) => onSelect(selected?.id === ev.id ? null : ev, e)}
-                                        className="text-[10px] font-bold px-1.5 py-0.5 rounded mb-0.5 cursor-pointer truncate"
-                                        style={{ backgroundColor: ev.color + "66", color: readableTextColor(ev.color + "ff") }}>
-                                        {ev.title}
+                    {hasAllDay && (
+                        <div className="flex border-b border-border bg-background">
+                            <div className="shrink-0 border-r border-border flex items-center justify-center" style={{ width: GUTTER }}>
+                                <span className="text-[9px] font-bold text-muted-foreground">{t("calendar.allDay")}</span>
+                            </div>
+                            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
+                                {days.map((d, i) => (
+                                    <div key={i} className="border-r border-border last:border-r-0 p-1 min-h-[28px]">
+                                        {allDayEvs(d).map(ev => (
+                                            <div key={ev.id} onClick={(e) => onSelect(selected?.id === ev.id ? null : ev, e)}
+                                                className="text-[10px] font-bold px-1.5 py-0.5 rounded mb-0.5 cursor-pointer truncate"
+                                                style={{ backgroundColor: ev.color + "66", color: readableTextColor(ev.color + "ff") }}>
+                                                {ev.title}
+                                            </div>
+                                        ))}
                                     </div>
                                 ))}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
                 </div>
-            )}
 
-            <div ref={scrollRef} className="flex-1 overflow-y-scroll min-h-0">
                 <div className="flex" style={{ height: 24 * CELL_H }}>
-                    {/* Time labels */}
+                    {/* Time labels — anchor 00:00 to top edge and 24:00 to bottom edge so they aren't clipped */}
                     <div className="relative shrink-0 border-r border-border" style={{ width: GUTTER }}>
-                        {HOURS.map((h, i) => (
-                            <div key={h} className="absolute right-2 flex items-center" style={{ top: i * CELL_H - 8, height: 16 }}>
-                                <span className="text-[10px] font-semibold text-muted-foreground">{h}</span>
+                        {TIME_LABELS.map((h, i) => (
+                            <div key={h}
+                                className="absolute right-2 text-[10px] font-semibold text-muted-foreground leading-none pointer-events-none"
+                                style={{
+                                    top: i * CELL_H,
+                                    transform: i === 0 ? undefined : i === 24 ? "translateY(-100%)" : "translateY(-50%)",
+                                }}>
+                                {h}
                             </div>
                         ))}
                     </div>
@@ -703,6 +739,7 @@ function CalendarContent() {
     const { user } = useAuth();
     const { t, locale } = useLanguage();
     const { showToast } = useToast();
+    const pathname = usePathname();
     const [uid, setUid] = useState<string | null>(null);
     const [accounts, setAccounts] = useState<CalendarAccount[]>([]);
     const [authErrorEmails, setAuthErrorEmails] = useState<string[]>([]);
@@ -853,46 +890,36 @@ function CalendarContent() {
 
     return (
         <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
-            {/* Sidebar */}
-            <aside className="w-[220px] hidden lg:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0 overflow-y-auto">
-                <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary">
-                        <CalendarIcon className="w-5 h-5" />
+            {/* Left main navigation sidebar — kept consistent with dashboard nav */}
+            <aside className="w-[220px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0">
+                <div className="flex items-center gap-2 px-4 h-14 shrink-0 border-b border-sidebar-border">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <CalendarIcon className="w-4 h-4" />
                     </div>
-                    <div>
-                        <p className="text-sm font-bold">{t("calendar.title")}</p>
-                        <p className="text-xs text-muted-foreground">{accounts.length} {t("calendar.myCalendars").toLowerCase()}</p>
-                    </div>
+                    <span className="font-bold text-lg tracking-tight text-foreground">Nexaro</span>
                 </div>
-                <MiniCalendar anchor={anchor} onSelect={(d) => { setAnchor(d); if (view === "month" || view === "agenda") setView("day"); }} />
-                <div className="px-4 py-3 border-t border-sidebar-border">
-                    <div className="flex items-center justify-between text-sm font-bold mb-3">
-                        <span>{t("calendar.myCalendars")}</span>
-                        <Link href="/settings" className="text-xs text-muted-foreground hover:text-foreground">{t("calendar.manage")}</Link>
-                    </div>
-                    {accounts.length === 0 ? (
-                        <div className="text-xs text-muted-foreground text-center py-2">
-                            <p>{t("calendar.noCalendar")}</p>
-                            <Link href="/settings" className="text-primary hover:underline mt-1 inline-block font-semibold">{t("calendar.connectNow")}</Link>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {accounts.map(acc => {
-                                const color = getAccountColor(acc.email);
-                                const vis = acc.visible !== false;
-                                return (
-                                    <label key={acc.email} className="flex items-center gap-2 cursor-pointer" onClick={() => toggleVis(acc.email, vis)}>
-                                        <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all"
-                                            style={vis ? { backgroundColor: color, borderColor: color } : { borderColor: color }}>
-                                            {vis && <Check className="w-2.5 h-2.5 text-white" />}
-                                        </div>
-                                        <span className="text-xs truncate max-w-[150px] font-medium">{acc.email}</span>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+                <nav className="px-2 py-4 space-y-0.5">
+                    <Link href="/dashboard" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/dashboard" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                        <LayoutDashboard className="w-4 h-4 shrink-0" />
+                        Dashboard
+                    </Link>
+                    <Link href="/calendar" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/calendar" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                        <CalendarIcon className="w-4 h-4 shrink-0" />
+                        Kalender
+                    </Link>
+                    <Link href="/dashboard" className="w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <FolderOpen className="w-4 h-4 shrink-0" />
+                        Files
+                    </Link>
+                    <Link href="/settings" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/settings" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                        <SettingsIcon className="w-4 h-4 shrink-0" />
+                        Einstellungen
+                    </Link>
+                    <Link href="/dashboard" className="w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <Bot className="w-4 h-4 shrink-0" />
+                        AI Chat
+                    </Link>
+                </nav>
             </aside>
 
             {/* Main */}
@@ -971,32 +998,12 @@ function CalendarContent() {
                             onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }}
                             onCreateRequest={() => setCreating({ day: new Date(), startH: 9, endH: 10, x: window.innerWidth / 2, y: window.innerHeight / 2 })} />
                     ) : view !== "month" ? (
-                        <>
-                            {/* Day headers */}
-                            <div className="shrink-0 flex border-b border-border bg-background">
-                                <div className="shrink-0 border-r border-border" style={{ width: GUTTER }} />
-                                <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${gridDays.length}, 1fr)` }}>
-                                    {gridDays.map((d, i) => {
-                                        const isT = sameDay(d, today);
-                                        return (
-                                            <button key={i} onClick={() => { setAnchor(d); setView("day"); }}
-                                                className={`flex flex-col items-center justify-center py-2.5 border-r border-border last:border-r-0 transition-colors hover:bg-muted/30 ${isT ? "bg-primary/5" : ""}`}>
-                                                <span className="text-[10px] font-semibold text-muted-foreground mb-0.5">
-                                                    {view === "week" ? DAY_SHORT[i] : d.toLocaleDateString(locale, { weekday: "short" })}
-                                                </span>
-                                                <span className={`text-xl font-bold leading-none ${isT ? "text-primary" : ""}`}>{d.getDate()}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <div className="shrink-0" style={{ width: 17 }} />
-                            </div>
-                            <TimeGrid days={gridDays} events={filteredEvents} selected={selected}
-                                onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }}
-                                onCreateRequest={(req) => { setCreating(req); setSelected(null); }}
-                                onReschedule={handleReschedule}
-                                uid={uid} accounts={accounts} creating={creating} isLoading={isLoading} />
-                        </>
+                        <TimeGrid days={gridDays} events={filteredEvents} selected={selected}
+                            onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }}
+                            onCreateRequest={(req) => { setCreating(req); setSelected(null); }}
+                            onReschedule={handleReschedule}
+                            uid={uid} accounts={accounts} creating={creating} isLoading={isLoading}
+                            view={view} onDayClick={(d) => { setAnchor(d); setView("day"); }} />
                     ) : (
                         <MonthView anchor={anchor} events={filteredEvents} selected={selected}
                             onSelect={(ev, e) => { setSelected(ev); setCreating(null); if (e) setPopupPos({ x: e.clientX, y: e.clientY }); }} onDay={(d) => { setAnchor(d); setView("day"); }} />
@@ -1019,6 +1026,48 @@ function CalendarContent() {
                     />
                 )}
             </main>
+
+            {/* Right calendar widgets sidebar — month picker + calendar accounts */}
+            <aside className="w-[260px] hidden lg:flex flex-col border-l border-sidebar-border bg-sidebar h-full shrink-0 overflow-y-auto">
+                <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary">
+                        <CalendarIcon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-sm font-bold truncate">{t("calendar.title")}</p>
+                        <p className="text-xs text-muted-foreground truncate">{accounts.length} {t("calendar.myCalendars").toLowerCase()}</p>
+                    </div>
+                </div>
+                <MiniCalendar anchor={anchor} onSelect={(d) => { setAnchor(d); if (view === "month" || view === "agenda") setView("day"); }} />
+                <div className="px-4 py-3 border-t border-sidebar-border">
+                    <div className="flex items-center justify-between text-sm font-bold mb-3">
+                        <span>{t("calendar.myCalendars")}</span>
+                        <Link href="/settings" className="text-xs text-muted-foreground hover:text-foreground">{t("calendar.manage")}</Link>
+                    </div>
+                    {accounts.length === 0 ? (
+                        <div className="text-xs text-muted-foreground text-center py-2">
+                            <p>{t("calendar.noCalendar")}</p>
+                            <Link href="/settings" className="text-primary hover:underline mt-1 inline-block font-semibold">{t("calendar.connectNow")}</Link>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {accounts.map(acc => {
+                                const color = getAccountColor(acc.email);
+                                const vis = acc.visible !== false;
+                                return (
+                                    <label key={acc.email} className="flex items-center gap-2 cursor-pointer" onClick={() => toggleVis(acc.email, vis)}>
+                                        <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all"
+                                            style={vis ? { backgroundColor: color, borderColor: color } : { borderColor: color }}>
+                                            {vis && <Check className="w-2.5 h-2.5 text-white" />}
+                                        </div>
+                                        <span className="text-xs truncate max-w-[180px] font-medium">{acc.email}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </aside>
         </div>
     );
 }
