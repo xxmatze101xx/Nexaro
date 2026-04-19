@@ -291,6 +291,29 @@ function DashboardContent() {
     if (msOk) getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
   }, [user]);
 
+  // View/account preselection from query params (used by the shared sidebar on /calendar)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get("view");
+    const source = params.get("source");
+    const account = params.get("account");
+    const folder = params.get("folder");
+    if (!view && !source) return;
+    if (view === "files") { setShowFiles(true); setShowDashboard(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); }
+    else if (view === "ai") { setShowAIChat(true); setShowFiles(false); setShowDashboard(false); setShowDecisions(false); setShowSettings(false); }
+    else if (view === "settings") { setShowSettings(true); setShowFiles(false); setShowDashboard(false); setShowAIChat(false); setShowDecisions(false); }
+    else if (view === "dashboard") { setShowDashboard(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); }
+    if (source) {
+      setSelectedSidebarItem({ source, accountId: account ?? undefined, folder: folder ?? undefined });
+      setShowDashboard(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false);
+    }
+    // Clean the URL so a refresh doesn't re-apply the preselection
+    const cleaned = new URLSearchParams(window.location.search);
+    ["view", "source", "account", "folder"].forEach(k => cleaned.delete(k));
+    const qs = cleaned.toString();
+    window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, []);
+
   // Load Gmail messages
   useEffect(() => {
     let isMounted = true;

@@ -1,17 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
     ChevronLeft, Calendar as CalendarIcon, ChevronRight,
     Plus, Clock, MapPin, Check, Loader2, ChevronDown, X, Trash2, MoreHorizontal, Search,
     LayoutDashboard, FolderOpen, Settings as SettingsIcon, Bot,
+    Inbox, Send, Star, Archive, MessageSquare, Hash, Lock,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
-import { getCalendarAccounts, setCalendarAccountVisibility, CalendarAccount } from "@/lib/user";
+import {
+    getCalendarAccounts, setCalendarAccountVisibility, CalendarAccount,
+    getUserProfile, getGmailAccounts, getSlackConnection, getMicrosoftConnection,
+} from "@/lib/user";
 import { fetchCalendarEvents, getAccountColor, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarAuthErrors, CalendarEvent } from "@/lib/calendar";
+import type { SlackChannel } from "@/lib/slack";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
@@ -736,7 +742,7 @@ export default function CalendarPage() {
 }
 
 function CalendarContent() {
-    const { user } = useAuth();
+    const { user, isLoading: isAuthLoading } = useAuth();
     const { t, locale } = useLanguage();
     const { showToast } = useToast();
     const pathname = usePathname();
@@ -753,6 +759,111 @@ function CalendarContent() {
     const [searchQuery, setSearchQuery] = useState("");
     const loadedRanges = useRef(new Set<string>());
     const today = new Date();
+
+    // ── Shared sidebar state: mirrors dashboard so the nav + connected services stay visible here ──
+    const [gmailAccounts, setGmailAccounts] = useState<{ email: string, token: string }[]>([]);
+    const [slackConnected, setSlackConnected] = useState(false);
+    const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+    const [microsoftConnected, setMicrosoftConnected] = useState(false);
+    const [profilePic, setProfilePic] = useState<string | null>(null);
+    const [displayName, setDisplayName] = useState("");
+    const [expandedAccounts, setExpandedAccounts] = useState<Record<string, boolean>>({ slack: true });
+
+    const loadSlackChannels = useCallback(async () => {
+        if (!user) return;
+        try {
+            const idToken = await user.getIdToken();
+            const res = await fetch("/api/slack/channels", { headers: { Authorization: `Bearer ${idToken}` } });
+            const data = await res.json() as { channels?: SlackChannel[] };
+            if (data.channels && data.channels.length > 0) setSlackChannels(data.channels);
+        } catch { /* ignore — sidebar just won't list channels */ }
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        getSlackConnection(user.uid).then(conn => {
+            setSlackConnected(!!conn);
+            if (conn) loadSlackChannels();
+        });
+        getMicrosoftConnection(user.uid).then(conn => setMicrosoftConnected(!!conn));
+        getGmailAccounts(user.uid).then(accs => {
+            setGmailAccounts(accs);
+            if (accs.length > 0) {
+                setExpandedAccounts(prev =>
+                    prev[`gmail_${accs[0].email}`] === undefined
+                        ? { ...prev, [`gmail_${accs[0].email}`]: true }
+                        : prev
+                );
+            }
+        });
+        getUserProfile(user.uid).then(profile => {
+            if (profile) {
+                if (profile.photoURL) setProfilePic(profile.photoURL);
+                if (profile.displayName) setDisplayName(profile.displayName);
+            } else {
+                if (user.photoURL) setProfilePic(user.photoURL);
+                if (user.displayName) setDisplayName(user.displayName);
+            }
+        });
+    }, [user, loadSlackChannels]);
+
+    const toggleAccountExpand = (id: string) => setExpandedAccounts(prev => ({ ...prev, [id]: !prev[id] }));
+
+    type SidebarAccountItem = { name: string; icon: React.ReactNode; source: string; accountId?: string; folder?: string };
+    type SidebarAccount = { id: string; name: string; icon: React.ReactNode; badge?: number; items?: SidebarAccountItem[] };
+
+    const sidebarAccounts = useMemo<SidebarAccount[]>(() => {
+        const gmailEntries: SidebarAccount[] = gmailAccounts.map(acc => ({
+            id: `gmail_${acc.email}`,
+            name: `Gmail - ${acc.email}`,
+            icon: <Image src="/ServiceLogos/Gmail.svg" alt="Gmail" width={16} height={16} className="shrink-0" />,
+            items: [
+                { name: "Inbox", icon: <Inbox className="w-4 h-4" />, source: "gmail", accountId: acc.email, folder: "INBOX" },
+                { name: "Gesendet", icon: <Send className="w-4 h-4" />, source: "gmail", accountId: acc.email, folder: "SENT" },
+                { name: "Markiert", icon: <Star className="w-4 h-4" />, source: "gmail", accountId: acc.email, folder: "STARRED" },
+                { name: "Archiv", icon: <Archive className="w-4 h-4" />, source: "gmail", accountId: acc.email, folder: "ARCHIVE" },
+                { name: "Papierkorb", icon: <Trash2 className="w-4 h-4" />, source: "gmail", accountId: acc.email, folder: "TRASH" },
+            ],
+        }));
+        const extra: SidebarAccount[] = [];
+        if (slackConnected) {
+            extra.push({
+                id: "slack",
+                name: "Slack",
+                icon: <Image src="/ServiceLogos/Slack.svg" alt="Slack" width={16} height={16} className="shrink-0" />,
+                items: [
+                    { name: "Direktnachrichten", icon: <MessageSquare className="w-4 h-4" />, source: "slack", folder: "im" },
+                    ...slackChannels.map(ch => ({
+                        name: `#${ch.name}`,
+                        icon: ch.is_private ? <Lock className="w-3.5 h-3.5" /> : <Hash className="w-3.5 h-3.5" />,
+                        source: "slack",
+                        accountId: ch.id,
+                        folder: "channel",
+                    })),
+                ],
+            });
+        }
+        if (microsoftConnected) {
+            extra.push({
+                id: "teams",
+                name: "Microsoft Teams",
+                icon: <Image src="/ServiceLogos/Microsoft Teams.svg" alt="Teams" width={16} height={16} className="shrink-0" />,
+            });
+            extra.push({
+                id: "outlook",
+                name: "Outlook",
+                icon: <Image src="/ServiceLogos/Outlook.svg" alt="Outlook" width={16} height={16} className="shrink-0" />,
+            });
+        }
+        return [...gmailEntries, ...extra];
+    }, [gmailAccounts, slackConnected, slackChannels, microsoftConnected]);
+
+    const accountItemHref = (item: SidebarAccountItem) => {
+        const params = new URLSearchParams({ source: item.source });
+        if (item.accountId) params.set("account", item.accountId);
+        if (item.folder) params.set("folder", item.folder);
+        return `/dashboard?${params.toString()}`;
+    };
 
     const filteredEvents = searchQuery.trim()
         ? events.filter(ev => {
@@ -890,15 +1001,50 @@ function CalendarContent() {
 
     return (
         <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
-            {/* Left main navigation sidebar — kept consistent with dashboard nav */}
-            <aside className="w-[220px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0">
-                <div className="flex items-center gap-2 px-4 h-14 shrink-0 border-b border-sidebar-border">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <CalendarIcon className="w-4 h-4" />
-                    </div>
+            {/* Left app sidebar — mirrors the dashboard sidebar so the nav, profile and connected services stay visible on /calendar */}
+            <aside className="w-[260px] bg-sidebar border-r border-sidebar-border hidden md:flex flex-col h-full shrink-0">
+                {/* Logo */}
+                <div className="flex items-center gap-2 px-4 h-14 shrink-0 mt-2">
+                    <Image src="/logo.png" alt="Nexaro Logo" width={32} height={32} className="object-contain" />
                     <span className="font-bold text-lg tracking-tight text-foreground">Nexaro</span>
                 </div>
-                <nav className="px-2 py-4 space-y-0.5">
+
+                {/* User Profile */}
+                <div className="px-3 mt-4 mb-4 shrink-0">
+                    <div className="flex items-center group cursor-pointer rounded-lg p-2 hover:bg-muted transition-colors">
+                        <div className="flex items-center gap-3">
+                            {isAuthLoading ? (
+                                <>
+                                    <div className="w-9 h-9 rounded-full bg-muted animate-pulse shrink-0"></div>
+                                    <div className="flex flex-col gap-2 overflow-hidden w-full">
+                                        <div className="h-4 bg-muted animate-pulse rounded w-24"></div>
+                                        <div className="h-3 bg-muted animate-pulse rounded w-12"></div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative">
+                                        {profilePic ? (
+                                            <Image src={profilePic} alt="Profile" fill className="object-cover" />
+                                        ) : (
+                                            displayName ? displayName.charAt(0).toUpperCase() : "M"
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col overflow-hidden">
+                                        <span className="text-sm font-semibold text-foreground truncate">{displayName || "Dein Account"}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-2 h-2 rounded-full bg-green-500 shrink-0"></div>
+                                            <span className="text-xs text-muted-foreground font-medium">Online</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Navigation */}
+                <div className="px-2 mb-4 space-y-0.5 shrink-0">
                     <Link href="/dashboard" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/dashboard" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                         <LayoutDashboard className="w-4 h-4 shrink-0" />
                         Dashboard
@@ -907,7 +1053,7 @@ function CalendarContent() {
                         <CalendarIcon className="w-4 h-4 shrink-0" />
                         Kalender
                     </Link>
-                    <Link href="/dashboard" className="w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <Link href="/dashboard?view=files" className="w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
                         <FolderOpen className="w-4 h-4 shrink-0" />
                         Files
                     </Link>
@@ -915,11 +1061,60 @@ function CalendarContent() {
                         <SettingsIcon className="w-4 h-4 shrink-0" />
                         Einstellungen
                     </Link>
-                    <Link href="/dashboard" className="w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <Link href="/dashboard?view=ai" className="w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
                         <Bot className="w-4 h-4 shrink-0" />
                         AI Chat
                     </Link>
-                </nav>
+                </div>
+
+                {/* Accounts List */}
+                <div className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-4">
+                    {sidebarAccounts.map(account => (
+                        <div key={account.id} className="mb-0.5">
+                            <button
+                                className="w-full flex items-center justify-between p-2 rounded-md hover:bg-muted text-sm font-medium transition-colors"
+                                onClick={() => toggleAccountExpand(account.id)}
+                            >
+                                <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                                    <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0", expandedAccounts[account.id] && "rotate-90")} />
+                                    {account.icon}
+                                    <span className="text-foreground truncate" title={account.name}>{account.name}</span>
+                                </div>
+                                {account.badge && (
+                                    <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center shrink-0">
+                                        {account.badge}
+                                    </span>
+                                )}
+                            </button>
+
+                            {expandedAccounts[account.id] && account.items && (
+                                <div className="ml-6 mt-0.5 space-y-0.5">
+                                    {account.items.map(item => (
+                                        <Link
+                                            key={item.name}
+                                            href={accountItemHref(item)}
+                                            className="w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {item.icon}
+                                                <span className="truncate">{item.name}</span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                    <div className="px-2 pt-2">
+                        <Link href="/settings?tab=integrations" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium py-2 w-full transition-colors">
+                            <div className="w-5 h-5 rounded-full border border-dashed border-muted-foreground flex items-center justify-center shrink-0">
+                                <Plus className="w-3 h-3" />
+                            </div>
+                            Account hinzufügen
+                        </Link>
+                    </div>
+                </div>
             </aside>
 
             {/* Main */}
