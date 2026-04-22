@@ -891,14 +891,14 @@ function CalendarContent() {
     return (
         <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
             {/* Left main navigation sidebar — kept consistent with dashboard nav */}
-            <aside className="w-[220px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0">
+            <aside className="w-[220px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0 overflow-y-auto">
                 <div className="flex items-center gap-2 px-4 h-14 shrink-0 border-b border-sidebar-border">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                         <CalendarIcon className="w-4 h-4" />
                     </div>
                     <span className="font-bold text-lg tracking-tight text-foreground">Nexaro</span>
                 </div>
-                <nav className="px-2 py-4 space-y-0.5">
+                <nav className="px-2 py-4 space-y-0.5 flex-1 min-h-0">
                     <Link href="/dashboard" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/dashboard" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                         <LayoutDashboard className="w-4 h-4 shrink-0" />
                         Dashboard
