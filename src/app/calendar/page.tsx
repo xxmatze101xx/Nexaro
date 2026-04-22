@@ -7,6 +7,7 @@ import {
     LayoutDashboard, FolderOpen, Settings as SettingsIcon, Bot,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -890,15 +891,45 @@ function CalendarContent() {
 
     return (
         <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
-            {/* Left main navigation sidebar — kept consistent with dashboard nav */}
-            <aside className="w-[220px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0 overflow-y-auto">
-                <div className="flex items-center gap-2 px-4 h-14 shrink-0 border-b border-sidebar-border">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <CalendarIcon className="w-4 h-4" />
-                    </div>
+            {/* Left main navigation sidebar — mirrors dashboard shell */}
+            <aside className="w-[260px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0">
+                <div className="flex items-center gap-2 px-4 h-14 shrink-0 mt-2">
+                    <Image src="/logo.png" alt="Nexaro Logo" width={32} height={32} className="object-contain" />
                     <span className="font-bold text-lg tracking-tight text-foreground">Nexaro</span>
                 </div>
-                <nav className="px-2 py-4 space-y-0.5 flex-1 min-h-0">
+
+                <div className="px-3 mt-4 mb-4 shrink-0">
+                    <div className="flex items-center rounded-lg p-2">
+                        {isLoading ? (
+                            <>
+                                <div className="w-9 h-9 rounded-full bg-muted animate-pulse shrink-0" />
+                                <div className="flex flex-col gap-2 overflow-hidden w-full ml-3">
+                                    <div className="h-4 bg-muted animate-pulse rounded w-24" />
+                                    <div className="h-3 bg-muted animate-pulse rounded w-12" />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative">
+                                    {user?.photoURL ? (
+                                        <Image src={user.photoURL} alt="Profile" fill className="object-cover" />
+                                    ) : (
+                                        user?.displayName?.charAt(0).toUpperCase() || "M"
+                                    )}
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                    <span className="text-sm font-semibold text-foreground truncate">{user?.displayName || "Dein Account"}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                                        <span className="text-xs text-muted-foreground font-medium">Online</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <nav className="px-2 space-y-0.5 shrink-0">
                     <Link href="/dashboard" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/dashboard" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                         <LayoutDashboard className="w-4 h-4 shrink-0" />
                         Dashboard
@@ -920,6 +951,13 @@ function CalendarContent() {
                         AI Chat
                     </Link>
                 </nav>
+
+                <div className="flex-1 overflow-y-auto px-2 pt-4 pb-4">
+                    <div className="px-3 py-2 rounded-md bg-muted/40 border border-border/40">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kalender</p>
+                        <p className="text-xs text-muted-foreground mt-1">Navigation links bleiben wie im Dashboard, nur der rechte Bereich zeigt deinen Kalender.</p>
+                    </div>
+                </div>
             </aside>
 
             {/* Main */}
