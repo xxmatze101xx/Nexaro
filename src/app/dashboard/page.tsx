@@ -866,7 +866,7 @@ function DashboardContent() {
         {/* Main Navigation */}
         <div className="px-2 mb-4 space-y-0.5 shrink-0">
           <button
-            onClick={() => { setShowDashboard(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSelectedMessage(null); setSidebarOpen(false); }}
+            onClick={() => { setShowDashboard(true); setShowCalendar(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSelectedMessage(null); setSidebarOpen(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showDashboard && !showFiles && !showAIChat && !showDecisions ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <LayoutDashboard className="w-4 h-4 shrink-0" />
@@ -880,21 +880,21 @@ function DashboardContent() {
             Kalender
           </button>
           <button
-            onClick={() => { setShowFiles(v => !v); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setShowSettings(false); }}
+            onClick={() => { setShowFiles(v => !v); setShowCalendar(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setShowSettings(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showFiles ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <FolderOpen className="w-4 h-4 shrink-0" />
             Files
           </button>
 <button
-            onClick={() => { setShowSettings(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setSelectedSidebarItem(null); }}
+            onClick={() => { setShowSettings(true); setShowCalendar(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setSelectedSidebarItem(null); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showSettings ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <Settings className="w-4 h-4 shrink-0" />
             Einstellungen
           </button>
           <button
-            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); setShowFiles(false); setShowDashboard(false); setShowSettings(false); }}
+            onClick={() => { setShowAIChat(v => !v); setShowCalendar(false); setShowDecisions(false); setShowFiles(false); setShowDashboard(false); setShowSettings(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showAIChat ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <Bot className="w-4 h-4 shrink-0" />
@@ -925,14 +925,14 @@ function DashboardContent() {
               {expandedAccounts[account.id] && account.items && (
                 <div className="ml-6 mt-0.5 space-y-0.5">
                   {account.items.map((item: { name: string; icon: React.ReactNode; source?: string; accountId?: string; folder?: string; badge?: number }) => {
-                    const isActive = !showDashboard && !showSettings && !showFiles && !showAIChat && !showDecisions &&
+                    const isActive = !showDashboard && !showCalendar && !showSettings && !showFiles && !showAIChat && !showDecisions &&
                       selectedSidebarItem?.source === item.source &&
                       selectedSidebarItem?.accountId === item.accountId &&
                       selectedSidebarItem?.folder === item.folder;
                     return (
                       <button
                         key={item.name}
-                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); setShowSettings(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setSidebarOpen(false); }}
+                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); setShowCalendar(false); setShowSettings(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setSidebarOpen(false); }}
                         className={cn(
                           "w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors",
                           isActive
