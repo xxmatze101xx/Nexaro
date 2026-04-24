@@ -45,11 +45,14 @@ interface SettingsPanelProps {
     className?: string;
 }
 
+const NAV_SECTION_IDS = ["Konto", "Dienste", "Zusammenfassungen", "VIP", "Sprache", "Abonnement", "Sicherheit"] as const;
+type SectionId = typeof NAV_SECTION_IDS[number];
+
 export function SettingsPanel({ className }: SettingsPanelProps) {
     const { user, isLoading: isAuthLoading } = useAuth();
     const { t } = useLanguage();
     const { showToast } = useToast();
-    const [activeSection, setActiveSection] = useState("Konto");
+    const [activeSection, setActiveSection] = useState<SectionId>("Konto");
     const [profilePic, setProfilePic] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState("");
     const [savedDisplayName, setSavedDisplayName] = useState("");
@@ -62,11 +65,16 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
     const [slackScopeUpgradeRequired, setSlackScopeUpgradeRequired] = useState(false);
     const [microsoftConnected, setMicrosoftConnected] = useState(false);
     const codeHandledRef = useRef(false);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const isAccountDirty = displayName.trim() !== savedDisplayName.trim();
 
-    // Load profile data when user becomes available
+    useEffect(() => {
+        if (!isAccountDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [isAccountDirty]);
+
     useEffect(() => {
         if (!user) return;
         getUserProfile(user.uid).then((profile) => {
@@ -80,15 +88,6 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
         });
     }, [user]);
 
-    // Warn before navigating away with unsaved profile changes
-    useEffect(() => {
-        if (!isAccountDirty) return;
-        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
-        window.addEventListener("beforeunload", handler);
-        return () => window.removeEventListener("beforeunload", handler);
-    }, [isAccountDirty]);
-
-    // OAuth callback handling
     useEffect(() => {
         if (!user?.uid) return;
 
@@ -164,38 +163,8 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
-
-    // Intersection observer for active nav section
-    useEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-        const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "VIP", "Sprache", "Abonnement", "Sicherheit"];
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) setActiveSection(entry.target.id);
-                });
-            },
-            { root: container, rootMargin: "-80px 0px -60% 0px" }
-        );
-        sectionIds.forEach(id => {
-            const el = document.getElementById(`settings-${id}`);
-            if (el) observer.observe(el);
-        });
-        return () => observer.disconnect();
-    }, []);
-
-    const scrollToSection = (id: string) => {
-        const element = document.getElementById(`settings-${id}`);
-        if (element && scrollContainerRef.current) {
-            const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-            const elementTop = element.getBoundingClientRect().top;
-            const offset = elementTop - containerTop + scrollContainerRef.current.scrollTop - 80;
-            scrollContainerRef.current.scrollTo({ top: offset, behavior: "smooth" });
-            setActiveSection(id);
-        }
-    };
 
     const handleGmailOAuthCallback = async (code: string, uid: string) => {
         try {
@@ -368,98 +337,105 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
         { id: "Salesforce", name: "Salesforce", domain: "salesforce.com", description: "Globale CRM-Plattform für Vertrieb, Service, Marketing und mehr in einem.", status: "disconnected" as const, email: null },
     ];
 
-    const NAV_ITEMS = [
-        { id: "Konto", label: t("settings.nav.account"), icon: <User className="w-4 h-4" /> },
-        { id: "Dienste", label: t("settings.nav.integrations"), icon: <LinkIcon className="w-4 h-4" /> },
-        { id: "Zusammenfassungen", label: t("settings.nav.digest"), icon: <Mail className="w-4 h-4" /> },
-        { id: "VIP", label: t("settings.nav.vip"), icon: <Star className="w-4 h-4" /> },
-        { id: "Sprache", label: t("settings.nav.language"), icon: <Globe className="w-4 h-4" /> },
-        { id: "Abonnement", label: t("settings.nav.billing"), icon: <CreditCard className="w-4 h-4" /> },
-        { id: "Sicherheit", label: t("settings.nav.security"), icon: <Shield className="w-4 h-4" /> },
+    const NAV_ITEMS: { id: SectionId; label: string; icon: React.ReactNode }[] = [
+        { id: "Konto", label: t("settings.nav.account"), icon: <User className="w-3.5 h-3.5" /> },
+        { id: "Dienste", label: t("settings.nav.integrations"), icon: <LinkIcon className="w-3.5 h-3.5" /> },
+        { id: "Zusammenfassungen", label: t("settings.nav.digest"), icon: <Mail className="w-3.5 h-3.5" /> },
+        { id: "VIP", label: t("settings.nav.vip"), icon: <Star className="w-3.5 h-3.5" /> },
+        { id: "Sprache", label: t("settings.nav.language"), icon: <Globe className="w-3.5 h-3.5" /> },
+        { id: "Abonnement", label: t("settings.nav.billing"), icon: <CreditCard className="w-3.5 h-3.5" /> },
+        { id: "Sicherheit", label: t("settings.nav.security"), icon: <Shield className="w-3.5 h-3.5" /> },
     ];
 
     return (
-        <div className={cn("flex flex-col h-full overflow-hidden", className)}>
-            {/* Body: sidebar nav + scrollable content */}
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left nav */}
-                <div className="w-40 shrink-0 border-r border-border flex flex-col py-3 px-2 gap-0.5">
-                    {NAV_ITEMS.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => scrollToSection(item.id)}
-                            className={cn(
-                                "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                                activeSection === item.id
-                                    ? "bg-primary/10 text-primary"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                            )}
-                        >
-                            {item.icon}
-                            {item.label}
-                        </button>
-                    ))}
-                    <div className="mt-auto pt-3 border-t border-border">
-                        <button
-                            onClick={async () => {
-                                try { await auth.signOut(); window.location.href = "/login"; }
-                                catch (error) { console.error("Logout error", error); }
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                        >
-                            <LogOut className="w-4 h-4" />
-                            {t("settings.signOut")}
-                        </button>
+        <div className={cn("flex flex-col h-full overflow-hidden bg-background", className)}>
+            {/* Top tab navigation — replaces the old left sidebar to avoid double-bar layout */}
+            <div className="shrink-0 border-b border-border bg-card">
+                <div className="flex items-center justify-between px-4 pt-3 pb-0">
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                        {NAV_ITEMS.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveSection(item.id)}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap transition-all border-b-2 -mb-px",
+                                    activeSection === item.id
+                                        ? "border-primary text-primary"
+                                        : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                                )}
+                            >
+                                {item.icon}
+                                {item.label}
+                            </button>
+                        ))}
                     </div>
+                    <button
+                        onClick={async () => {
+                            try { await auth.signOut(); window.location.href = "/login"; }
+                            catch (error) { console.error("Logout error", error); }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0 mb-px"
+                    >
+                        <LogOut className="w-3.5 h-3.5" />
+                        {t("settings.signOut")}
+                    </button>
                 </div>
+            </div>
 
-                {/* Scrollable content */}
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
-                    <div className="p-5 space-y-8 pb-16">
-                        <div id="settings-Konto">
-                            <AccountSection
-                                user={user}
-                                isAuthLoading={isAuthLoading}
-                                profilePic={profilePic}
-                                displayName={displayName}
-                                email={email}
-                                isUploading={isUploading}
-                                isSaving={isSaving}
-                                isDirty={isAccountDirty}
-                                onDisplayNameChange={setDisplayName}
-                                onFileChange={handleFileChange}
-                                onSave={handleSaveChanges}
-                            />
-                        </div>
-                        <div id="settings-Dienste">
-                            <IntegrationsSection
-                                integrations={integrations}
-                                gmailAccounts={gmailAccounts}
-                                calendarAccounts={calendarAccounts}
-                                slackScopeUpgradeRequired={slackScopeUpgradeRequired}
-                                onConnect={handleConnectProvider}
-                                onDisconnectGmail={handleDisconnectGmail}
-                                onDisconnectCalendar={handleDisconnectCalendar}
-                            />
-                        </div>
-                        <div id="settings-Zusammenfassungen">
-                            <DigestSection uid={user?.uid} userEmail={email} />
-                        </div>
-                        <div id="settings-VIP">
-                            <VipSendersSection uid={user?.uid} />
-                        </div>
-                        <div id="settings-Sprache">
-                            <LanguageSection />
-                        </div>
-                        <FeatureFlagsSection uid={user?.uid} />
-                        <div id="settings-Abonnement">
-                            <BillingSection />
-                        </div>
-                        <div id="settings-Sicherheit">
+            {/* Scrollable section content */}
+            <div className="flex-1 overflow-y-auto">
+                <div className="p-5 pb-16 max-w-3xl">
+                    {activeSection === "Konto" && (
+                        <AccountSection
+                            user={user}
+                            isAuthLoading={isAuthLoading}
+                            profilePic={profilePic}
+                            displayName={displayName}
+                            email={email}
+                            isUploading={isUploading}
+                            isSaving={isSaving}
+                            isDirty={isAccountDirty}
+                            onDisplayNameChange={setDisplayName}
+                            onFileChange={handleFileChange}
+                            onSave={handleSaveChanges}
+                        />
+                    )}
+                    {activeSection === "Dienste" && (
+                        <IntegrationsSection
+                            integrations={integrations}
+                            gmailAccounts={gmailAccounts}
+                            calendarAccounts={calendarAccounts}
+                            slackScopeUpgradeRequired={slackScopeUpgradeRequired}
+                            onConnect={handleConnectProvider}
+                            onDisconnectGmail={handleDisconnectGmail}
+                            onDisconnectCalendar={handleDisconnectCalendar}
+                        />
+                    )}
+                    {activeSection === "Zusammenfassungen" && (
+                        <DigestSection uid={user?.uid} userEmail={email} />
+                    )}
+                    {activeSection === "VIP" && (
+                        <VipSendersSection uid={user?.uid} />
+                    )}
+                    {activeSection === "Sprache" && (
+                        <LanguageSection />
+                    )}
+                    {activeSection === "Abonnement" && (
+                        <>
+                            <FeatureFlagsSection uid={user?.uid} />
+                            <div className="mt-8">
+                                <BillingSection />
+                            </div>
+                        </>
+                    )}
+                    {activeSection === "Sicherheit" && (
+                        <>
                             <SecuritySection />
-                            <DataPurgeSection user={user} />
-                        </div>
-                    </div>
+                            <div className="mt-8">
+                                <DataPurgeSection user={user} />
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
