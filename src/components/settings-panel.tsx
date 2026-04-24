@@ -352,7 +352,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             {/* Top tab navigation — replaces the old left sidebar to avoid double-bar layout */}
             <div className="shrink-0 border-b border-border bg-card">
                 <div className="flex items-center justify-between px-4 pt-3 pb-0">
-                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
                         {NAV_ITEMS.map(item => (
                             <button
                                 key={item.id}
