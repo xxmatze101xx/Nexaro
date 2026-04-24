@@ -736,7 +736,7 @@ export default function CalendarPage() {
     );
 }
 
-function CalendarContent() {
+export function CalendarContent({ embedded, onBack }: { embedded?: boolean; onBack?: () => void } = {}) {
     const { user } = useAuth();
     const { t, locale } = useLanguage();
     const { showToast } = useToast();
@@ -890,9 +890,9 @@ function CalendarContent() {
     })();
 
     return (
-        <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
+        <div className={embedded ? "flex flex-1 w-full overflow-hidden" : "flex h-screen w-full bg-background overflow-hidden text-foreground"}>
             {/* Left main navigation sidebar — mirrors dashboard shell */}
-            <aside className="w-[260px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0">
+            {!embedded && <aside className="w-[260px] hidden md:flex flex-col border-r border-sidebar-border bg-sidebar h-full shrink-0">
                 <div className="flex items-center gap-2 px-4 h-14 shrink-0 mt-2">
                     <Image src="/logo.png" alt="Nexaro Logo" width={32} height={32} className="object-contain" />
                     <span className="font-bold text-lg tracking-tight text-foreground">Nexaro</span>
@@ -958,16 +958,22 @@ function CalendarContent() {
                         <p className="text-xs text-muted-foreground mt-1">Navigation links bleiben wie im Dashboard, nur der rechte Bereich zeigt deinen Kalender.</p>
                     </div>
                 </div>
-            </aside>
+            </aside>}
 
             {/* Main */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
                 <header className="h-14 border-b border-border flex items-center justify-between px-5 bg-background shrink-0 gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                        <Link href="/dashboard" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50 shrink-0 transition-colors">
-                            <ChevronLeft className="w-3.5 h-3.5" /> Dashboard
-                        </Link>
+                        {onBack ? (
+                            <button onClick={onBack} className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50 shrink-0 transition-colors">
+                                <ChevronLeft className="w-3.5 h-3.5" /> Dashboard
+                            </button>
+                        ) : (
+                            <Link href="/dashboard" className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground bg-muted/50 px-3 py-1.5 rounded-lg border border-border/50 shrink-0 transition-colors">
+                                <ChevronLeft className="w-3.5 h-3.5" /> Dashboard
+                            </Link>
+                        )}
                         <h1 className="text-sm font-bold tracking-tight capitalize truncate">{headerLabel}</h1>
                         {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground shrink-0" />}
                         <span className="text-[10px] text-muted-foreground px-2 py-0.5 rounded-full bg-muted/60 border border-border/40 hidden xl:inline-flex items-center shrink-0">

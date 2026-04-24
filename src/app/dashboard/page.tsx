@@ -32,6 +32,7 @@ import { AIChatPanel } from "@/components/ai-chat-panel";
 import { FilesPanel } from "@/components/files-panel";
 import { SettingsPanel } from "@/components/settings-panel";
 import { HomeDashboard } from "@/components/home-dashboard";
+import { CalendarContent } from "@/app/calendar/page";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -109,6 +110,7 @@ function DashboardContent() {
   const [showFiles, setShowFiles] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
@@ -870,10 +872,13 @@ function DashboardContent() {
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Dashboard
           </button>
-          <Link href="/calendar" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/calendar" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+          <button
+            onClick={() => { setShowCalendar(true); setShowDashboard(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSidebarOpen(false); }}
+            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showCalendar ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+          >
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
-          </Link>
+          </button>
           <button
             onClick={() => { setShowFiles(v => !v); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setShowSettings(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showFiles ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
@@ -983,8 +988,14 @@ function DashboardContent() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <header className="min-h-14 border-b border-border flex flex-wrap items-center gap-2 md:gap-4 justify-between px-3 md:px-6 py-2 bg-card">
+        {showCalendar && (
+          <CalendarContent
+            embedded={true}
+            onBack={() => { setShowCalendar(false); setShowDashboard(true); }}
+          />
+        )}
+        {/* Top Bar — hidden when calendar is shown */}
+        {!showCalendar && <header className="min-h-14 border-b border-border flex flex-wrap items-center gap-2 md:gap-4 justify-between px-3 md:px-6 py-2 bg-card">
           <div className="flex items-center gap-2 md:gap-3 shrink-0 min-w-0">
             {/* Hamburger — mobile only */}
             <button
@@ -1151,18 +1162,18 @@ function DashboardContent() {
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
           </div>
-        </header>
+        </header>}
 
-        {/* FEAT-03: Inbox Overview Widget — hidden on home dashboard */}
-        {!showDashboard && (
+        {/* FEAT-03: Inbox Overview Widget — hidden on home dashboard or calendar */}
+        {!showDashboard && !showCalendar && (
           <InboxOverviewWidget
             messages={allMessages}
             onFilter={(source) => setSelectedSidebarItem({ source })}
           />
         )}
 
-        {/* Content Area */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Content Area — hidden when calendar is shown (calendar renders above) */}
+        {!showCalendar && <div className="flex-1 flex overflow-hidden">
 
           {/* ── Home Dashboard ─────────────────────────────────────── */}
           {showDashboard ? (
@@ -1344,7 +1355,7 @@ function DashboardContent() {
           </ErrorBoundary>
           </>
           )}{/* end Slack/Gmail conditional */}
-        </div>
+        </div>}{/* end !showCalendar content area */}
       </div>
 
       {/* LIVE-02: New Message Toast (bottom right) */}
