@@ -482,7 +482,7 @@ export async function fetchEmailsPage(
         if (folder === 'INBOX') params.set('labelIds', 'INBOX');
         else if (folder === 'SENT') params.set('labelIds', 'SENT');
         else if (folder === 'STARRED') params.set('labelIds', 'STARRED');
-        else if (folder === 'TRASH') params.set('labelIds', 'TRASH');
+        else if (folder === 'TRASH') { params.set('labelIds', 'TRASH'); params.set('includeSpamTrash', 'true'); }
         else if (folder === 'ARCHIVE') params.set('q', '-in:inbox -in:trash -in:spam');
         if (pageToken) params.set('pageToken', pageToken);
 
