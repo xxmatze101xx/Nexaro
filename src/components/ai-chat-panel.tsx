@@ -1071,8 +1071,8 @@ export function AIChatPanel({ className, allMessages = [], upcomingMeetings = []
                             )}
                             <div className="grid grid-cols-2 gap-2 w-full max-w-sm mt-1">
                                 {[
+                                    { title: "Executive Briefing", label: "priorities, pending actions & context", action: "Generate my daily Executive Briefing with priority topics, pending actions, and key context from my inbox." },
                                     { title: "What are my top", label: "priorities today?", action: "What are my top priorities today?" },
-                                    { title: "Summarize my", label: "unread emails", action: "Summarize my unread emails" },
                                     { title: "Help me draft", label: "a quick update", action: "Help me draft a quick update" },
                                     { title: "What meetings", label: "do I have today?", action: "What meetings do I have today?" },
                                 ].map((suggestion, index) => (

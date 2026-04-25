@@ -134,33 +134,3 @@ export function buildRagUserPrompt(question: string, context: string): string {
     return `Question: ${question}\n\nRelevant messages from your inbox:\n\n${context}`;
 }
 
-// ── Executive Briefing ─────────────────────────────────────────────────────
-
-export const EXECUTIVE_BRIEFING_SYSTEM = `You are a chief of staff generating a daily executive briefing for a CEO.
-Rules:
-- Structure: 1) Top priorities (max 3), 2) Key decisions pending, 3) Important updates.
-- Each item: one sentence max.
-- Total length: under 200 words.
-- Tone: direct, no fluff.
-- Do NOT include a greeting or "Good morning" opener.`;
-
-export function buildExecutiveBriefingUserPrompt(
-    messages: Array<{
-        from: string;
-        subject: string;
-        snippet: string;
-        source: string;
-        importanceScore: number;
-    }>,
-): string {
-    const sorted = [...messages].sort((a, b) => b.importanceScore - a.importanceScore);
-    const top = sorted.slice(0, 15);
-
-    const messageList = top
-        .map((m, i) =>
-            `[${i + 1}] [${m.source.toUpperCase()}] Score:${m.importanceScore} | From: ${m.from}\nSubject: ${m.subject}\n${m.snippet}`,
-        )
-        .join("\n\n");
-
-    return `Generate a daily executive briefing based on these recent messages:\n\n${messageList}`;
-}

@@ -79,7 +79,6 @@ function SettingsContent() {
 
     const isAccountDirty = displayName.trim() !== savedDisplayName.trim();
 
-    // Warn the user before navigating away with unsaved changes
     useEffect(() => {
         if (!isAccountDirty) return;
         const handler = (e: BeforeUnloadEvent) => {
@@ -90,12 +89,10 @@ function SettingsContent() {
         return () => window.removeEventListener("beforeunload", handler);
     }, [isAccountDirty]);
 
-    // Force light mode on this page
     useEffect(() => {
         document.documentElement.classList.remove("dark");
     }, []);
 
-    // Load profile data when user becomes available
     useEffect(() => {
         if (!user) return;
         getUserProfile(user.uid).then((profile) => {
@@ -109,7 +106,6 @@ function SettingsContent() {
         });
     }, [user]);
 
-    // OAuth callback handling
     useEffect(() => {
         if (!user?.uid) return;
 
@@ -139,17 +135,13 @@ function SettingsContent() {
                 void handleDriveTokenCallback(accessToken, refreshToken, expiresAt);
             }
         } else {
-            // Load all integration statuses
             getGmailAccounts(user.uid).then(setGmailAccounts);
             getCalendarAccounts(user.uid).then(setCalendarAccounts);
 
-            // Optimistic update: trust the OAuth redirect param immediately to avoid race
-            // condition where Firestore hasn't propagated the write yet
             if (slackConnectedParam === "true") setSlackConnected(true);
             if (microsoftConnectedParam === "true") setMicrosoftConnected(true);
             if (driveConnectedParam === "true") setDriveConnected(true);
 
-            // Async verify (with retry to handle Firestore propagation delay)
             const verifyWithRetry = async (
                 fetcher: () => Promise<unknown>,
                 setter: (v: boolean) => void,
@@ -160,7 +152,6 @@ function SettingsContent() {
                     if (conn) { setter(true); return; }
                     if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 600 * (i + 1)));
                 }
-                // If all retries fail but optimistic param was set, keep optimistic state
             };
 
             const checkSlackScopes = async () => {
@@ -174,7 +165,7 @@ function SettingsContent() {
                         setSlackScopeUpgradeRequired(data.needsUpgrade === true);
                     }
                 } catch {
-                    // ignore — scope check is best-effort
+                    // ignore
                 }
             };
 
@@ -216,7 +207,6 @@ function SettingsContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
-    // Intersection observer for active nav section
     useEffect(() => {
         const sectionIds = ["Konto", "Dienste", "Zusammenfassungen", "Sprache", "Abonnement", "Sicherheit"];
         const observer = new IntersectionObserver(
@@ -234,7 +224,6 @@ function SettingsContent() {
         return () => observer.disconnect();
     }, []);
 
-    // Deep linking: ?section=integrations|account|security|digest|language|billing
     useEffect(() => {
         const sectionParam = searchParams.get("section");
         if (!sectionParam) return;
@@ -248,7 +237,6 @@ function SettingsContent() {
         };
         const id = map[sectionParam.toLowerCase()];
         if (!id) return;
-        // Defer until DOM is settled
         const handle = window.setTimeout(() => {
             const el = document.getElementById(id);
             if (el) {
@@ -309,7 +297,6 @@ function SettingsContent() {
                         localStorage.setItem(`gmail_token_expiry_${newEmail}`, (Date.now() + (data.expires_in ?? 3599) * 1000).toString());
                         if (data.refresh_token) await saveGmailRefreshToken(uid, data.refresh_token, newEmail);
                         setGmailAccounts(await getGmailAccounts(uid));
-                        // Register Gmail push watch (fire-and-forget — polling stays as fallback)
                         const idToken = await user?.getIdToken();
                         if (idToken) {
                             void fetch("/api/gmail/watch", {
@@ -339,14 +326,13 @@ function SettingsContent() {
             if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
 
             if (data.access_token) {
-                // Extract email from id_token (JWT) — avoids extra userinfo API call
                 let accountEmail: string | undefined;
                 if (data.id_token) {
                     try {
                         const payload = JSON.parse(atob(data.id_token.split(".")[1])) as { email?: string };
                         accountEmail = payload.email;
                     } catch {
-                        // fallback to userinfo API
+                        // fallback
                     }
                 }
                 if (!accountEmail) {
@@ -415,7 +401,6 @@ function SettingsContent() {
         if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "ℹ️"); return; }
 
         if (integrationId === "Gmail") {
-            // Server-side auth route ensures redirect_uri is always from env var (no mismatch)
             window.location.href = "/api/gmail/auth";
         } else if (integrationId === "Google Calendar") {
             window.location.href = "/api/calendar/auth";
@@ -505,9 +490,9 @@ function SettingsContent() {
     ];
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <div className="min-h-screen bg-[#F7F7F8] text-foreground flex flex-col">
             {/* Header */}
-            <header className="h-14 border-b border-border flex items-center px-6 bg-background/80 backdrop-blur-xl shrink-0 sticky top-0 z-50">
+            <header className="h-14 border-b border-border flex items-center px-6 bg-white/90 backdrop-blur-xl shrink-0 sticky top-0 z-50 shadow-sm">
                 <div className="flex items-center justify-between w-full max-w-5xl mx-auto">
                     <div className="flex items-center gap-3">
                         <button
@@ -516,84 +501,99 @@ function SettingsContent() {
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                             <div className="p-1.5 bg-primary/10 text-primary rounded-lg">
                                 <SettingsIcon className="w-4 h-4" />
                             </div>
-                            <h1 className="text-sm font-semibold">{t("settings.title")}</h1>
+                            <h1 className="text-sm font-semibold text-foreground">{t("settings.title")}</h1>
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Main */}
-            <main className="flex-1 overflow-visible p-6 lg:p-8">
-                <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <main className="flex-1 overflow-visible px-6 py-8 lg:px-8">
+                <div className="max-w-5xl mx-auto flex gap-8 items-start">
 
                     {/* Sidebar Nav */}
-                    <div className="lg:col-span-3 sticky top-24 hidden lg:block">
-                        <div className="space-y-0.5">
-                            {NAV_ITEMS.map(item => (
+                    <aside className="w-52 shrink-0 sticky top-24 hidden lg:flex flex-col">
+                        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+                            <div className="px-2 py-2 space-y-0.5">
+                                {NAV_ITEMS.map(item => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => scrollToSection(item.id)}
+                                        className={cn(
+                                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                                            activeSection === item.id
+                                                ? "bg-primary text-primary-foreground shadow-sm"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        )}
+                                    >
+                                        {item.icon}
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="px-2 py-2 border-t border-border">
                                 <button
-                                    key={item.id}
-                                    onClick={() => scrollToSection(item.id)}
-                                    className={cn(
-                                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                                        activeSection === item.id
-                                            ? "bg-primary/10 text-primary"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                    )}
+                                    onClick={async () => {
+                                        try { await auth.signOut(); window.location.href = "/login"; }
+                                        catch (error) { console.error("Logout error", error); }
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/8 rounded-xl transition-colors"
                                 >
-                                    {item.icon}
-                                    {item.label}
+                                    <LogOut className="w-4 h-4" />
+                                    {t("settings.signOut")}
                                 </button>
-                            ))}
+                            </div>
                         </div>
-
-                        <div className="mt-4 pt-4 border-t border-border">
-                            <button
-                                onClick={async () => {
-                                    try { await auth.signOut(); window.location.href = "/login"; }
-                                    catch (error) { console.error("Logout error", error); }
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                            >
-                                <LogOut className="w-4 h-4" />
-                                {t("settings.signOut")}
-                            </button>
-                        </div>
-                    </div>
+                    </aside>
 
                     {/* Content */}
-                    <div className="lg:col-span-9 space-y-10 pb-16">
-                        <AccountSection
-                            user={user}
-                            isAuthLoading={isAuthLoading}
-                            profilePic={profilePic}
-                            displayName={displayName}
-                            email={email}
-                            isUploading={isUploading}
-                            isSaving={isSaving}
-                            isDirty={isAccountDirty}
-                            onDisplayNameChange={setDisplayName}
-                            onFileChange={handleFileChange}
-                            onSave={handleSaveChanges}
-                        />
-                        <IntegrationsSection
-                            integrations={integrations}
-                            gmailAccounts={gmailAccounts}
-                            calendarAccounts={calendarAccounts}
-                            slackScopeUpgradeRequired={slackScopeUpgradeRequired}
-                            onConnect={handleConnectProvider}
-                            onDisconnectGmail={handleDisconnectGmail}
-                            onDisconnectCalendar={handleDisconnectCalendar}
-                        />
-                        <DigestSection uid={user?.uid} userEmail={email} />
-                        <LanguageSection />
+                    <div className="flex-1 min-w-0 space-y-6 pb-16">
+                        <div id="Konto">
+                            <AccountSection
+                                user={user}
+                                isAuthLoading={isAuthLoading}
+                                profilePic={profilePic}
+                                displayName={displayName}
+                                email={email}
+                                isUploading={isUploading}
+                                isSaving={isSaving}
+                                isDirty={isAccountDirty}
+                                onDisplayNameChange={setDisplayName}
+                                onFileChange={handleFileChange}
+                                onSave={handleSaveChanges}
+                            />
+                        </div>
+                        <div id="Dienste">
+                            <IntegrationsSection
+                                integrations={integrations}
+                                gmailAccounts={gmailAccounts}
+                                calendarAccounts={calendarAccounts}
+                                slackScopeUpgradeRequired={slackScopeUpgradeRequired}
+                                onConnect={handleConnectProvider}
+                                onDisconnectGmail={handleDisconnectGmail}
+                                onDisconnectCalendar={handleDisconnectCalendar}
+                            />
+                        </div>
+                        <div id="Zusammenfassungen">
+                            <DigestSection uid={user?.uid} userEmail={email} />
+                        </div>
+                        <div id="Sprache">
+                            <LanguageSection />
+                        </div>
                         <FeatureFlagsSection uid={user?.uid} />
-                        <BillingSection />
-                        <SecuritySection />
-                        <DataPurgeSection user={user} />
+                        <div id="Abonnement">
+                            <BillingSection />
+                        </div>
+                        <div id="Sicherheit">
+                            <SecuritySection />
+                            <div className="mt-6">
+                                <DataPurgeSection user={user} />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

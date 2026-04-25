@@ -24,8 +24,6 @@ import { AIDraftPanel } from "@/components/ai-draft-panel";
 import { NewMessageToast } from "@/components/new-message-toast";
 import { InboxOverviewWidget } from "@/components/inbox-overview-widget";
 import { SlackChannelView } from "@/components/slack-channel-view";
-import { DailyBriefingPanel } from "@/components/daily-briefing-panel";
-import { useDailyBriefing } from "@/hooks/useDailyBriefing";
 import { MeetingPrepPanel } from "@/components/meeting-prep-panel";
 import { useMeetingPrep } from "@/hooks/useMeetingPrep";
 import { DecisionsDashboard } from "@/components/decisions-dashboard";
@@ -34,6 +32,7 @@ import { AIChatPanel } from "@/components/ai-chat-panel";
 import { FilesPanel } from "@/components/files-panel";
 import { SettingsPanel } from "@/components/settings-panel";
 import { HomeDashboard } from "@/components/home-dashboard";
+import { CalendarContent } from "@/app/calendar/page";
 import { useToast } from "@/hooks/useToast";
 import {
   Inbox,
@@ -106,12 +105,12 @@ function DashboardContent() {
   const [inboxNextPageToken, setInboxNextPageToken] = useState<string | null>(null);
   const [isFolderLoading, setIsFolderLoading] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
   const [showDecisions, setShowDecisions] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [searchScope, setSearchScope] = useState<"global" | "folder">("global");
   // Maps Gmail external_id → importance_score from the Python pipeline in Firestore
   const [firestoreGmailScores, setFirestoreGmailScores] = useState<Record<string, number>>({});
@@ -450,27 +449,32 @@ function DashboardContent() {
       if (selectedSidebarItem.accountId) msgs = msgs.filter(m => m.accountId === selectedSidebarItem.accountId);
     }
 
-    // Filter by search — semantic results take priority over keyword filter
+    // Filter by search — keyword filter always runs so every source (Gmail, Slack,
+    // Teams, Outlook, …) stays searchable; semantic matches are unioned on top
+    // when available so we never hide a literal hit just because a message has
+    // no stored embedding yet.
     if (searchQuery) {
-      if (semanticResults && !semanticFallback) {
-        // Semantic search: rank by vector similarity score
-        const scoreMap = new Map(semanticResults.map(r => [r.messageId, r.score]));
-        msgs = msgs.filter(m => scoreMap.has(m.id) || scoreMap.has(m.external_id));
-        msgs.sort((a, b) => {
-          const sa = scoreMap.get(a.id) ?? scoreMap.get(a.external_id) ?? 0;
-          const sb = scoreMap.get(b.id) ?? scoreMap.get(b.external_id) ?? 0;
-          return sb - sa;
-        });
-      } else {
-        // Keyword fallback (semantic not yet available or no embeddings stored)
-        const q = searchQuery.toLowerCase();
-        msgs = msgs.filter(
-          (m) =>
-            m.content.toLowerCase().includes(q) ||
-            m.sender.toLowerCase().includes(q) ||
-            (m.subject ?? "").toLowerCase().includes(q)
-        );
-      }
+      const q = searchQuery.toLowerCase();
+      const stripHtml = (h: string) =>
+        h.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/gi, " ");
+      const matchesKeyword = (m: Message) =>
+        m.content.toLowerCase().includes(q) ||
+        m.sender.toLowerCase().includes(q) ||
+        (m.senderEmail ?? "").toLowerCase().includes(q) ||
+        (m.subject ?? "").toLowerCase().includes(q) ||
+        (m.htmlContent ? stripHtml(m.htmlContent).toLowerCase().includes(q) : false) ||
+        (m.labels ?? []).some(l => l.toLowerCase().includes(q));
+
+      const semanticIds =
+        semanticResults && !semanticFallback
+          ? new Set(semanticResults.map(r => r.messageId))
+          : null;
+
+      msgs = msgs.filter(m => {
+        if (matchesKeyword(m)) return true;
+        if (semanticIds) return semanticIds.has(m.id) || semanticIds.has(m.external_id);
+        return false;
+      });
     }
 
     // Sort
@@ -490,15 +494,6 @@ function DashboardContent() {
 
     return msgs;
   }, [displayMessages, allMessages, selectedSidebarItem, searchQuery, searchScope, sortOrder, semanticResults, semanticFallback, messageMeta]);
-
-  // ── Daily Briefing ──────────────────────────────────────────────────────
-  const {
-    briefing: dailyBriefing,
-    generatedAt: briefingGeneratedAt,
-    isGenerating: isBriefingGenerating,
-    error: briefingError,
-    generate: generateBriefing,
-  } = useDailyBriefing(user?.uid ?? null, allMessages);
 
   // ── Meeting Prep: upcoming meetings + AI briefings ───────────────────────
   const calendarEmails = useMemo(() => gmailAccounts.map(acc => acc.email), [gmailAccounts]);
@@ -567,47 +562,6 @@ function DashboardContent() {
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("nexaro-dark-mode", String(next));
   };
-
-  // Keyboard shortcuts: e=archive, r=reply, d=delete, u=toggle-read, ?=overlay, Esc=close
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const tag = (e.target as HTMLElement).tagName.toLowerCase();
-    const isEditable = (e.target as HTMLElement).hasAttribute("contenteditable");
-    if (tag === "input" || tag === "textarea" || tag === "select" || isEditable) return;
-
-    if (e.key === "?") {
-      e.preventDefault();
-      setShowShortcuts(prev => !prev);
-      return;
-    }
-    if (e.key === "Escape") {
-      if (showShortcuts) { setShowShortcuts(false); return; }
-      if (selectedMessage) { setSelectedMessage(null); return; }
-      return;
-    }
-    if (!selectedMessage) return;
-
-    if (e.key === "e" || e.key === "E") {
-      e.preventDefault();
-      handleArchive(selectedMessage);
-    } else if (e.key === "r" || e.key === "R") {
-      e.preventDefault();
-      document.dispatchEvent(new CustomEvent("nexaro:reply"));
-    } else if (e.key === "d" || e.key === "D") {
-      e.preventDefault();
-      handleDelete(selectedMessage);
-    } else if (e.key === "u" || e.key === "U") {
-      e.preventDefault();
-      handleToggleRead(selectedMessage);
-    } else if (e.key === "s" || e.key === "S") {
-      e.preventDefault();
-      handleStar(selectedMessage);
-    }
-  }, [selectedMessage, showShortcuts]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
 
   const handleArchive = async (message: Message) => {
     if (message.source !== "gmail" || !user || !message.accountId) return;
@@ -862,44 +816,6 @@ function DashboardContent() {
         />
       )}
 
-      {/* Keyboard Shortcuts Overlay */}
-      {showShortcuts && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            className="bg-card border border-border rounded-xl shadow-2xl p-6 w-80"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-sm font-bold text-foreground mb-4 tracking-tight uppercase">Keyboard Shortcuts</h2>
-            <div className="space-y-3">
-              {[
-                { key: "e", description: "Archivieren" },
-                { key: "r", description: "Antworten" },
-                { key: "d", description: "Löschen" },
-                { key: "u", description: "Gelesen / Ungelesen" },
-                { key: "s", description: "Favorit markieren" },
-                { key: "?", description: "Shortcuts anzeigen/verstecken" },
-                { key: "Esc", description: "Overlay schließen / Auswahl aufheben" },
-              ].map(({ key, description }) => (
-                <div key={key} className="flex items-center justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">{description}</span>
-                  <kbd className="px-2 py-0.5 rounded-md border border-border bg-muted text-xs font-mono text-foreground shrink-0">
-                    {key}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-            <button
-              className="mt-5 w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowShortcuts(false)}
-            >
-              Press Esc or ? to close
-            </button>
-          </div>
-        </div>
-      )}
       {/* Sidebar — fixed drawer on mobile, in-flow on md+ */}
       <aside className={cn(
         "w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col h-full",
@@ -947,49 +863,38 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="px-4 mb-4 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Suchen..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted/70 border border-transparent rounded-lg pl-9 pr-3 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:bg-background focus:border-border transition-colors"
-            />
-          </div>
-        </div>
-
         {/* Main Navigation */}
         <div className="px-2 mb-4 space-y-0.5 shrink-0">
           <button
-            onClick={() => { setShowDashboard(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSelectedMessage(null); setSidebarOpen(false); }}
+            onClick={() => { setShowDashboard(true); setShowCalendar(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSelectedMessage(null); setSidebarOpen(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showDashboard && !showFiles && !showAIChat && !showDecisions ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <LayoutDashboard className="w-4 h-4 shrink-0" />
             Dashboard
           </button>
-          <Link href="/calendar" className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", pathname === "/calendar" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+          <button
+            onClick={() => { setShowCalendar(true); setShowDashboard(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowSettings(false); setSelectedSidebarItem(null); setSidebarOpen(false); }}
+            className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showCalendar ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+          >
             <Calendar className="w-4 h-4 shrink-0" />
             Kalender
-          </Link>
+          </button>
           <button
-            onClick={() => { setShowFiles(v => !v); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setShowSettings(false); }}
+            onClick={() => { setShowFiles(v => !v); setShowCalendar(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setShowSettings(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showFiles ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <FolderOpen className="w-4 h-4 shrink-0" />
             Files
           </button>
 <button
-            onClick={() => { setShowSettings(true); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setSelectedSidebarItem(null); }}
+            onClick={() => { setShowSettings(true); setShowCalendar(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setShowDashboard(false); setSelectedSidebarItem(null); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showSettings ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <Settings className="w-4 h-4 shrink-0" />
             Einstellungen
           </button>
           <button
-            onClick={() => { setShowAIChat(v => !v); setShowDecisions(false); setShowFiles(false); setShowDashboard(false); setShowSettings(false); }}
+            onClick={() => { setShowAIChat(v => !v); setShowCalendar(false); setShowDecisions(false); setShowFiles(false); setShowDashboard(false); setShowSettings(false); }}
             className={cn("w-full flex items-center gap-3 p-2 rounded-md font-medium text-sm transition-colors", showAIChat ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <Bot className="w-4 h-4 shrink-0" />
@@ -1020,14 +925,14 @@ function DashboardContent() {
               {expandedAccounts[account.id] && account.items && (
                 <div className="ml-6 mt-0.5 space-y-0.5">
                   {account.items.map((item: { name: string; icon: React.ReactNode; source?: string; accountId?: string; folder?: string; badge?: number }) => {
-                    const isActive = !showDashboard && !showSettings && !showFiles && !showAIChat && !showDecisions &&
+                    const isActive = !showDashboard && !showCalendar && !showSettings && !showFiles && !showAIChat && !showDecisions &&
                       selectedSidebarItem?.source === item.source &&
                       selectedSidebarItem?.accountId === item.accountId &&
                       selectedSidebarItem?.folder === item.folder;
                     return (
                       <button
                         key={item.name}
-                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); setShowSettings(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setSidebarOpen(false); }}
+                        onClick={() => { setSelectedSidebarItem({ source: item.source ?? "", accountId: item.accountId, folder: item.folder }); setShowDashboard(false); setShowCalendar(false); setShowSettings(false); setShowFiles(false); setShowAIChat(false); setShowDecisions(false); setSidebarOpen(false); }}
                         className={cn(
                           "w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors",
                           isActive
@@ -1083,8 +988,14 @@ function DashboardContent() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <header className="min-h-14 border-b border-border flex flex-wrap items-center gap-2 md:gap-4 justify-between px-3 md:px-6 py-2 bg-card">
+        {showCalendar && (
+          <CalendarContent
+            embedded={true}
+            onBack={() => { setShowCalendar(false); setShowDashboard(true); }}
+          />
+        )}
+        {/* Top Bar — hidden when calendar is shown */}
+        {!showCalendar && <header className="min-h-14 border-b border-border flex flex-wrap items-center gap-2 md:gap-4 justify-between px-3 md:px-6 py-2 bg-card">
           <div className="flex items-center gap-2 md:gap-3 shrink-0 min-w-0">
             {/* Hamburger — mobile only */}
             <button
@@ -1250,39 +1161,19 @@ function DashboardContent() {
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <button
-              onClick={() => setShowShortcuts(true)}
-              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground font-mono text-xs border border-border shrink-0"
-              title="Keyboard shortcuts (?)"
-            >
-              ?
-            </button>
           </div>
-        </header>
+        </header>}
 
-        {/* FEAT-03: Inbox Overview Widget — hidden on home dashboard */}
-        {!showDashboard && (
+        {/* FEAT-03: Inbox Overview Widget — hidden on home dashboard or calendar */}
+        {!showDashboard && !showCalendar && (
           <InboxOverviewWidget
             messages={allMessages}
             onFilter={(source) => setSelectedSidebarItem({ source })}
           />
         )}
 
-        {/* Daily Executive Briefing — hidden on home dashboard and settings */}
-        {!showDashboard && !showSettings && allMessages.length >= 5 && (
-          <div className="px-6 pt-4 pb-0">
-            <DailyBriefingPanel
-              briefing={dailyBriefing}
-              generatedAt={briefingGeneratedAt}
-              isGenerating={isBriefingGenerating}
-              error={briefingError}
-              onGenerate={generateBriefing}
-            />
-          </div>
-        )}
-
-        {/* Content Area */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Content Area — hidden when calendar is shown (calendar renders above) */}
+        {!showCalendar && <div className="flex-1 flex overflow-hidden">
 
           {/* ── Home Dashboard ─────────────────────────────────────── */}
           {showDashboard ? (
@@ -1464,7 +1355,7 @@ function DashboardContent() {
           </ErrorBoundary>
           </>
           )}{/* end Slack/Gmail conditional */}
-        </div>
+        </div>}{/* end !showCalendar content area */}
       </div>
 
       {/* LIVE-02: New Message Toast (bottom right) */}
