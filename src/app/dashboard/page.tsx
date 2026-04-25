@@ -362,12 +362,28 @@ function DashboardContent() {
     if (!accountEmail) return;
 
     let isMounted = true;
+    let apiCompleted = false;
     setIsFolderLoading(true);
     setFolderMessages([]);
     setFolderPageToken(null);
 
+    // For TRASH: pre-populate immediately from IndexedDB cache while the API call is in flight.
+    // The API result overwrites this once it arrives; the cache just prevents an empty screen.
+    if (folder === 'TRASH') {
+      getCachedEmails()
+        .then(cachedAll => {
+          if (!isMounted || apiCompleted) return;
+          const cachedTrash = cachedAll
+            .filter(m => (m.labelIds ?? []).includes('TRASH'))
+            .map(m => parseGmailToNexaroMessage(m));
+          if (cachedTrash.length > 0) setFolderMessages(cachedTrash);
+        })
+        .catch(() => {});
+    }
+
     fetchEmailsPage(user.uid, accountEmail, folder as 'SENT' | 'STARRED' | 'TRASH' | 'ARCHIVE', 20)
       .then(result => {
+        apiCompleted = true;
         if (!isMounted || !result) return;
         setFolderMessages(result.messages.map(m => parseGmailToNexaroMessage(m)));
         setFolderPageToken(result.nextPageToken);
