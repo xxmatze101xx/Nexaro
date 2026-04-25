@@ -619,9 +619,16 @@ function DashboardContent() {
       await trashEmail(user.uid, message.accountId, message.id);
       showToast("Gelöscht", "🗑️");
     } catch (err) {
-      // Restore on failure
       setGmailMessages(prevGmail);
       setFolderMessages(prevFolder);
+      const code = err instanceof Error ? err.message : '';
+      if (code === 'SCOPE_ERROR') {
+        showToast("Berechtigung fehlt — Gmail neu verbinden", "⚠️");
+      } else if (code === 'NO_TOKEN') {
+        showToast("Gmail-Token nicht gefunden — bitte neu verbinden", "⚠️");
+      } else {
+        showToast("Löschen fehlgeschlagen", "❌");
+      }
       console.error("Failed to delete message", err);
     }
   };

@@ -585,7 +585,7 @@ export async function starEmail(
 // ── Move to Trash ────────────────────────────────────────────────────────────
 
 /**
- * Moves an email to Gmail Trash.
+ * Moves an email to Gmail Trash via server-side proxy.
  * Mirrors the change in the local IndexedDB cache.
  */
 export async function trashEmail(
@@ -594,20 +594,23 @@ export async function trashEmail(
     messageId: string
 ): Promise<unknown> {
     const accessToken = await getValidAccessToken(uid, accountEmail);
-    if (!accessToken) throw new Error('Kein Zugriff auf Gmail.');
+    if (!accessToken) throw new Error('NO_TOKEN');
 
-    const res = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/trash`,
-        {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}` },
-        }
-    );
+    const res = await fetch('/api/gmail/trash', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken, messageId }),
+    });
 
     if (!res.ok) {
-        console.error('Error trashing email', await res.text());
-        throw new Error('Fehler beim Löschen der E-Mail.');
+        const errorData = await res.json().catch(() => ({})) as { error?: string };
+        if (errorData.error === 'insufficient_scope' || res.status === 401 || res.status === 403) {
+            throw new Error('SCOPE_ERROR');
+        }
+        throw new Error('API_ERROR');
     }
+
+    const data = await res.json();
 
     try {
         const cached = await getCachedEmails();
@@ -624,7 +627,7 @@ export async function trashEmail(
         console.error('Failed to update cache after trash', e);
     }
 
-    return res.json();
+    return data;
 }
 
 // ── Unarchive (move back to Inbox) ─────────────────────────────────────────
