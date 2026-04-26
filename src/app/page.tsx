@@ -228,7 +228,7 @@ export default function LandingPage() {
           </p>
         </div>
         {/* Icon rows */}
-        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-4 px-4 pb-8">
+        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-4 px-4 pb-24 sm:pb-32">
           {/* Row 1 */}
           <div className="mx-auto w-full max-w-4xl">
             <div className="flex w-full flex-wrap items-center justify-center gap-4 md:flex-nowrap md:justify-between">

@@ -37,18 +37,18 @@ export const Radar = ({ className }: { className?: string }) => {
       )}
     >
       <style>{`
-        @keyframes radar-spin {
-          from { transform: rotate(20deg); }
-          to   { transform: rotate(380deg); }
+        @keyframes radar-bounce {
+          from { transform: rotate(10deg); }
+          to   { transform: rotate(170deg); }
         }
-        .animate-radar-spin {
-          animation: radar-spin 10s linear infinite;
+        .animate-radar-bounce {
+          animation: radar-bounce 4s ease-in-out infinite alternate;
         }
       `}</style>
-      {/* Rotating sweep line */}
+      {/* Sweep line – bounces across the visible lower semicircle */}
       <div
         style={{ transformOrigin: "right center" }}
-        className="animate-radar-spin absolute right-1/2 top-1/2 z-[2] flex h-[5px] w-[400px] items-end justify-center overflow-hidden bg-transparent"
+        className="animate-radar-bounce absolute right-1/2 top-1/2 z-[2] flex h-[5px] w-[400px] items-end justify-center overflow-hidden bg-transparent"
       >
         <div className="relative h-[1px] w-full bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
       </div>
