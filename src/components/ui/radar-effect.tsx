@@ -38,8 +38,8 @@ export const Radar = ({ className }: { className?: string }) => {
     >
       <style>{`
         @keyframes radar-bounce {
-          from { transform: rotate(10deg); }
-          to   { transform: rotate(170deg); }
+          from { transform: rotate(-10deg); }
+          to   { transform: rotate(-170deg); }
         }
         .animate-radar-bounce {
           animation: radar-bounce 4s ease-in-out infinite alternate;
