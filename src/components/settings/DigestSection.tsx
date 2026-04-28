@@ -65,10 +65,10 @@ export function DigestSection({ uid, userEmail }: DigestSectionProps) {
         try {
             await setDoc(doc(db, "users", uid, "settings", "digest"), settings);
             lastSavedRef.current = settings;
-            showToast(t("settings.digest.saved"), "✅");
+            showToast(t("settings.digest.saved"), "success");
         } catch (e) {
             console.error("Failed to save digest settings", e);
-            showToast(t("settings.digest.saveFailed"), "⚠️");
+            showToast(t("settings.digest.saveFailed"), "error");
         } finally {
             setIsSaving(false);
         }
