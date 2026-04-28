@@ -7,7 +7,6 @@ import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-sectio
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
 import { Footer7 } from "@/components/ui/footer-7";
-import { BouncyCardsFeatures } from "@/components/ui/bounce-card-features";
 import { useAuth } from "@/contexts/AuthContext";
 
 
@@ -284,11 +283,6 @@ export default function LandingPage() {
       {/* ── Bento Feature Grid ── */}
       <section id="features" className="bg-white border-y border-border overflow-hidden">
         <FeaturesSectionWithBentoGrid />
-      </section>
-
-      {/* ── Bouncy Cards Features ── */}
-      <section className="bg-white border-b border-border">
-        <BouncyCardsFeatures />
       </section>
 
       {/* ── Pricing ── */}
