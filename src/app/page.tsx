@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@/contexts/AuthContext";
+import { HeroSection } from "@/components/ui/hero-section";
+import { StatsSection } from "@/components/landing/stats-section";
+import { ProblemSolutionSection } from "@/components/landing/problem-solution-section";
+import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
+import { TestimonialsSection } from "@/components/landing/testimonials-section";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
+import { CTASection } from "@/components/landing/cta-section";
 import { Footer7 } from "@/components/ui/footer-7";
-import { HeroSection } from "@/components/ui/hero-section";
-import { useAuth } from "@/contexts/AuthContext";
-
 
 const PRICING_PLANS = [
   {
@@ -72,33 +76,40 @@ export default function LandingPage() {
   const { user, isLoading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/8 bg-zinc-950/80 backdrop-blur-md">
+    <div className="min-h-screen bg-zinc-950 text-foreground">
+
+      {/* ── Navbar ─────────────────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-zinc-950/85 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Nexaro" width={32} height={32} className="object-contain" />
-            <span className="font-bold text-lg text-white">Nexaro</span>
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <Image src="/logo.png" alt="Nexaro" width={30} height={30} className="object-contain" />
+            <span className="font-bold text-lg text-white tracking-tight">Nexaro</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm text-zinc-400">
-            <a href="#why" className="hover:text-white transition-colors">Why</a>
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+
+          {/* Nav links */}
+          <div className="hidden md:flex items-center gap-7 text-sm text-zinc-500">
+            <a href="#why" className="hover:text-white transition-colors duration-150">Why Nexaro</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors duration-150">How It Works</a>
+            <a href="#features" className="hover:text-white transition-colors duration-150">Features</a>
+            <a href="#integrations" className="hover:text-white transition-colors duration-150">Integrations</a>
+            <a href="#pricing" className="hover:text-white transition-colors duration-150">Pricing</a>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+
+          {/* CTA */}
+          <div className="flex items-center gap-3">
             {!isLoading && user ? (
               <Link
                 href="/dashboard"
-                className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm"
+                className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm shadow-[#7B68EE]/25"
               >
-                Dashboard
+                Go to Dashboard
               </Link>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="hidden sm:block text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+                  className="hidden sm:block text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150"
                 >
                   Sign in
                 </Link>
@@ -106,7 +117,7 @@ export default function LandingPage() {
                   href="/login"
                   className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm shadow-[#7B68EE]/25"
                 >
-                  Try for free
+                  Start free trial
                 </Link>
               </>
             )}
@@ -114,142 +125,75 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* ── Hero ── */}
+      {/* ── 1. Hero ─────────────────────────────────────────────────────────── */}
       <HeroSection />
 
-      {/* ── Why Section ── */}
-      <section id="why" className="bg-zinc-950 text-white py-16 sm:py-24 lg:py-32 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Eyebrow */}
-          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-10">
-            Why we built this
-          </p>
+      {/* ── 2. Stats / ROI Metrics ──────────────────────────────────────────── */}
+      <StatsSection />
 
-          {/* Opening statement */}
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight mb-16">
-            Most professionals spend{" "}
-            <span className="text-white">28 hours a week</span>{" "}
-            <span className="text-zinc-500">on communication.</span>
-          </h2>
+      {/* ── 3. Problem → Solution ───────────────────────────────────────────── */}
+      <ProblemSolutionSection />
 
-          {/* Body copy */}
-          <div className="grid md:grid-cols-2 gap-12 mb-20">
-            <div>
-              <p className="text-zinc-300 text-lg leading-relaxed">
-                That's not work. That's noise management. Somewhere between
-                the 200 unread emails and the Slack notifications is the one
-                message that actually matters — the one that changes everything.
-              </p>
-            </div>
-            <div>
-              <p className="text-zinc-300 text-lg leading-relaxed">
-                We built Nexaro because we believe your attention is the scarcest
-                resource you have. Whether you're a founder, a manager, or
-                anyone who owns their inbox — every minute triaging is a minute
-                not spent on what only you can do.
-              </p>
-            </div>
-          </div>
+      {/* ── 4. How It Works ─────────────────────────────────────────────────── */}
+      <HowItWorksSection />
 
-          {/* Belief statements */}
-          <div className="border-t border-zinc-800 pt-16 grid sm:grid-cols-3 gap-10">
-            <div>
-              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-3">
-                We believe
-              </p>
-              <p className="text-white text-xl font-semibold leading-snug">
-                Leaders should lead — not manage their inbox.
-              </p>
-            </div>
-            <div>
-              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-3">
-                We believe
-              </p>
-              <p className="text-white text-xl font-semibold leading-snug">
-                Every tool you use should earn its place in your day.
-              </p>
-            </div>
-            <div>
-              <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-3">
-                We believe
-              </p>
-              <p className="text-white text-xl font-semibold leading-snug">
-                The right message, at the right moment, changes outcomes.
-              </p>
-            </div>
-          </div>
-
-          {/* Closing line */}
-          <div className="border-t border-zinc-800 mt-16 pt-16">
-            <p className="text-zinc-400 text-2xl sm:text-3xl font-medium leading-snug max-w-2xl">
-              That's why we built Nexaro. Not to replace how you communicate —
-              but to give you back the time to do it{" "}
-              <span className="text-white font-semibold">better.</span>
-            </p>
-          </div>
-        </div>
+      {/* ── 5. Feature Bento Grid ───────────────────────────────────────────── */}
+      <section id="features" className="bg-white border-y border-border overflow-hidden">
+        <FeaturesSectionWithBentoGrid />
       </section>
 
-      {/* ── Radar Section ── */}
-      <section className="relative z-0 pt-12 sm:pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden">
-        <div className="max-w-6xl mx-auto text-center mb-8 sm:mb-16">
-          <p className="text-xs font-semibold uppercase tracking-widest text-sky-600 mb-3">
+      {/* ── 6. Integrations Radar ───────────────────────────────────────────── */}
+      <section
+        id="integrations"
+        className="relative z-0 pt-16 sm:pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden"
+      >
+        <div className="max-w-6xl mx-auto text-center mb-10 sm:mb-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 mb-3">
             Real-time Intelligence
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
             Always watching. Always connected.
           </h2>
           <p className="text-slate-500 text-lg max-w-xl mx-auto">
-            Nexaro monitors every channel simultaneously — so nothing critical ever slips through.
+            Nexaro monitors every channel simultaneously — so nothing critical ever slips through,
+            no matter where it was sent.
           </p>
         </div>
-        {/* Scattered icons + radar */}
-        <div className="relative mx-auto w-full max-w-5xl" style={{ height: '500px' }}>
-          {/* Gmail — far left, middle arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '20%', bottom: '220px' }}>
+
+        <div className="relative mx-auto w-full max-w-5xl" style={{ height: "500px" }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "20%", bottom: "220px" }}>
             <IconContainer text="Gmail" delay={0.1} icon={<img src="/ServiceLogos/Gmail.svg" alt="Gmail" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Slack — center-left, top arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '33%', bottom: '290px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "33%", bottom: "290px" }}>
             <IconContainer text="Slack" delay={0.2} icon={<img src="/ServiceLogos/Slack.svg" alt="Slack" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* MS Teams — center-right, top arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '67%', bottom: '290px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "67%", bottom: "290px" }}>
             <IconContainer text="MS Teams" delay={0.3} icon={<img src="/ServiceLogos/Microsoft Teams.svg" alt="Microsoft Teams" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Zoom — far right, middle arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '80%', bottom: '220px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "80%", bottom: "220px" }}>
             <IconContainer text="Zoom" delay={0.4} icon={<img src="/ServiceLogos/Zoom.svg" alt="Zoom" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Google Calendar — left, lower-middle arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '27%', bottom: '150px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "27%", bottom: "150px" }}>
             <IconContainer text="Google Calendar" delay={0.5} icon={<img src="/ServiceLogos/Google Calendar.svg" alt="Google Calendar" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* HubSpot — center, top arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '50%', bottom: '250px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "50%", bottom: "250px" }}>
             <IconContainer text="HubSpot" delay={0.6} icon={<img src="/ServiceLogos/HubSpot.svg" alt="HubSpot" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Salesforce — right, lower-middle arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '73%', bottom: '150px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "73%", bottom: "150px" }}>
             <IconContainer text="Salesforce" delay={0.7} icon={<img src="/ServiceLogos/Salesforce.svg" alt="Salesforce" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Jira — far left, bottom arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '18%', bottom: '65px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "18%", bottom: "65px" }}>
             <IconContainer text="Jira" delay={0.8} icon={<img src="/ServiceLogos/Jira.svg" alt="Jira" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Linear — center-left, bottom arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '38%', bottom: '90px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "38%", bottom: "90px" }}>
             <IconContainer text="Linear" delay={0.9} icon={<img src="/ServiceLogos/Linear.svg" alt="Linear" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Outlook — center-right, bottom arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '62%', bottom: '90px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "62%", bottom: "90px" }}>
             <IconContainer text="Outlook" delay={1.0} icon={<img src="/ServiceLogos/Outlook.svg" alt="Outlook" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Telegram — far right, bottom arc */}
-          <div className="absolute -translate-x-1/2" style={{ left: '82%', bottom: '65px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: "82%", bottom: "65px" }}>
             <IconContainer text="Telegram" delay={1.1} icon={<img src="/ServiceLogos/Telegram.svg" alt="Telegram" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Radar — center exactly at container bottom edge → shows only the upper half */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-[2]">
             <Radar />
           </div>
@@ -257,13 +201,11 @@ export default function LandingPage() {
         <div className="absolute bottom-0 z-[4] h-px w-full bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
       </section>
 
-      {/* ── Bento Feature Grid ── */}
-      <section id="features" className="bg-white border-y border-border overflow-hidden">
-        <FeaturesSectionWithBentoGrid />
-      </section>
+      {/* ── 7. Testimonials ─────────────────────────────────────────────────── */}
+      <TestimonialsSection />
 
-      {/* ── Pricing ── */}
-      <section id="pricing" className="py-12 sm:py-24 px-4 sm:px-6">
+      {/* ── 8. Pricing ──────────────────────────────────────────────────────── */}
+      <section id="pricing" className="bg-zinc-950 py-12 sm:py-24 px-4 sm:px-6 border-t border-zinc-800/50">
         <Pricing
           plans={PRICING_PLANS}
           title="Simple, transparent pricing"
@@ -271,8 +213,11 @@ export default function LandingPage() {
         />
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-border">
+      {/* ── 9. Final CTA ────────────────────────────────────────────────────── */}
+      <CTASection />
+
+      {/* ── 10. Footer ──────────────────────────────────────────────────────── */}
+      <footer className="border-t border-zinc-800/60 bg-zinc-950">
         <Footer7 />
       </footer>
     </div>
