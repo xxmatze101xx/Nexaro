@@ -37,20 +37,27 @@ export const Radar = ({ className }: { className?: string }) => {
       )}
     >
       <style>{`
-        @keyframes radar-spin {
-          from { transform: rotate(20deg); }
-          to   { transform: rotate(380deg); }
+        @keyframes radar-bounce {
+          from { transform: rotate(-10deg); }
+          to   { transform: rotate(-170deg); }
         }
-        .animate-radar-spin {
-          animation: radar-spin 10s linear infinite;
+        .animate-radar-bounce {
+          animation: radar-bounce 4s ease-in-out infinite alternate;
         }
       `}</style>
-      {/* Rotating sweep line */}
+      {/* Sweep line – extends right from radar origin, sweeps upper semicircle */}
       <div
-        style={{ transformOrigin: "right center" }}
-        className="animate-radar-spin absolute right-1/2 top-1/2 z-[2] flex h-[5px] w-[400px] items-end justify-center overflow-hidden bg-transparent"
+        className="animate-radar-bounce absolute z-[2]"
+        style={{
+          transformOrigin: "0% 50%",
+          left: "50%",
+          top: "50%",
+          marginTop: "-1px",
+          width: "360px",
+          height: "2px",
+        }}
       >
-        <div className="relative h-[1px] w-full bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
+        <div className="h-full w-full bg-gradient-to-r from-sky-500 via-sky-400/50 to-transparent" />
       </div>
       {/* Concentric circles */}
       {circles.map((_, idx) => (
