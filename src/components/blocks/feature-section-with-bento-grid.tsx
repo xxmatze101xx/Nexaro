@@ -44,7 +44,7 @@ export function FeaturesSectionWithBentoGrid() {
   return (
     <div className="relative z-20 py-10 lg:py-40 max-w-7xl mx-auto">
       <div className="px-4 sm:px-8">
-        <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black">
+        <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-zinc-900 dark:text-white">
           Everything you need to cut the noise
         </h4>
         <p className="text-sm lg:text-base max-w-2xl my-4 mx-auto text-neutral-500 text-center font-normal">
@@ -54,7 +54,7 @@ export function FeaturesSectionWithBentoGrid() {
       </div>
 
       <div className="relative">
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-6 mt-12 xl:border border-neutral-200 rounded-md">
+        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-6 mt-12 xl:border border-neutral-200 dark:border-zinc-800 rounded-md">
           {features.map((feature) => (
             <FeatureCard key={feature.title} className={feature.className}>
               <FeatureTitle>{feature.title}</FeatureTitle>
@@ -84,7 +84,7 @@ const FeatureCard = ({
 
 const FeatureTitle = ({ children }: { children?: React.ReactNode }) => {
   return (
-    <p className="max-w-5xl mx-auto text-left tracking-tight text-black text-xl md:text-2xl md:leading-snug">
+    <p className="max-w-5xl mx-auto text-left tracking-tight text-zinc-900 dark:text-white text-xl md:text-2xl md:leading-snug">
       {children}
     </p>
   );
@@ -116,14 +116,14 @@ export const SkeletonOne = () => {
 
   return (
     <div className="relative flex py-8 px-2 gap-10 h-full">
-      <div className="w-full p-5 mx-auto bg-white shadow-2xl group h-full rounded-sm">
+      <div className="w-full p-5 mx-auto bg-white dark:bg-zinc-900 shadow-2xl dark:shadow-black/40 group h-full rounded-sm">
         <div className="flex flex-1 w-full h-full flex-col space-y-2">
           {/* Header bar */}
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
               Unified Inbox
             </span>
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-neutral-400 dark:text-neutral-500">
               {messages.length} critical
             </span>
           </div>
@@ -131,21 +131,21 @@ export const SkeletonOne = () => {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-50 transition-colors"
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-zinc-800 transition-colors"
             >
               <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
                 {msg.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-neutral-800 truncate">
+                <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">
                   {msg.from}
                 </p>
-                <p className="text-xs text-neutral-500 truncate">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
                   {msg.subject}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">
                   {msg.channel}
                 </span>
                 <span
@@ -165,8 +165,8 @@ export const SkeletonOne = () => {
           ))}
         </div>
       </div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-60 bg-gradient-to-t from-white via-white to-transparent w-full pointer-events-none" />
-      <div className="absolute top-0 z-40 inset-x-0 h-20 bg-gradient-to-b from-white via-transparent to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-60 bg-gradient-to-t from-white dark:from-zinc-900 via-white/80 dark:via-zinc-900/80 to-transparent w-full pointer-events-none" />
+      <div className="absolute top-0 z-40 inset-x-0 h-20 bg-gradient-to-b from-white dark:from-zinc-900 via-transparent to-transparent w-full pointer-events-none" />
     </div>
   );
 };
@@ -253,10 +253,10 @@ export const SkeletonThree = () => {
 
   return (
     <div className="relative flex gap-10 h-full group/draft">
-      <div className="w-full mx-auto bg-white group h-full rounded-sm shadow-2xl p-4">
+      <div className="w-full mx-auto bg-white dark:bg-zinc-900 group h-full rounded-sm shadow-2xl dark:shadow-black/40 p-4">
         <div className="flex flex-col h-full space-y-2">
-          <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
-            <span className="text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+          <div className="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-zinc-700">
+            <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">
               AI Draft
             </span>
             <div className="flex items-center gap-1">
@@ -273,18 +273,18 @@ export const SkeletonThree = () => {
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.08, duration: 0.3 }}
-                className="text-xs text-neutral-700 leading-relaxed min-h-[1.2rem]"
+                className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed min-h-[1.2rem]"
               >
                 {line}
               </motion.p>
             ))}
           </div>
-          <div className="pt-2 border-t border-neutral-200 flex gap-2">
+          <div className="pt-2 border-t border-neutral-200 dark:border-zinc-700 flex gap-2">
             <div className="flex-1 h-7 rounded-md bg-primary/10 flex items-center justify-center">
               <span className="text-xs font-medium text-primary">Send</span>
             </div>
-            <div className="h-7 px-3 rounded-md bg-neutral-100 flex items-center justify-center">
-              <span className="text-xs text-neutral-500">Edit</span>
+            <div className="h-7 px-3 rounded-md bg-neutral-100 dark:bg-zinc-800 flex items-center justify-center">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">Edit</span>
             </div>
           </div>
         </div>
