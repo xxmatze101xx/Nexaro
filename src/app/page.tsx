@@ -13,6 +13,7 @@ import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
 import { CTASection } from "@/components/landing/cta-section";
 import { Footer7 } from "@/components/ui/footer-7";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const PRICING_PLANS = [
   {
@@ -76,28 +77,30 @@ export default function LandingPage() {
   const { user, isLoading } = useAuth();
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-foreground">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
 
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-zinc-950/85 backdrop-blur-md">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-200 dark:border-white/[0.06] bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md transition-colors duration-300">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <Image src="/logo.png" alt="Nexaro" width={30} height={30} className="object-contain" />
-            <span className="font-bold text-lg text-white tracking-tight">Nexaro</span>
+            <span className="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">Nexaro</span>
           </div>
 
           {/* Nav links */}
-          <div className="hidden md:flex items-center gap-7 text-sm text-zinc-500">
-            <a href="#why" className="hover:text-white transition-colors duration-150">Why Nexaro</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors duration-150">How It Works</a>
-            <a href="#features" className="hover:text-white transition-colors duration-150">Features</a>
-            <a href="#integrations" className="hover:text-white transition-colors duration-150">Integrations</a>
-            <a href="#pricing" className="hover:text-white transition-colors duration-150">Pricing</a>
+          <div className="hidden md:flex items-center gap-7 text-sm text-zinc-500 dark:text-zinc-500">
+            <a href="#why" className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150">Why Nexaro</a>
+            <a href="#how-it-works" className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150">How It Works</a>
+            <a href="#features" className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150">Features</a>
+            <a href="#integrations" className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150">Integrations</a>
+            <a href="#pricing" className="hover:text-zinc-900 dark:hover:text-white transition-colors duration-150">Pricing</a>
           </div>
 
-          {/* CTA */}
+          {/* Right side: theme toggle + CTA */}
           <div className="flex items-center gap-3">
+            <ThemeToggle />
+
             {!isLoading && user ? (
               <Link
                 href="/dashboard"
@@ -109,7 +112,7 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/login"
-                  className="hidden sm:block text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-150"
+                  className="hidden sm:block text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors duration-150"
                 >
                   Sign in
                 </Link>
@@ -138,23 +141,23 @@ export default function LandingPage() {
       <HowItWorksSection />
 
       {/* ── 5. Feature Bento Grid ───────────────────────────────────────────── */}
-      <section id="features" className="bg-white border-y border-border overflow-hidden">
+      <section id="features" className="bg-white dark:bg-zinc-950 border-y border-zinc-200 dark:border-zinc-800 overflow-hidden transition-colors duration-300">
         <FeaturesSectionWithBentoGrid />
       </section>
 
       {/* ── 6. Integrations Radar ───────────────────────────────────────────── */}
       <section
         id="integrations"
-        className="relative z-0 pt-16 sm:pt-24 pb-0 px-4 sm:px-6 bg-slate-50 border-b border-slate-200 overflow-hidden"
+        className="relative z-0 pt-16 sm:pt-24 pb-0 px-4 sm:px-6 bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 overflow-hidden transition-colors duration-300"
       >
         <div className="max-w-6xl mx-auto text-center mb-10 sm:mb-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 mb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-500 mb-3">
             Real-time Intelligence
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
             Always watching. Always connected.
           </h2>
-          <p className="text-slate-500 text-lg max-w-xl mx-auto">
+          <p className="text-slate-500 dark:text-zinc-400 text-lg max-w-xl mx-auto">
             Nexaro monitors every channel simultaneously — so nothing critical ever slips through,
             no matter where it was sent.
           </p>
@@ -198,14 +201,14 @@ export default function LandingPage() {
             <Radar />
           </div>
         </div>
-        <div className="absolute bottom-0 z-[4] h-px w-full bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+        <div className="absolute bottom-0 z-[4] h-px w-full bg-gradient-to-r from-transparent via-slate-300 dark:via-zinc-700 to-transparent" />
       </section>
 
       {/* ── 7. Testimonials ─────────────────────────────────────────────────── */}
       <TestimonialsSection />
 
       {/* ── 8. Pricing ──────────────────────────────────────────────────────── */}
-      <section id="pricing" className="bg-zinc-950 py-12 sm:py-24 px-4 sm:px-6 border-t border-zinc-800/50">
+      <section id="pricing" className="bg-background py-12 sm:py-24 px-4 sm:px-6 border-t border-zinc-200 dark:border-zinc-800/50 transition-colors duration-300">
         <Pricing
           plans={PRICING_PLANS}
           title="Simple, transparent pricing"
@@ -217,7 +220,7 @@ export default function LandingPage() {
       <CTASection />
 
       {/* ── 10. Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-zinc-800/60 bg-zinc-950">
+      <footer className="border-t border-zinc-200 dark:border-zinc-800/60 bg-background transition-colors duration-300">
         <Footer7 />
       </footer>
     </div>
