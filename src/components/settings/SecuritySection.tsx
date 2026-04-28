@@ -62,7 +62,7 @@ export function SecuritySection() {
             const credential = EmailAuthProvider.credential(user.email, currentPassword);
             await reauthenticateWithCredential(user, credential);
             await updatePassword(user, newPassword);
-            showToast(t("settings.security.passwordChanged"), "🔐");
+            showToast(t("settings.security.passwordChanged"), "success");
             reset();
             setIsOpen(false);
         } catch (err: unknown) {
@@ -86,7 +86,7 @@ export function SecuritySection() {
             await auth.signOut();
             window.location.href = "/login";
         } catch (err) {
-            showToast(err instanceof Error ? err.message : String(err), "⚠️");
+            showToast(err instanceof Error ? err.message : String(err), "error");
         }
     };
 
