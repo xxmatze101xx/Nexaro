@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
 import { Footer7 } from "@/components/ui/footer-7";
+import { HeroSection } from "@/components/ui/hero-section";
 import { useAuth } from "@/contexts/AuthContext";
 
 
@@ -74,23 +74,23 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/8 bg-zinc-950/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image src="/logo.png" alt="Nexaro" width={32} height={32} className="object-contain" />
-            <span className="font-bold text-lg text-foreground">Nexaro</span>
+            <span className="font-bold text-lg text-white">Nexaro</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#why" className="hover:text-foreground transition-colors">Why</a>
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#integrations" className="hover:text-foreground transition-colors">Integrations</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <div className="hidden md:flex items-center gap-6 text-sm text-zinc-400">
+            <a href="#why" className="hover:text-white transition-colors">Why</a>
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
+            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             {!isLoading && user ? (
               <Link
                 href="/dashboard"
-                className="text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors shadow-sm"
+                className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm"
               >
                 Dashboard
               </Link>
@@ -98,13 +98,13 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/login"
-                  className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  className="hidden sm:block text-sm font-medium text-zinc-400 hover:text-white transition-colors"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/login"
-                  className="text-sm font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors shadow-sm"
+                  className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm shadow-[#7B68EE]/25"
                 >
                   Try for free
                 </Link>
@@ -115,30 +115,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-16">
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full">
-          <p className="uppercase tracking-[0.51em] leading-[133%] text-center text-sm sm:text-base lg:text-[19px] mb-8 text-muted-foreground animate-appear opacity-0">
-            INTRODUCING NEXARO
-          </p>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[64px] leading-tight lg:leading-[83px] text-center px-4 lg:px-[314px] text-foreground font-semibold animate-appear opacity-0 delay-100">
-            <span>Your entire </span>
-            <span className="text-primary">communication</span>
-            <br />
-            <span>at a glance.</span>
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-[28px] text-center font-light px-4 sm:px-8 lg:px-[314px] mt-[25px] mb-[48px] leading-[133%] text-muted-foreground animate-appear opacity-0 delay-300">
-            Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters.
-          </p>
-          <Link href="/login" className="mb-20 animate-appear opacity-0 delay-500">
-            <div className="inline-flex items-center bg-primary text-primary-foreground rounded-[10px] hover:bg-primary-hover transition-colors w-[227px] h-[49px]">
-              <div className="flex items-center justify-between w-full pl-[22px] pr-[17px]">
-                <span className="text-[19px] whitespace-nowrap">Get started</span>
-                <ArrowRight className="w-5 h-5 flex-shrink-0" />
-              </div>
-            </div>
-          </Link>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* ── Why Section ── */}
       <section id="why" className="bg-zinc-950 text-white py-16 sm:py-24 lg:py-32 px-4 sm:px-6">
