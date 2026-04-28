@@ -2,15 +2,17 @@
 
 import { createContext, createElement, useCallback, useContext, useMemo, useState } from "react";
 
+export type ToastType = "success" | "error" | "warning" | "info";
+
 export interface Toast {
     id: string;
     message: string;
-    icon?: string;
+    type?: ToastType;
 }
 
 interface ToastContextValue {
     toasts: Toast[];
-    showToast: (message: string, icon?: string) => void;
+    showToast: (message: string, type?: ToastType) => void;
     dismissToast: (id: string) => void;
 }
 
@@ -27,9 +29,9 @@ const ToastContext = createContext<ToastContextValue>({
 export function ToastProvider({ children }: { children: React.ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
 
-    const showToast = useCallback((message: string, icon?: string) => {
+    const showToast = useCallback((message: string, type?: ToastType) => {
         const id = String(++toastIdCounter);
-        setToasts((prev) => [...prev, { id, message, icon }]);
+        setToasts((prev) => [...prev, { id, message, type }]);
         setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
         }, 3000);

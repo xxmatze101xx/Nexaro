@@ -159,7 +159,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             }
             const errorParam = urlParams.get("slack_error") ?? urlParams.get("microsoft_error");
             if (errorParam) {
-                showToast(t("settings.integrations.oauthError", { error: errorParam }), "⚠️");
+                showToast(t("settings.integrations.oauthError", { error: errorParam }), "error");
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
@@ -174,7 +174,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "error"); return; }
 
             if (data.access_token) {
                 const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
@@ -202,7 +202,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
+            showToast(t("settings.integrations.oauthError", { error: msg }), "error");
         }
     };
 
@@ -214,7 +214,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "error"); return; }
 
             if (data.access_token) {
                 const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -234,7 +234,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
+            showToast(t("settings.integrations.oauthError", { error: msg }), "error");
         }
     };
 
@@ -250,10 +250,10 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
                 const { updateUserProfile } = await import("@/lib/user");
                 await updateUserProfile(user.uid, { photoURL: downloadURL });
             }
-            showToast(t("settings.account.pictureUpdated"), "🖼️");
+            showToast(t("settings.account.pictureUpdated"), "success");
         } catch (error) {
             console.error("Fehler beim Upload:", error);
-            showToast(t("settings.account.pictureFailed"), "⚠️");
+            showToast(t("settings.account.pictureFailed"), "error");
         } finally {
             setIsUploading(false);
         }
@@ -266,27 +266,27 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             const { updateUserProfile } = await import("@/lib/user");
             await updateUserProfile(user.uid, { displayName });
             setSavedDisplayName(displayName);
-            showToast(t("settings.account.saved"), "✅");
+            showToast(t("settings.account.saved"), "success");
         } catch (error) {
             console.error("Fehler beim Speichern:", error);
-            showToast(t("settings.account.saveFailed"), "⚠️");
+            showToast(t("settings.account.saveFailed"), "error");
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleConnectProvider = async (integrationId: string) => {
-        if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "ℹ️"); return; }
+        if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "info"); return; }
 
         const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
         if (integrationId === "Gmail") {
-            if (!googleClientId) { showToast(t("settings.integrations.connectFailed", { service: integrationId }), "⚠️"); return; }
+            if (!googleClientId) { showToast(t("settings.integrations.connectFailed", { service: integrationId }), "error"); return; }
             const redirectUri = `${window.location.origin}/settings`;
             const scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send";
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
         } else if (integrationId === "Google Calendar") {
-            if (!googleClientId) { showToast(t("settings.integrations.connectFailed", { service: integrationId }), "⚠️"); return; }
+            if (!googleClientId) { showToast(t("settings.integrations.connectFailed", { service: integrationId }), "error"); return; }
             const redirectUri = `${window.location.origin}/settings`;
             const scope = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
             window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=calendar`;
@@ -304,7 +304,7 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
             const idToken = await user.getIdToken(false);
             window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}`;
         } else {
-            showToast(t("settings.integrations.notImplemented", { service: integrationId }), "ℹ️");
+            showToast(t("settings.integrations.notImplemented", { service: integrationId }), "info");
         }
     };
 
