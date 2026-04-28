@@ -53,7 +53,7 @@ export const Radar = ({ className }: { className?: string }) => {
           left: "50%",
           top: "50%",
           marginTop: "-1px",
-          width: "360px",
+          width: "480px",
           height: "2px",
         }}
       >
@@ -63,9 +63,9 @@ export const Radar = ({ className }: { className?: string }) => {
       {circles.map((_, idx) => (
         <Circle
           style={{
-            height: `${(idx + 1) * 5}rem`,
-            width: `${(idx + 1) * 5}rem`,
-            border: `1px solid rgba(71, 85, 105, ${1 - (idx + 1) * 0.1})`,
+            height: `${(idx + 1) * 6.5}rem`,
+            width: `${(idx + 1) * 6.5}rem`,
+            border: `1px solid rgba(71, 85, 105, ${(1 - (idx + 1) * 0.1) * 0.5})`,
           }}
           key={`circle-${idx}`}
           idx={idx}
