@@ -16,6 +16,10 @@ import { fetchCalendarEvents, getAccountColor, createCalendarEvent, updateCalend
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CELL_H = 64;
@@ -164,19 +168,18 @@ interface EventEditorData {
     email: string;
 }
 
-function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onClose, editEvent, position }: {
+function EventEditorDialog({ day, startH, endH, accounts, onSave, onDelete, onClose, editEvent, open }: {
     day: Date; startH: number; endH: number;
     accounts: CalendarAccount[];
     onSave: (d: EventEditorData) => void;
     onDelete?: (id: string, calendarId: string, email: string) => void;
     onClose: () => void;
     editEvent?: CalendarEvent | null;
-    position: { x: number, y: number };
+    open: boolean;
 }) {
     const { t, locale } = useLanguage();
     const [title, setTitle] = useState(editEvent?.title ?? "");
 
-    // Parse hours correctly if we're editing an existing event
     const initSH = editEvent ? editEvent.start.getHours() + editEvent.start.getMinutes() / 60 : startH;
     const initEH = editEvent ? editEvent.end.getHours() + editEvent.end.getMinutes() / 60 : endH;
 
@@ -187,19 +190,6 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const titleRef = useRef<HTMLInputElement>(null);
-    const popoverRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => { titleRef.current?.focus(); }, []);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-                onClose();
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [onClose]);
 
     const handleSave = async () => {
         if (!title.trim()) return titleRef.current?.focus();
@@ -209,13 +199,12 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
 
         if (editEvent) {
             start = new Date(editEvent.start);
-            end = new Date(editEvent.start); // use same day as original start
+            end = new Date(editEvent.start);
         }
 
         start.setHours(Math.floor(sH), Math.round((sH % 1) * 60), 0, 0);
         end.setHours(Math.floor(eH), Math.round((eH % 1) * 60), 0, 0);
 
-        // Handle cross-day changes properly if needed, but for simple edits same-day is fine.
         if (end.getTime() < start.getTime()) {
             end.setDate(end.getDate() + 1);
         }
@@ -229,7 +218,7 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
             start,
             end,
             location: loc,
-            email
+            email,
         });
         setSaving(false);
     };
@@ -243,99 +232,163 @@ function EventEditorPopover({ day, startH, endH, accounts, onSave, onDelete, onC
         }
     };
 
-    // Calculate safe position to avoid rendering off-screen
-    const safeX = Math.min(position.x + 10, typeof window !== 'undefined' ? window.innerWidth - 390 : position.x);
-    const safeY = Math.min(position.y + 10, typeof window !== 'undefined' ? window.innerHeight - 500 : position.y);
+    const uniqueEmails = Array.from(new Set(accounts.map(a => a.email)));
+    const dateLabel = (editEvent ? editEvent.start : day).toLocaleDateString(locale, {
+        weekday: "long", day: "numeric", month: "long",
+    });
 
     return (
-        <div ref={popoverRef} className="bg-card rounded-[24px] shadow-2xl shadow-black/10 border border-border w-[380px] overflow-hidden animate-in zoom-in-95 fade-in duration-200 absolute z-50 pointer-events-auto" style={{ left: safeX, top: safeY }}>
-            <div className="p-5">
-                <input
-                    ref={titleRef}
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleSave()}
-                    placeholder={t("calendar.addEvent")}
-                    className="w-full text-[22px] tracking-tight font-medium bg-transparent outline-none mb-5 placeholder:text-muted-foreground/40 text-foreground"
-                />
-
-                <div className="space-y-3">
-                    {/* DateTime Picker Row */}
-                    <div className="flex items-center gap-3 text-sm py-1.5 rounded-lg">
-                        <CalendarIcon className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                        <span className="font-medium text-foreground/90 whitespace-nowrap text-[15px]">
-                            {(editEvent ? editEvent.start : day).toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
-                        </span>
+        <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent>
+                <div className="mb-2 flex flex-col gap-2">
+                    <div
+                        className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border"
+                        aria-hidden="true"
+                    >
+                        <CalendarIcon className="opacity-80" size={16} strokeWidth={2} />
                     </div>
-
-                    {/* Times */}
-                    <div className="flex items-center gap-3 text-sm py-1.5 rounded-lg">
-                        <Clock className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                        <div className="flex items-center gap-2">
-                            <input type="time" value={fmtH(sH)} onChange={e => setSH(parseH(e.target.value))}
-                                className="bg-transparent font-medium outline-none hover:bg-muted/50 rounded transition-colors text-[15px] cursor-pointer" />
-                            <span className="text-muted-foreground/40 font-bold px-1 select-none">›</span>
-                            <input type="time" value={fmtH(eH)} onChange={e => setEH(parseH(e.target.value))}
-                                className="bg-transparent font-medium outline-none hover:bg-muted/50 rounded transition-colors text-[15px] cursor-pointer" />
-                        </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className="flex items-center gap-3 text-sm py-1.5 rounded-lg">
-                        <MapPin className="w-5 h-5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-                        <input value={loc} onChange={e => setLoc(e.target.value)} placeholder={t("calendar.addLocation")}
-                            className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-muted-foreground/50 font-medium" />
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-px bg-border/40 my-4" />
-
-                    {/* Category/Account */}
-                    {accounts.length > 0 && Array.from(new Set(accounts.map(a => a.email))).length > 1 && (
-                        <div className="flex flex-wrap gap-2">
-                            {Array.from(new Set(accounts.map(a => a.email))).map(accEmail => {
-                                const isSel = email === accEmail;
-                                const col = getAccountColor(accEmail);
-                                return (
-                                    <button key={accEmail} onClick={() => setEmail(accEmail)}
-                                        className="px-3 py-1 rounded-full text-[13px] font-medium transition-all shrink-0"
-                                        style={isSel ? { backgroundColor: col, color: "#fff" } : { backgroundColor: col + "20", color: col }}>
-                                        {accEmail.split('@')[0]}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Account Fallback (if only 1) */}
-                    {accounts.length > 0 && Array.from(new Set(accounts.map(a => a.email))).length === 1 && (
-                        <div className="flex items-center gap-2">
-                            <span className="px-3 py-1 rounded-full text-[13px] font-medium" style={{ backgroundColor: getAccountColor(accounts[0].email), color: "#fff" }}>
-                                {accounts[0].email.split('@')[0]}
-                            </span>
-                        </div>
-                    )}
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editEvent ? t("calendar.editEvent") : t("calendar.createEvent")}
+                        </DialogTitle>
+                        <DialogDescription>{dateLabel}</DialogDescription>
+                    </DialogHeader>
                 </div>
 
-                {/* Actions */}
-                {accounts.length === 0 ? (
-                    <div className="mt-6 pt-4 text-center">
-                        <p className="text-muted-foreground text-[13px] mb-3">{t("calendar.noCalendarEditor")}</p>
+                <form
+                    className="space-y-4"
+                    onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+                >
+                    <div className="space-y-4">
+                        {/* Title */}
+                        <div className="space-y-2">
+                            <Label htmlFor="event-title">Titel</Label>
+                            <Input
+                                id="event-title"
+                                ref={titleRef}
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder={t("calendar.addEvent")}
+                                autoFocus
+                                required
+                            />
+                        </div>
+
+                        {/* Time range */}
+                        <div className="space-y-2">
+                            <Label>Uhrzeit</Label>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="time"
+                                    value={fmtH(sH)}
+                                    onChange={(e) => setSH(parseH(e.target.value))}
+                                    className="flex-1"
+                                />
+                                <span className="text-muted-foreground text-sm px-1 select-none">→</span>
+                                <Input
+                                    type="time"
+                                    value={fmtH(eH)}
+                                    onChange={(e) => setEH(parseH(e.target.value))}
+                                    className="flex-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Location */}
+                        <div className="space-y-2">
+                            <Label htmlFor="event-location">Ort</Label>
+                            <Input
+                                id="event-location"
+                                value={loc}
+                                onChange={(e) => setLoc(e.target.value)}
+                                placeholder={t("calendar.addLocation")}
+                            />
+                        </div>
+
+                        {/* Calendar / account selector */}
+                        {uniqueEmails.length > 1 && (
+                            <div className="space-y-2">
+                                <Label>Kalender</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {uniqueEmails.map(accEmail => {
+                                        const isSel = email === accEmail;
+                                        const col = getAccountColor(accEmail);
+                                        return (
+                                            <button
+                                                key={accEmail}
+                                                type="button"
+                                                onClick={() => setEmail(accEmail)}
+                                                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 border"
+                                                style={isSel
+                                                    ? { backgroundColor: col, color: "#fff", borderColor: col }
+                                                    : { backgroundColor: "transparent", color: col, borderColor: col + "60" }
+                                                }
+                                            >
+                                                {accEmail.split('@')[0]}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Single calendar badge */}
+                        {uniqueEmails.length === 1 && (
+                            <div className="space-y-2">
+                                <Label>Kalender</Label>
+                                <div>
+                                    <span
+                                        className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium"
+                                        style={{ backgroundColor: getAccountColor(accounts[0].email), color: "#fff" }}
+                                    >
+                                        {accounts[0].email.split('@')[0]}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* No calendar warning */}
+                        {accounts.length === 0 && (
+                            <p className="text-sm text-muted-foreground">{t("calendar.noCalendarEditor")}</p>
+                        )}
                     </div>
-                ) : (
-                    <div className="flex items-center gap-2 mt-6">
-                        {editEvent && (
-                            <button onClick={handleDelete} disabled={deleting || saving} className="p-2.5 hover:bg-red-50 text-red-500 rounded-xl transition-colors disabled:opacity-50">
-                                {deleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" strokeWidth={1.5} />}
+
+                    <DialogFooter>
+                        {editEvent && onDelete && (
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                disabled={deleting || saving}
+                                className="mr-auto flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {deleting
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                                }
+                                {t("common.delete")}
                             </button>
                         )}
-                        <button onClick={handleSave} disabled={saving || !title.trim() || !email} className="flex-1 py-3 bg-blue-600 text-white text-[15px] font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 flex justify-center items-center">
-                            {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (editEvent ? t("calendar.saveEvent") : t("calendar.createEvent"))}
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                            disabled={saving || deleting}
+                        >
+                            {t("common.cancel")}
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={saving || !title.trim() || !email || accounts.length === 0}
+                        >
+                            {saving
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : (editEvent ? t("calendar.saveEvent") : t("calendar.createEvent"))
+                            }
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -1056,8 +1109,9 @@ export function CalendarContent({ embedded, onBack }: { embedded?: boolean; onBa
 
                 {/* New/Edit event panel */}
                 {(creating || (selected && popupPos)) && (
-                    <EventEditorPopover
+                    <EventEditorDialog
                         key={creating ? "create" : `edit-${selected!.id}`}
+                        open={true}
                         day={creating ? creating.day : selected!.start}
                         startH={creating ? creating.startH : 0}
                         endH={creating ? creating.endH : 0}
@@ -1066,7 +1120,6 @@ export function CalendarContent({ embedded, onBack }: { embedded?: boolean; onBa
                         onDelete={handleDeleteEvent}
                         onClose={() => { setCreating(null); setSelected(null); setPopupPos(null); }}
                         editEvent={selected}
-                        position={creating ? { x: creating.x, y: creating.y } : popupPos!}
                     />
                 )}
             </main>
