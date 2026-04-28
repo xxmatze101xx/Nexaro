@@ -884,10 +884,10 @@ export function CalendarContent({ embedded, onBack }: { embedded?: boolean; onBa
             await updateCalendarEvent(uid, ev.accountEmail, ev.calendarId, ev.id, {
                 title: ev.title, start: newStart, end: newEnd, location: ev.location, description: ev.description,
             });
-            showToast(t("calendar.reschedule"), "✅");
+            showToast(t("calendar.reschedule"), "success");
         } catch {
             setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, start: prevStart, end: prevEnd } : e));
-            showToast(t("calendar.rescheduleFailed"), "⚠️");
+            showToast(t("calendar.rescheduleFailed"), "error");
         }
     };
 
@@ -1034,6 +1034,14 @@ export function CalendarContent({ embedded, onBack }: { embedded?: boolean; onBa
                         </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                        {/* New appointment — visible on smaller screens where sidebar is hidden */}
+                        <button
+                            onClick={() => { setCreating({ day: new Date(), startH: 9, endH: 10, x: 0, y: 0 }); setSelected(null); }}
+                            className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors shadow-sm shrink-0"
+                        >
+                            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                            Neu
+                        </button>
                         {/* Search */}
                         <div className="relative hidden md:block">
                             <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -1135,6 +1143,18 @@ export function CalendarContent({ embedded, onBack }: { embedded?: boolean; onBa
                         <p className="text-xs text-muted-foreground truncate">{accounts.length} {t("calendar.myCalendars").toLowerCase()}</p>
                     </div>
                 </div>
+
+                {/* Create appointment button */}
+                <div className="px-3 pt-3 pb-1">
+                    <button
+                        onClick={() => { setCreating({ day: new Date(), startH: 9, endH: 10, x: 0, y: 0 }); setSelected(null); }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm shadow-primary/25"
+                    >
+                        <Plus className="w-4 h-4" strokeWidth={2.5} />
+                        {t("calendar.createEvent")}
+                    </button>
+                </div>
+
                 <MiniCalendar anchor={anchor} onSelect={(d) => { setAnchor(d); if (view === "month" || view === "agenda") setView("day"); }} />
                 <div className="px-4 py-3 border-t border-sidebar-border">
                     <div className="flex items-center justify-between text-sm font-bold mb-3">

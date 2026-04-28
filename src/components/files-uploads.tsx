@@ -156,7 +156,7 @@ export function FilesUploads({ userId, onSelect, selectedFile, searchQuery = "",
     setFiles(prev => prev.filter(f => !selectedPaths.has(f.fullPath)));
     setSelectedPaths(new Set());
     setIsBulkDeleting(false);
-    showToast(t("files.deleteSummary", { ok: String(ok), total: String(paths.length) }), ok === paths.length ? "✅" : "⚠️");
+    showToast(t("files.deleteSummary", { ok: String(ok), total: String(paths.length) }), ok === paths.length ? "success" : "error");
   };
 
   const toggleSelect = (fullPath: string) => {

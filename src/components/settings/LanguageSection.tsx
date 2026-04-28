@@ -17,7 +17,7 @@ export function LanguageSection() {
         setPending(next);
         try {
             await setLocale(next);
-            showToast(t("settings.language.saved"), "🌐");
+            showToast(t("settings.language.saved"), "success");
         } finally {
             setPending(null);
         }

@@ -589,13 +589,13 @@ function DashboardContent() {
         const newLabels = [...(message.labels ?? []), 'INBOX'];
         setGmailMessages(prev => prev.map(m => m.id === message.id ? { ...m, labels: newLabels } : m));
         setFolderMessages(prev => prev.filter(m => m.id !== message.id));
-        showToast("In Inbox verschoben", "📥");
+        showToast("In Inbox verschoben", "success");
       } else {
         // Archive: remove from INBOX
         await archiveEmail(user.uid, message.accountId, message.id);
         setGmailMessages(prev => prev.filter(m => m.id !== message.id));
         if (selectedMessage?.id === message.id) setSelectedMessage(null);
-        showToast("Archiviert", "📁");
+        showToast("Archiviert", "success");
       }
     } catch (err) {
       console.error("Failed to archive/unarchive message", err);
@@ -617,7 +617,7 @@ function DashboardContent() {
       if (selectedMessage?.id === message.id) {
         setSelectedMessage(prev => prev ? { ...prev, labels: newLabels } : prev);
       }
-      showToast(isStarred ? "Stern entfernt" : "Favorit gesetzt", isStarred ? "☆" : "⭐");
+      showToast(isStarred ? "Stern entfernt" : "Favorit gesetzt", "success");
     } catch (err) {
       console.error("Failed to star message", err);
     }
@@ -633,7 +633,7 @@ function DashboardContent() {
     if (selectedMessage?.id === message.id) setSelectedMessage(null);
     try {
       await trashEmail(user.uid, message.accountId, message.id);
-      showToast("Gelöscht", "🗑️");
+      showToast("Gelöscht", "success");
     } catch (err) {
       // Restore on failure
       setGmailMessages(prevGmail);
@@ -687,7 +687,7 @@ function DashboardContent() {
       if (selectedMessage?.id === message.id) setSelectedMessage(null);
       const d = new Date(until);
       const label = d.toLocaleString("de-AT", { weekday: "short", hour: "2-digit", minute: "2-digit" });
-      showToast(`Erinnert am ${label}`, "🔕");
+      showToast(`Erinnert am ${label}`, "success");
     } catch (err) {
       console.error("Failed to snooze message", err);
     }
@@ -697,7 +697,7 @@ function DashboardContent() {
     if (!user) return;
     try {
       await togglePin(user.uid, message.id, pinned);
-      showToast(pinned ? "Angeheftet" : "Nicht mehr angeheftet", pinned ? "📌" : "📍");
+      showToast(pinned ? "Angeheftet" : "Nicht mehr angeheftet", "success");
     } catch (err) {
       console.error("Failed to pin message", err);
     }
@@ -714,7 +714,7 @@ function DashboardContent() {
       if (selectedMessage?.id === message.id) {
         setSelectedMessage(prev => prev ? { ...prev, status: newStatus } : prev);
       }
-      showToast(newStatus === "read" ? "Als gelesen markiert" : "Als ungelesen markiert", "✉️");
+      showToast(newStatus === "read" ? "Als gelesen markiert" : "Als ungelesen markiert", "success");
     } catch (err) {
       console.error("Failed to toggle read status", err);
     }
@@ -1362,7 +1362,7 @@ function DashboardContent() {
                   const newStatus = "replied" as const;
                   setGmailMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: newStatus } : m));
                   setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, status: newStatus } : prev);
-                  showToast("Antwort gesendet", "✉️");
+                  showToast("Antwort gesendet", "success");
                 }}
                 className="flex-1"
               />
