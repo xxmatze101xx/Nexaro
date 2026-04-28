@@ -229,48 +229,48 @@ export default function LandingPage() {
         </div>
         {/* Scattered icons + radar */}
         <div className="relative mx-auto w-full max-w-5xl" style={{ height: '400px' }}>
-          {/* Gmail — far left, mid */}
-          <div className="absolute -translate-x-1/2" style={{ left: '13%', bottom: '185px' }}>
+          {/* Gmail — left, mid */}
+          <div className="absolute -translate-x-1/2" style={{ left: '28%', bottom: '130px' }}>
             <IconContainer text="Gmail" delay={0.1} icon={<img src="/ServiceLogos/Gmail.svg" alt="Gmail" className="h-7 w-7 object-contain" />} />
           </div>
           {/* Slack — center-left, high */}
-          <div className="absolute -translate-x-1/2" style={{ left: '31%', bottom: '270px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '38%', bottom: '190px' }}>
             <IconContainer text="Slack" delay={0.2} icon={<img src="/ServiceLogos/Slack.svg" alt="Slack" className="h-7 w-7 object-contain" />} />
           </div>
           {/* MS Teams — center-right, high */}
-          <div className="absolute -translate-x-1/2" style={{ left: '60%', bottom: '280px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '57%', bottom: '195px' }}>
             <IconContainer text="MS Teams" delay={0.3} icon={<img src="/ServiceLogos/Microsoft Teams.svg" alt="Microsoft Teams" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Zoom — far right, mid */}
-          <div className="absolute -translate-x-1/2" style={{ left: '88%', bottom: '185px' }}>
+          {/* Zoom — right, mid */}
+          <div className="absolute -translate-x-1/2" style={{ left: '73%', bottom: '130px' }}>
             <IconContainer text="Zoom" delay={0.4} icon={<img src="/ServiceLogos/Zoom.svg" alt="Zoom" className="h-7 w-7 object-contain" />} />
           </div>
           {/* Google Calendar — left, lower-mid */}
-          <div className="absolute -translate-x-1/2" style={{ left: '23%', bottom: '155px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '33%', bottom: '108px' }}>
             <IconContainer text="Google Calendar" delay={0.5} icon={<img src="/ServiceLogos/Google Calendar.svg" alt="Google Calendar" className="h-7 w-7 object-contain" />} />
           </div>
           {/* HubSpot — slightly right of center, middle */}
-          <div className="absolute -translate-x-1/2" style={{ left: '52%', bottom: '230px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '51%', bottom: '160px' }}>
             <IconContainer text="HubSpot" delay={0.6} icon={<img src="/ServiceLogos/HubSpot.svg" alt="HubSpot" className="h-7 w-7 object-contain" />} />
           </div>
           {/* Salesforce — right, lower-mid */}
-          <div className="absolute -translate-x-1/2" style={{ left: '76%', bottom: '155px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '66%', bottom: '108px' }}>
             <IconContainer text="Salesforce" delay={0.7} icon={<img src="/ServiceLogos/Salesforce.svg" alt="Salesforce" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Jira — far left, low */}
-          <div className="absolute -translate-x-1/2" style={{ left: '13%', bottom: '70px' }}>
+          {/* Jira — left, low */}
+          <div className="absolute -translate-x-1/2" style={{ left: '28%', bottom: '50px' }}>
             <IconContainer text="Jira" delay={0.8} icon={<img src="/ServiceLogos/Jira.svg" alt="Jira" className="h-7 w-7 object-contain" />} />
           </div>
           {/* Linear — center-left, low */}
-          <div className="absolute -translate-x-1/2" style={{ left: '37%', bottom: '115px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '42%', bottom: '80px' }}>
             <IconContainer text="Linear" delay={0.9} icon={<img src="/ServiceLogos/Linear.svg" alt="Linear" className="h-7 w-7 object-contain" />} />
           </div>
           {/* Outlook — center-right, low */}
-          <div className="absolute -translate-x-1/2" style={{ left: '63%', bottom: '115px' }}>
+          <div className="absolute -translate-x-1/2" style={{ left: '58%', bottom: '80px' }}>
             <IconContainer text="Outlook" delay={1.0} icon={<img src="/ServiceLogos/Outlook.svg" alt="Outlook" className="h-7 w-7 object-contain" />} />
           </div>
-          {/* Telegram — far right, low */}
-          <div className="absolute -translate-x-1/2" style={{ left: '87%', bottom: '70px' }}>
+          {/* Telegram — right, low */}
+          <div className="absolute -translate-x-1/2" style={{ left: '72%', bottom: '50px' }}>
             <IconContainer text="Telegram" delay={1.1} icon={<img src="/ServiceLogos/Telegram.svg" alt="Telegram" className="h-7 w-7 object-contain" />} />
           </div>
           {/* Radar — center exactly at container bottom edge → shows only the upper half */}
