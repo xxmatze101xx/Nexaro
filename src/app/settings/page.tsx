@@ -196,11 +196,11 @@ function SettingsContent() {
             }
             const errorParam = urlParams.get("slack_error") ?? urlParams.get("microsoft_error");
             if (errorParam) {
-                showToast(t("settings.integrations.oauthError", { error: errorParam }), "⚠️");
+                showToast(t("settings.integrations.oauthError", { error: errorParam }), "error");
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
             if (driveErrorParam) {
-                showToast(t("settings.integrations.driveError", { error: driveErrorParam }), "⚠️");
+                showToast(t("settings.integrations.driveError", { error: driveErrorParam }), "error");
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
@@ -270,7 +270,7 @@ function SettingsContent() {
             setDriveConnected(true);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            showToast(t("settings.integrations.driveError", { error: msg }), "⚠️");
+            showToast(t("settings.integrations.driveError", { error: msg }), "error");
         }
         window.history.replaceState({}, document.title, window.location.pathname);
     };
@@ -283,7 +283,7 @@ function SettingsContent() {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; error?: string };
-            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "error"); return; }
 
             if (data.access_token) {
                 const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
@@ -311,7 +311,7 @@ function SettingsContent() {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
+            showToast(t("settings.integrations.oauthError", { error: msg }), "error");
         }
     };
 
@@ -323,7 +323,7 @@ function SettingsContent() {
                 body: JSON.stringify({ code }),
             });
             const data = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; id_token?: string; error?: string };
-            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "⚠️"); return; }
+            if (!res.ok) { showToast(t("settings.integrations.oauthError", { error: data.error ?? "" }), "error"); return; }
 
             if (data.access_token) {
                 let accountEmail: string | undefined;
@@ -356,7 +356,7 @@ function SettingsContent() {
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            showToast(t("settings.integrations.oauthError", { error: msg }), "⚠️");
+            showToast(t("settings.integrations.oauthError", { error: msg }), "error");
         }
     };
 
@@ -372,10 +372,10 @@ function SettingsContent() {
                 const { updateUserProfile } = await import("@/lib/user");
                 await updateUserProfile(user.uid, { photoURL: downloadURL });
             }
-            showToast(t("settings.account.pictureUpdated"), "🖼️");
+            showToast(t("settings.account.pictureUpdated"), "success");
         } catch (error) {
             console.error("Fehler beim Upload:", error);
-            showToast(t("settings.account.pictureFailed"), "⚠️");
+            showToast(t("settings.account.pictureFailed"), "error");
         } finally {
             setIsUploading(false);
         }
@@ -388,17 +388,17 @@ function SettingsContent() {
             const { updateUserProfile } = await import("@/lib/user");
             await updateUserProfile(user.uid, { displayName });
             setSavedDisplayName(displayName);
-            showToast(t("settings.account.saved"), "✅");
+            showToast(t("settings.account.saved"), "success");
         } catch (error) {
             console.error("Fehler beim Speichern:", error);
-            showToast(t("settings.account.saveFailed"), "⚠️");
+            showToast(t("settings.account.saveFailed"), "error");
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleConnectProvider = async (integrationId: string) => {
-        if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "ℹ️"); return; }
+        if (!user?.uid) { showToast(t("settings.integrations.pleaseLogin"), "info"); return; }
 
         if (integrationId === "Gmail") {
             window.location.href = "/api/gmail/auth";
@@ -444,7 +444,7 @@ function SettingsContent() {
                 window.location.href = `/api/microsoft/connect?uid=${encodeURIComponent(user.uid)}&idToken=${encodeURIComponent(idToken)}&service=teams`;
             }
         } else {
-            showToast(t("settings.integrations.notImplemented", { service: integrationId }), "ℹ️");
+            showToast(t("settings.integrations.notImplemented", { service: integrationId }), "info");
         }
     };
 
