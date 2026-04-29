@@ -81,7 +81,7 @@ export default function LandingPage() {
             <span className="font-bold text-lg text-foreground">Nexaro</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#why" className="hover:text-foreground transition-colors">Why</a>
+            <a href="#why" className="hover:text-foreground transition-colors">Why Nexaro</a>
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#integrations" className="hover:text-foreground transition-colors">Integrations</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
@@ -177,7 +177,7 @@ export default function LandingPage() {
 
           {/* Subtitle */}
           <p className="text-lg sm:text-xl lg:text-2xl text-slate-500 max-w-2xl mb-10 leading-relaxed animate-appear opacity-0 delay-300 font-light">
-            Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — so you never miss what actually matters.
+            Nexaro turns scattered messages across Gmail, Slack, Teams, and Outlook into a single AI-ranked surface. Know what needs you now — and ignore everything that doesn't.
           </p>
 
           {/* CTAs */}
@@ -532,6 +532,104 @@ export default function LandingPage() {
         <FeaturesSectionWithBentoGrid />
       </section>
 
+      {/* ── Supported Platforms ── */}
+      <section id="integrations" className="bg-slate-50 py-16 sm:py-24 px-4 sm:px-6 border-b border-border overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-3">
+              Integrations
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
+              Connects to the tools your team already uses.
+            </h2>
+            <p className="text-slate-500 text-lg max-w-xl mx-auto">
+              Plug Nexaro into your existing stack in minutes — no migrations, no rip-and-replace.
+            </p>
+          </div>
+
+          {/* Marquee — two rows scrolling in opposite directions */}
+          <div className="relative">
+            {/* Left/right fade masks */}
+            <div className="absolute left-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-r from-slate-50 to-transparent pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none" />
+
+            {/* Row 1 — scrolls left */}
+            <div className="flex overflow-hidden mb-4">
+              <div className="flex gap-4 animate-marquee whitespace-nowrap">
+                {[
+                  { name: "Gmail", logo: "/ServiceLogos/Gmail.svg" },
+                  { name: "Slack", logo: "/ServiceLogos/Slack.svg" },
+                  { name: "Microsoft Teams", logo: "/ServiceLogos/Microsoft Teams.svg" },
+                  { name: "Outlook", logo: "/ServiceLogos/Outlook.svg" },
+                  { name: "Google Calendar", logo: "/ServiceLogos/Google Calendar.svg" },
+                  { name: "HubSpot", logo: "/ServiceLogos/HubSpot.svg" },
+                  { name: "Salesforce", logo: "/ServiceLogos/Salesforce.svg" },
+                  { name: "Zoom", logo: "/ServiceLogos/Zoom.svg" },
+                  { name: "Jira", logo: "/ServiceLogos/Jira.svg" },
+                  /* duplicate for seamless loop */
+                  { name: "Gmail", logo: "/ServiceLogos/Gmail.svg" },
+                  { name: "Slack", logo: "/ServiceLogos/Slack.svg" },
+                  { name: "Microsoft Teams", logo: "/ServiceLogos/Microsoft Teams.svg" },
+                  { name: "Outlook", logo: "/ServiceLogos/Outlook.svg" },
+                  { name: "Google Calendar", logo: "/ServiceLogos/Google Calendar.svg" },
+                  { name: "HubSpot", logo: "/ServiceLogos/HubSpot.svg" },
+                  { name: "Salesforce", logo: "/ServiceLogos/Salesforce.svg" },
+                  { name: "Zoom", logo: "/ServiceLogos/Zoom.svg" },
+                  { name: "Jira", logo: "/ServiceLogos/Jira.svg" },
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 flex flex-col items-center gap-2.5 bg-white hover:bg-violet-50 border border-slate-200 hover:border-violet-200 rounded-2xl px-6 py-4 transition-colors cursor-default w-32"
+                  >
+                    <img src={item.logo} alt={item.name} className="h-9 w-9 object-contain" />
+                    <span className="text-xs font-medium text-slate-600 text-center leading-tight">{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Row 2 — scrolls right (reversed direction) */}
+            <div className="flex overflow-hidden">
+              <div className="flex gap-4 animate-marquee whitespace-nowrap" style={{ animationDirection: "reverse", animationDuration: "26s" }}>
+                {[
+                  { name: "Linear", logo: "/ServiceLogos/Linear.svg" },
+                  { name: "Telegram", logo: "/ServiceLogos/Telegram.svg" },
+                  { name: "WhatsApp Business", logo: "/ServiceLogos/WhatsApp Business.svg" },
+                  { name: "Proton Mail", logo: "/ServiceLogos/Proton Mail.svg" },
+                  { name: "Apple Calendar", logo: "/ServiceLogos/Apple Calendar.svg" },
+                  { name: "Cisco Webex", logo: "/ServiceLogos/Cisco Webex.svg" },
+                  { name: "Outlook Calendar", logo: "/ServiceLogos/Outlook Calendar.svg" },
+                  { name: "Google Drive", logo: "/ServiceLogos/Google Drive.svg" },
+                  /* duplicate for seamless loop */
+                  { name: "Linear", logo: "/ServiceLogos/Linear.svg" },
+                  { name: "Telegram", logo: "/ServiceLogos/Telegram.svg" },
+                  { name: "WhatsApp Business", logo: "/ServiceLogos/WhatsApp Business.svg" },
+                  { name: "Proton Mail", logo: "/ServiceLogos/Proton Mail.svg" },
+                  { name: "Apple Calendar", logo: "/ServiceLogos/Apple Calendar.svg" },
+                  { name: "Cisco Webex", logo: "/ServiceLogos/Cisco Webex.svg" },
+                  { name: "Outlook Calendar", logo: "/ServiceLogos/Outlook Calendar.svg" },
+                  { name: "Google Drive", logo: "/ServiceLogos/Google Drive.svg" },
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 flex flex-col items-center gap-2.5 bg-white hover:bg-violet-50 border border-slate-200 hover:border-violet-200 rounded-2xl px-6 py-4 transition-colors cursor-default w-32"
+                  >
+                    <img src={item.logo} alt={item.name} className="h-9 w-9 object-contain" />
+                    <span className="text-xs font-medium text-slate-600 text-center leading-tight">{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom stat */}
+          <p className="text-center text-sm text-slate-400 mt-10">
+            17 integrations and counting — with more launching every month.
+          </p>
+        </div>
+      </section>
+
       {/* ── Pricing ── */}
       <section id="pricing" className="py-12 sm:py-24 px-4 sm:px-6">
         <Pricing
@@ -539,6 +637,68 @@ export default function LandingPage() {
           title="Simple, transparent pricing"
           description="All plans include a 14-day free trial. No credit card required."
         />
+      </section>
+
+      {/* ── CTA Banner ── */}
+      <section className="relative overflow-hidden bg-zinc-950 py-20 sm:py-32 px-4 sm:px-6">
+        {/* Subtle radial glow */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 80% 60% at 50% 100%, rgba(123,104,238,0.18) 0%, transparent 70%)",
+          }}
+        />
+        {/* Grid texture */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.04]"
+          style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-violet-400 mb-6">
+            Ready to reclaim your day?
+          </p>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight mb-6">
+            Stop triaging.{" "}
+            <span
+              style={{
+                background: "linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #7B68EE 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Start leading.
+            </span>
+          </h2>
+          <p className="text-zinc-400 text-lg sm:text-xl leading-relaxed mb-10 max-w-xl mx-auto">
+            Join founders, managers, and operators who've taken back the hours they used to spend on noise — and put them toward work that matters.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 font-semibold px-8 py-4 rounded-xl text-white transition-all shadow-lg shadow-violet-900/40 hover:shadow-violet-800/60 hover:scale-[1.02] text-base"
+              style={{ background: "linear-gradient(135deg, #7B68EE 0%, #6366f1 100%)" }}
+            >
+              Get started free
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="mailto:hello@nexaro.io"
+              className="inline-flex items-center justify-center gap-2 font-semibold px-8 py-4 rounded-xl border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white transition-all text-base"
+            >
+              Talk to sales
+            </a>
+          </div>
+
+          <p className="text-zinc-600 text-sm mt-8">
+            No credit card required &nbsp;·&nbsp; 14-day free trial &nbsp;·&nbsp; Cancel anytime
+          </p>
+        </div>
       </section>
 
       {/* ── Footer ── */}
