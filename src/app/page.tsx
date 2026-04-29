@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles, Mail, MessageSquare, Zap, Star, Shield, Clock } from "lucide-react";
 import { FeaturesSectionWithBentoGrid } from "@/components/blocks/feature-section-with-bento-grid";
 import { Radar, IconContainer } from "@/components/ui/radar-effect";
 import { Pricing } from "@/components/blocks/pricing";
@@ -115,28 +115,275 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-16">
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full">
-          <p className="uppercase tracking-[0.51em] leading-[133%] text-center text-sm sm:text-base lg:text-[19px] mb-8 text-muted-foreground animate-appear opacity-0">
-            INTRODUCING NEXARO
-          </p>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[64px] leading-tight lg:leading-[83px] text-center px-4 lg:px-[314px] text-foreground font-semibold animate-appear opacity-0 delay-100">
-            <span>Your entire </span>
-            <span className="text-primary">communication</span>
-            <br />
-            <span>at a glance.</span>
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-white pt-16">
+        {/* Background: dot grid */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(circle, #d4d4d8 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+            opacity: 0.55,
+          }}
+        />
+        {/* Background: soft purple blob top-left */}
+        <div
+          className="absolute -top-60 -left-60 w-[700px] h-[700px] rounded-full pointer-events-none"
+          style={{
+            background: "radial-gradient(circle at 40% 40%, #ede9fe 0%, transparent 70%)",
+            opacity: 0.9,
+          }}
+        />
+        {/* Background: soft indigo blob bottom-right */}
+        <div
+          className="absolute -bottom-60 -right-60 w-[600px] h-[600px] rounded-full pointer-events-none"
+          style={{
+            background: "radial-gradient(circle at 60% 60%, #e0e7ff 0%, transparent 70%)",
+            opacity: 0.8,
+          }}
+        />
+        {/* Background: subtle blue blob top-right */}
+        <div
+          className="absolute top-20 right-0 w-[400px] h-[400px] rounded-full pointer-events-none"
+          style={{
+            background: "radial-gradient(circle at 60% 30%, #f0f9ff 0%, transparent 70%)",
+            opacity: 0.7,
+          }}
+        />
+
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 w-full max-w-6xl mx-auto">
+          {/* Announcement badge */}
+          <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-full px-4 py-1.5 mb-8 animate-appear opacity-0 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+            <span className="text-sm font-medium text-violet-700 tracking-tight">
+              AI-powered inbox management — now in beta
+            </span>
+          </div>
+
+          {/* Headline */}
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-[80px] font-bold tracking-tight leading-[1.1] text-slate-900 mb-6 animate-appear opacity-0 delay-100 max-w-4xl">
+            Your inbox,{" "}
+            <span
+              className="inline-block"
+              style={{
+                background: "linear-gradient(135deg, #7B68EE 0%, #818cf8 50%, #6366f1 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              finally intelligent.
+            </span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-[28px] text-center font-light px-4 sm:px-8 lg:px-[314px] mt-[25px] mb-[48px] leading-[133%] text-muted-foreground animate-appear opacity-0 delay-300">
-            Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — built for anyone who can't afford to miss what matters.
+
+          {/* Subtitle */}
+          <p className="text-lg sm:text-xl lg:text-2xl text-slate-500 max-w-2xl mb-10 leading-relaxed animate-appear opacity-0 delay-300 font-light">
+            Nexaro unifies Gmail, Slack, Teams and Outlook into one AI-prioritized surface — so you never miss what actually matters.
           </p>
-          <Link href="/login" className="mb-20 animate-appear opacity-0 delay-500">
-            <div className="inline-flex items-center bg-primary text-primary-foreground rounded-[10px] hover:bg-primary-hover transition-colors w-[227px] h-[49px]">
-              <div className="flex items-center justify-between w-full pl-[22px] pr-[17px]">
-                <span className="text-[19px] whitespace-nowrap">Get started</span>
-                <ArrowRight className="w-5 h-5 flex-shrink-0" />
+
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-16 animate-appear opacity-0 delay-500">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 text-white font-semibold px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-violet-200 hover:shadow-violet-300 hover:scale-[1.02]"
+              style={{ background: "linear-gradient(135deg, #7B68EE 0%, #6366f1 100%)" }}
+            >
+              Get started free
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="#features"
+              className="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold px-7 py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md"
+            >
+              See how it works
+            </a>
+          </div>
+
+          {/* Social proof bar */}
+          <div className="flex flex-wrap items-center justify-center gap-6 mb-16 animate-appear opacity-0 delay-700">
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <span className="font-medium text-slate-700">4.9</span>
+              <span>from 200+ reviews</span>
+            </div>
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <Shield className="w-4 h-4 text-emerald-500" />
+              <span>SOC 2 Type II certified</span>
+            </div>
+            <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+            <div className="flex items-center gap-1.5 text-sm text-slate-500">
+              <Clock className="w-4 h-4 text-violet-500" />
+              <span>Setup in under 2 minutes</span>
+            </div>
+          </div>
+
+          {/* Hero visual: dashboard card + floating elements */}
+          <div className="relative w-full max-w-4xl animate-appear opacity-0 delay-[900ms]">
+            {/* Floating card: AI summary — left */}
+            <div className="absolute -left-4 sm:-left-10 top-8 z-20 bg-white rounded-2xl shadow-xl border border-slate-100 p-3.5 w-52 text-left hidden sm:block">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7B68EE, #6366f1)" }}>
+                  <Zap className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span className="text-xs font-semibold text-slate-800">AI Summary</span>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                3 urgent emails from clients need your reply today.
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                <span className="text-[10px] font-medium text-red-500">High priority</span>
               </div>
             </div>
-          </Link>
+
+            {/* Floating card: new message — right */}
+            <div className="absolute -right-4 sm:-right-10 bottom-16 z-20 bg-white rounded-2xl shadow-xl border border-slate-100 p-3.5 w-56 text-left hidden sm:block">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  SL
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">Slack — #general</p>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                    "Can someone review the Q3 report before EOD?"
+                  </p>
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <span className="text-[10px] bg-violet-100 text-violet-700 font-medium px-1.5 py-0.5 rounded-md">Needs action</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main dashboard card */}
+            <div className="bg-white rounded-2xl shadow-2xl shadow-slate-200/80 border border-slate-100 overflow-hidden">
+              {/* Card header */}
+              <div className="border-b border-slate-100 px-5 py-3.5 flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <div className="w-3 h-3 rounded-full bg-amber-400" />
+                  <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                </div>
+                <div className="flex-1 bg-slate-50 rounded-lg h-6 flex items-center px-3">
+                  <span className="text-xs text-slate-400 font-mono">app.nexaro.io/inbox</span>
+                </div>
+              </div>
+
+              {/* Card body: mock inbox */}
+              <div className="flex">
+                {/* Sidebar */}
+                <div className="w-48 border-r border-slate-100 p-3 hidden md:block">
+                  <div className="space-y-0.5">
+                    {[
+                      { label: "All messages", count: 24, active: true },
+                      { label: "Gmail", count: 12, active: false },
+                      { label: "Slack", count: 7, active: false },
+                      { label: "Teams", count: 3, active: false },
+                      { label: "Outlook", count: 2, active: false },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className={`flex items-center justify-between px-2.5 py-2 rounded-lg text-xs ${
+                          item.active
+                            ? "bg-violet-50 text-violet-700 font-semibold"
+                            : "text-slate-500 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                          item.active ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-400"
+                        }`}>
+                          {item.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Message list */}
+                <div className="flex-1 divide-y divide-slate-50">
+                  {[
+                    {
+                      from: "Sarah Chen",
+                      initials: "SC",
+                      color: "from-violet-400 to-purple-500",
+                      source: "Gmail",
+                      sourceColor: "text-red-500 bg-red-50",
+                      subject: "Q3 investor update — need your sign-off",
+                      preview: "Hi, the deck is ready. Just needs your final approval before...",
+                      time: "9:41 AM",
+                      tag: "Urgent",
+                      tagColor: "bg-red-50 text-red-600",
+                    },
+                    {
+                      from: "Marcus Webb",
+                      initials: "MW",
+                      color: "from-sky-400 to-blue-500",
+                      source: "Slack",
+                      sourceColor: "text-emerald-600 bg-emerald-50",
+                      subject: "Product launch meeting — tomorrow 10am",
+                      preview: "Hey, just confirming the agenda for tomorrow's sync...",
+                      time: "8:15 AM",
+                      tag: "Meeting",
+                      tagColor: "bg-blue-50 text-blue-600",
+                    },
+                    {
+                      from: "Lena Müller",
+                      initials: "LM",
+                      color: "from-pink-400 to-rose-500",
+                      source: "Teams",
+                      sourceColor: "text-purple-600 bg-purple-50",
+                      subject: "Budget proposal feedback",
+                      preview: "I've reviewed the numbers — a few things to flag on slide 4...",
+                      time: "Yesterday",
+                      tag: "Review",
+                      tagColor: "bg-amber-50 text-amber-600",
+                    },
+                  ].map((msg, i) => (
+                    <div key={i} className={`flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50/80 transition-colors ${i === 0 ? "bg-violet-50/30" : ""}`}>
+                      <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${msg.color} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                        {msg.initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-800 truncate">{msg.from}</span>
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${msg.sourceColor}`}>{msg.source}</span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 flex-shrink-0 ml-2">{msg.time}</span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-700 truncate mb-0.5">{msg.subject}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-slate-400 truncate flex-1">{msg.preview}</p>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md flex-shrink-0 ${msg.tagColor}`}>{msg.tag}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* AI draft suggestion row */}
+                  <div className="px-4 py-3 bg-gradient-to-r from-violet-50/50 to-transparent flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #7B68EE, #6366f1)" }}>
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-violet-700">Nexaro AI</p>
+                      <p className="text-xs text-slate-500">Draft ready for Sarah's email — click to review &amp; send</p>
+                    </div>
+                    <button className="text-[11px] font-semibold text-violet-600 bg-violet-100 hover:bg-violet-200 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0">
+                      Review
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none rounded-b-2xl" />
+          </div>
         </div>
       </section>
 
