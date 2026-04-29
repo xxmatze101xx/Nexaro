@@ -68,7 +68,6 @@ const messages = {
         files: {
             title: "Files",
             tabs: {
-                attachments: "Attachments",
                 drive: "Google Drive",
                 onedrive: "OneDrive",
                 uploads: "Uploads",
@@ -81,10 +80,7 @@ const messages = {
             asc: "Ascending",
             desc: "Descending",
             loading: "Loading files…",
-            loadingAttachments: "Loading attachments…",
             empty: {
-                attachments: "No attachments found",
-                attachmentsHint: "Attachments from your emails and messages appear here.",
                 drive: "No files in this folder",
                 onedrive: "No files in this folder",
                 uploads: "No uploads yet",
@@ -270,7 +266,6 @@ const messages = {
         files: {
             title: "Dateien",
             tabs: {
-                attachments: "Anhänge",
                 drive: "Google Drive",
                 onedrive: "OneDrive",
                 uploads: "Uploads",
@@ -283,10 +278,7 @@ const messages = {
             asc: "Aufsteigend",
             desc: "Absteigend",
             loading: "Dateien werden geladen…",
-            loadingAttachments: "Anhänge werden geladen…",
             empty: {
-                attachments: "Keine Anhänge gefunden",
-                attachmentsHint: "Anhänge aus E-Mails und Nachrichten erscheinen hier.",
                 drive: "Keine Dateien in diesem Ordner",
                 onedrive: "Keine Dateien in diesem Ordner",
                 uploads: "Noch keine Uploads",
