@@ -52,26 +52,26 @@ function BeforeCard() {
 
 function AfterCard() {
   return (
-    <div className="rounded-2xl border border-violet-200 dark:border-[#7B68EE]/20 bg-violet-50 dark:bg-[#7B68EE]/[0.05] p-6 sm:p-8 h-full relative overflow-hidden">
+    <div className="rounded-2xl border border-sky-200 dark:border-sky-500/20 bg-sky-50 dark:bg-sky-500/[0.05] p-6 sm:p-8 h-full relative overflow-hidden">
       <div className="landing-card-top-glow absolute top-0 right-0 w-48 h-48 pointer-events-none" />
       <div className="flex items-center gap-2.5 mb-6 relative">
-        <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-[#7B68EE]/20 flex items-center justify-center">
-          <Check className="w-4 h-4 text-violet-600 dark:text-[#9B8AFE]" />
+        <div className="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center">
+          <Check className="w-4 h-4 text-sky-600 dark:text-sky-400" />
         </div>
-        <h3 className="text-lg font-semibold text-violet-700 dark:text-[#C4B5FD]">With Nexaro</h3>
+        <h3 className="text-lg font-semibold text-sky-700 dark:text-sky-300">With Nexaro</h3>
       </div>
       <div className="space-y-4 relative">
         {AFTER_ITEMS.map(({ icon: Icon, text }) => (
           <div key={text} className="flex items-start gap-3">
-            <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-[#7B68EE]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Icon className="w-3.5 h-3.5 text-violet-600 dark:text-[#9B8AFE]" />
+            <div className="w-6 h-6 rounded-md bg-sky-100 dark:bg-sky-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Icon className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
             </div>
             <p className="text-zinc-700 dark:text-zinc-300 text-sm leading-relaxed">{text}</p>
           </div>
         ))}
       </div>
-      <div className="mt-8 pt-6 border-t border-violet-200 dark:border-[#7B68EE]/15 relative">
-        <p className="text-violet-700 dark:text-[#C4B5FD]/80 text-sm italic">
+      <div className="mt-8 pt-6 border-t border-sky-200 dark:border-sky-500/15 relative">
+        <p className="text-sky-700 dark:text-sky-300/80 text-sm italic">
           "I open Nexaro, scan 3 things, make decisions, and I'm done in 15 minutes."
         </p>
         <p className="text-zinc-400 dark:text-zinc-600 text-xs mt-2">— CEO, SaaS company, 120 employees</p>
@@ -99,7 +99,7 @@ export function ProblemSolutionSection() {
           transition={{ duration: 0.65, ease: [0.2, 0.85, 0.45, 1] }}
           className="max-w-3xl mb-16"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B68EE] mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 mb-4">
             The Executive Attention Crisis
           </p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white leading-[1.1] tracking-tight mb-6">

@@ -32,10 +32,10 @@ function EyebrowBadge() {
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.2, 0.85, 0.45, 1] }}
-      className="inline-flex items-center gap-2 rounded-full border border-[#7B68EE]/25 bg-[#7B68EE]/8 dark:bg-[#7B68EE]/10 px-4 py-1.5 text-sm mb-8"
+      className="inline-flex items-center gap-2 rounded-full border border-sky-500/25 bg-sky-500/8 dark:bg-sky-500/10 px-4 py-1.5 text-sm mb-8"
     >
-      <span className="flex h-2 w-2 rounded-full bg-[#7B68EE] shadow-[0_0_6px_#7B68EE] animate-pulse" />
-      <span className="text-[#6559d4] dark:text-[#9B8AFE] font-semibold">New</span>
+      <span className="flex h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_6px_#0EA5E9] animate-pulse" />
+      <span className="text-sky-600 dark:text-sky-400 font-semibold">New</span>
       <span className="text-zinc-600 dark:text-zinc-400">AI Decision Tracking & Daily Executive Briefings</span>
       <ArrowRight className="w-3 h-3 text-zinc-400 dark:text-zinc-600" />
     </motion.div>
@@ -54,7 +54,7 @@ function Headline() {
       Command every conversation.{" "}
       <span
         style={{
-          background: "linear-gradient(135deg, #7B68EE 0%, #6559d4 50%, #9B8AFE 100%)",
+          background: "linear-gradient(135deg, #0EA5E9 0%, #0284C7 50%, #38BDF8 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           backgroundClip: "text",
@@ -93,7 +93,7 @@ function CTAButtons() {
     >
       <Link
         href="/login"
-        className="group inline-flex items-center gap-2.5 rounded-[10px] bg-[#7B68EE] hover:bg-[#6A59D4] text-white font-semibold px-7 py-3.5 text-base transition-all duration-200 shadow-lg shadow-[#7B68EE]/30 hover:shadow-[#7B68EE]/50 hover:-translate-y-0.5"
+        className="group inline-flex items-center gap-2.5 rounded-[10px] bg-sky-500 hover:bg-sky-600 text-white font-semibold px-7 py-3.5 text-base transition-all duration-200 shadow-lg shadow-sky-500/30 hover:shadow-sky-500/50 hover:-translate-y-0.5"
       >
         Start free — no card required
         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -135,11 +135,11 @@ function TrustMicro() {
 
 /* ─── Social proof avatars ───────────────────────────────────────────────── */
 const AVATARS = [
-  { initials: "MK", color: "bg-violet-600" },
-  { initials: "SR", color: "bg-indigo-600" },
-  { initials: "AP", color: "bg-purple-700" },
-  { initials: "TW", color: "bg-violet-500" },
-  { initials: "CJ", color: "bg-indigo-500" },
+  { initials: "MK", color: "bg-sky-600" },
+  { initials: "SR", color: "bg-sky-700" },
+  { initials: "AP", color: "bg-slate-600" },
+  { initials: "TW", color: "bg-sky-500" },
+  { initials: "CJ", color: "bg-slate-500" },
 ];
 
 function SocialProof() {
@@ -242,8 +242,8 @@ function DashboardMockup() {
             </div>
           </div>
           <div className="flex items-center gap-1 ml-auto">
-            <Sparkles className="w-3 h-3 text-[#7B68EE]" />
-            <span className="text-[10px] text-[#7B68EE] dark:text-[#9B8AFE] font-medium">AI Active</span>
+            <Sparkles className="w-3 h-3 text-sky-500" />
+            <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">AI Active</span>
           </div>
         </div>
 
@@ -262,13 +262,13 @@ function DashboardMockup() {
                 className={cn(
                   "rounded-xl border p-3.5",
                   card.accent
-                    ? "border-[#7B68EE]/30 bg-[#7B68EE]/8"
+                    ? "border-sky-500/30 bg-sky-500/8"
                     : "border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.025]"
                 )}
               >
                 <p className="text-[10px] text-zinc-500 dark:text-zinc-500 mb-1 uppercase tracking-wide">{card.label}</p>
                 <p className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">{card.value}</p>
-                <p className={cn("text-[10px] mt-1", card.accent ? "text-[#7B68EE] dark:text-[#9B8AFE]" : "text-zinc-400 dark:text-zinc-600")}>
+                <p className={cn("text-[10px] mt-1", card.accent ? "text-sky-600 dark:text-sky-400" : "text-zinc-400 dark:text-zinc-600")}>
                   {card.sub}
                 </p>
               </div>
@@ -286,13 +286,13 @@ function DashboardMockup() {
                   3 critical
                 </span>
               </div>
-              <span className="text-[11px] text-[#7B68EE] font-medium cursor-pointer hover:text-[#6559d4] dark:hover:text-[#9B8AFE]">
+              <span className="text-[11px] text-sky-600 font-medium cursor-pointer hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300">
                 View all
               </span>
             </div>
             {[
               { from: "Sarah Chen", role: "Board Chair", subject: "Q3 Board deck — final sign-off needed", time: "9:14 AM", tag: "Critical", tagColor: "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400", channel: "Gmail" },
-              { from: "James Miller", role: "CTO", subject: "Infrastructure go / no-go before 2 PM", time: "8:51 AM", tag: "Decision", tagColor: "bg-violet-100 dark:bg-[#7B68EE]/20 text-violet-700 dark:text-[#9B8AFE]", channel: "Slack" },
+              { from: "James Miller", role: "CTO", subject: "Infrastructure go / no-go before 2 PM", time: "8:51 AM", tag: "Decision", tagColor: "bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-400", channel: "Slack" },
               { from: "Ava Reyes", role: "VP Sales", subject: "Enterprise deal $2.4M — contract ready", time: "Yesterday", tag: "Opportunity", tagColor: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", channel: "Outlook" },
             ].map((msg) => (
               <div
@@ -323,10 +323,10 @@ function DashboardMockup() {
           </div>
 
           {/* AI Briefing bar */}
-          <div className="rounded-xl border border-[#7B68EE]/20 bg-violet-50 dark:bg-[#7B68EE]/[0.07] px-4 py-3 flex items-start gap-3">
-            <Sparkles className="w-4 h-4 text-[#7B68EE] dark:text-[#9B8AFE] mt-0.5 flex-shrink-0" />
+          <div className="rounded-xl border border-sky-500/20 bg-sky-50 dark:bg-sky-500/[0.07] px-4 py-3 flex items-start gap-3">
+            <Sparkles className="w-4 h-4 text-sky-500 dark:text-sky-400 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-[#6559d4] dark:text-[#9B8AFE] mb-0.5">
+              <p className="text-xs font-semibold text-sky-700 dark:text-sky-400 mb-0.5">
                 AI Executive Briefing — 9:20 AM
               </p>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">

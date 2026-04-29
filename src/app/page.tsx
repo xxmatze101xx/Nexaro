@@ -104,7 +104,7 @@ export default function LandingPage() {
             {!isLoading && user ? (
               <Link
                 href="/dashboard"
-                className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm shadow-[#7B68EE]/25"
+                className="text-sm font-semibold bg-sky-500 text-white px-4 py-2 rounded-lg hover:bg-sky-600 transition-colors shadow-sm shadow-sky-500/25"
               >
                 Go to Dashboard
               </Link>
@@ -118,7 +118,7 @@ export default function LandingPage() {
                 </Link>
                 <Link
                   href="/login"
-                  className="text-sm font-semibold bg-[#7B68EE] text-white px-4 py-2 rounded-lg hover:bg-[#6559d4] transition-colors shadow-sm shadow-[#7B68EE]/25"
+                  className="text-sm font-semibold bg-sky-500 text-white px-4 py-2 rounded-lg hover:bg-sky-600 transition-colors shadow-sm shadow-sky-500/25"
                 >
                   Start free trial
                 </Link>

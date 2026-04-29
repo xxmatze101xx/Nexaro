@@ -18,28 +18,28 @@ const STATS: Stat[] = [
     suffix: "h",
     label: "Saved per executive per day",
     description: "Reclaimed from inbox triage, follow-up chasing, and context-switching",
-    color: "#7B68EE",
+    color: "#0EA5E9",
   },
   {
     value: 94,
     suffix: "%",
     label: "Fewer missed critical messages",
     description: "AI surfaces what demands action before it becomes a crisis",
-    color: "#818CF8",
+    color: "#38BDF8",
   },
   {
     value: 11,
     suffix: "x",
     label: "Faster response on high-stakes items",
     description: "Decision-makers act in minutes, not hours, on what truly matters",
-    color: "#7B68EE",
+    color: "#0EA5E9",
   },
   {
     value: 500,
     suffix: "+",
     label: "Executive teams onboarded",
     description: "Trusted by CEOs, founders, and department heads across 40+ countries",
-    color: "#818CF8",
+    color: "#38BDF8",
   },
 ];
 
@@ -112,7 +112,7 @@ export function StatsSection() {
           transition={{ duration: 0.6, ease: [0.2, 0.85, 0.45, 1] }}
           className="text-center mb-14"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B68EE] mb-3">Measured Impact</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 mb-3">Measured Impact</p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white tracking-tight">
             Real ROI for decision-makers
           </h2>

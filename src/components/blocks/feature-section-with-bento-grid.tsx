@@ -175,7 +175,7 @@ export const SkeletonOne = () => {
 export const SkeletonTwo = () => {
   const cards = [
     { label: "Gmail", count: 12, color: "bg-red-100 border-red-200" },
-    { label: "Slack", count: 7, color: "bg-purple-100 border-purple-200" },
+    { label: "Slack", count: 7, color: "bg-sky-100 border-sky-200" },
     { label: "Teams", count: 4, color: "bg-blue-100 border-blue-200" },
     { label: "Outlook", count: 9, color: "bg-cyan-100 border-cyan-200" },
     { label: "Calendar", count: 3, color: "bg-emerald-100 border-emerald-200" },

@@ -23,7 +23,7 @@ const TESTIMONIALS: Testimonial[] = [
     title: "CEO",
     company: "Series B SaaS, 160 employees",
     initials: "MT",
-    color: "bg-violet-600",
+    color: "bg-sky-600",
     highlight: "leadership multiplier",
   },
   {
@@ -33,7 +33,7 @@ const TESTIMONIALS: Testimonial[] = [
     title: "VP Operations",
     company: "Enterprise Fintech",
     initials: "PS",
-    color: "bg-indigo-600",
+    color: "bg-sky-700",
     highlight: "4 hours to 22 minutes",
   },
   {
@@ -43,7 +43,7 @@ const TESTIMONIALS: Testimonial[] = [
     title: "Director of Engineering",
     company: "Global SaaS Platform",
     initials: "DR",
-    color: "bg-purple-700",
+    color: "bg-slate-600",
     highlight: "what actually matters",
   },
   {
@@ -53,7 +53,7 @@ const TESTIMONIALS: Testimonial[] = [
     title: "COO",
     company: "Growth-stage HealthTech",
     initials: "SK",
-    color: "bg-violet-500",
+    color: "bg-sky-500",
     highlight: "fell through the cracks",
   },
   {
@@ -63,7 +63,7 @@ const TESTIMONIALS: Testimonial[] = [
     title: "Founder & CEO",
     company: "B2B Enterprise Software",
     initials: "JL",
-    color: "bg-indigo-500",
+    color: "bg-slate-500",
     highlight: "signal filtering at scale",
   },
   {
@@ -73,7 +73,7 @@ const TESTIMONIALS: Testimonial[] = [
     title: "Managing Director",
     company: "Investment Group",
     initials: "AO",
-    color: "bg-purple-600",
+    color: "bg-sky-600",
     highlight: "chief of staff",
   },
 ];
@@ -102,7 +102,7 @@ function TestimonialCard({ testimonial, index }: { testimonial: Testimonial; ind
       transition={{ duration: 0.6, delay: (index % 3) * 0.1, ease: [0.2, 0.85, 0.45, 1] }}
       className="relative flex flex-col gap-5 p-6 sm:p-7 rounded-2xl border border-zinc-200 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors duration-300"
     >
-      <Quote className="w-5 h-5 text-violet-300 dark:text-[#7B68EE]/50 flex-shrink-0" />
+      <Quote className="w-5 h-5 text-sky-300 dark:text-sky-500/50 flex-shrink-0" />
       <p className="text-zinc-600 dark:text-zinc-300 text-sm sm:text-base leading-relaxed flex-1">
         &ldquo;{highlightText(testimonial.quote, testimonial.highlight)}&rdquo;
       </p>
@@ -137,7 +137,7 @@ export function TestimonialsSection() {
           transition={{ duration: 0.6, ease: [0.2, 0.85, 0.45, 1] }}
           className="text-center mb-14"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B68EE] mb-3">Social Proof</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 mb-3">Social Proof</p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white tracking-tight">
             Trusted by leaders who can&apos;t afford to miss a thing
           </h2>

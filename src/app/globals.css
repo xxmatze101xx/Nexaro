@@ -174,68 +174,68 @@ body {
 
 /* ── Landing Page Theme-Aware Gradient Backgrounds ── */
 
-/* Hero: primary purple glow orb */
+/* Hero: primary sky glow orb */
 .landing-hero-glow-primary {
-  background: radial-gradient(ellipse at center, rgba(123,104,238,0.07) 0%, rgba(79,70,229,0.02) 50%, transparent 75%);
+  background: radial-gradient(ellipse at center, rgba(14,165,233,0.06) 0%, rgba(2,132,199,0.02) 50%, transparent 75%);
   filter: blur(80px);
 }
 .dark .landing-hero-glow-primary {
-  background: radial-gradient(ellipse at center, rgba(123,104,238,0.22) 0%, rgba(79,70,229,0.07) 50%, transparent 75%);
+  background: radial-gradient(ellipse at center, rgba(14,165,233,0.18) 0%, rgba(2,132,199,0.05) 50%, transparent 75%);
   filter: blur(80px);
 }
 
 /* Hero: secondary right glow */
 .landing-hero-glow-secondary {
-  background: radial-gradient(ellipse at center, rgba(167,139,250,0.05) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(56,189,248,0.04) 0%, transparent 70%);
   filter: blur(60px);
 }
 .dark .landing-hero-glow-secondary {
-  background: radial-gradient(ellipse at center, rgba(167,139,250,0.08) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(56,189,248,0.07) 0%, transparent 70%);
   filter: blur(60px);
 }
 
 /* Hero: dot grid */
 .landing-hero-dots {
-  background-image: radial-gradient(circle, rgba(123,104,238,0.4) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(14,165,233,0.4) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, black 30%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 85% 65% at 50% 0%, black 30%, transparent 100%);
   opacity: 0.06;
 }
 .dark .landing-hero-dots {
-  opacity: 0.15;
+  opacity: 0.12;
 }
 
 /* Stats: bottom radial glow */
 .landing-stats-glow {
-  background: radial-gradient(ellipse 80% 50% at 50% 100%, rgba(123,104,238,0.04) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 50% at 50% 100%, rgba(14,165,233,0.04) 0%, transparent 70%);
 }
 .dark .landing-stats-glow {
-  background: radial-gradient(ellipse 80% 50% at 50% 100%, rgba(123,104,238,0.07) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 50% at 50% 100%, rgba(14,165,233,0.07) 0%, transparent 70%);
 }
 
 /* CTA: center radial glow */
 .landing-cta-glow {
-  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(123,104,238,0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(14,165,233,0.05) 0%, transparent 70%);
 }
 .dark .landing-cta-glow {
-  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(123,104,238,0.12) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(14,165,233,0.10) 0%, transparent 70%);
 }
 
 /* Dashboard mockup: glow beneath */
 .landing-dash-glow {
-  background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(123,104,238,0.08) 0%, transparent 80%);
+  background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(14,165,233,0.07) 0%, transparent 80%);
 }
 .dark .landing-dash-glow {
-  background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(123,104,238,0.18) 0%, transparent 80%);
+  background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(14,165,233,0.15) 0%, transparent 80%);
 }
 
 /* Problem/After card top glow */
 .landing-card-top-glow {
-  background: radial-gradient(ellipse at top right, rgba(123,104,238,0.08) 0%, transparent 65%);
+  background: radial-gradient(ellipse at top right, rgba(14,165,233,0.07) 0%, transparent 65%);
 }
 .dark .landing-card-top-glow {
-  background: radial-gradient(ellipse at top right, rgba(123,104,238,0.15) 0%, transparent 65%);
+  background: radial-gradient(ellipse at top right, rgba(14,165,233,0.12) 0%, transparent 65%);
 }
 
 /* --- Hero Animations --- */

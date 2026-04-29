@@ -12,8 +12,8 @@ const STEPS = [
     description:
       "Link Gmail, Slack, Teams, Outlook, your calendar, HubSpot, Salesforce and more — no IT ticket required. OAuth-based, read-only where possible, enterprise-grade encryption throughout.",
     tags: ["15+ integrations", "90-sec setup", "Zero IT"],
-    color: "#7B68EE",
-    glow: "rgba(123,104,238,0.15)",
+    color: "#0EA5E9",
+    glow: "rgba(14,165,233,0.15)",
   },
   {
     number: "02",
@@ -22,8 +22,8 @@ const STEPS = [
     description:
       "Nexaro's AI models your communication patterns, your VIP contacts, your active decisions and deadlines. Within 24 hours, it knows your signal from your noise.",
     tags: ["Personalized scoring", "Decision tracking", "Context-aware"],
-    color: "#818CF8",
-    glow: "rgba(129,140,248,0.15)",
+    color: "#38BDF8",
+    glow: "rgba(56,189,248,0.15)",
   },
   {
     number: "03",
@@ -32,8 +32,8 @@ const STEPS = [
     description:
       "Open your executive dashboard, read your AI briefing, action the 3–5 messages that matter, and close the tab. Nexaro handles the rest.",
     tags: ["Daily briefings", "AI drafts", "Decision logs"],
-    color: "#9B8AFE",
-    glow: "rgba(155,138,254,0.15)",
+    color: "#7DD3FC",
+    glow: "rgba(125,211,252,0.15)",
   },
 ];
 
@@ -70,7 +70,7 @@ export function HowItWorksSection() {
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent" />
 
       {/* Ambient glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full bg-[#7B68EE]/[0.05] blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full bg-sky-500/[0.04] blur-[120px] pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto">
         {/* ── Header ─────────────────────────────── */}
@@ -80,9 +80,9 @@ export function HowItWorksSection() {
           transition={{ duration: 0.65, ease: [0.2, 0.85, 0.45, 1] }}
           className="text-center mb-20"
         >
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#7B68EE]/25 bg-[#7B68EE]/[0.07] px-4 py-1.5 mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#7B68EE] animate-pulse" />
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B68EE]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/25 bg-sky-500/[0.07] px-4 py-1.5 mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600">
               How It Works
             </span>
           </div>
@@ -92,7 +92,7 @@ export function HowItWorksSection() {
             <span
               className="bg-clip-text text-transparent"
               style={{
-                backgroundImage: "linear-gradient(135deg, #7B68EE 0%, #9B8AFE 100%)",
+                backgroundImage: "linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%)",
               }}
             >
               in under 10 minutes
@@ -113,7 +113,7 @@ export function HowItWorksSection() {
             <motion.div
               className="absolute inset-0"
               style={{
-                background: "linear-gradient(90deg, #7B68EE, #9B8AFE)",
+                background: "linear-gradient(90deg, #0EA5E9, #38BDF8)",
                 transformOrigin: "left center",
               }}
               initial={{ scaleX: 0 }}
@@ -225,7 +225,7 @@ export function HowItWorksSection() {
             className="absolute inset-0 opacity-60 pointer-events-none"
             style={{
               background:
-                "linear-gradient(135deg, rgba(123,104,238,0.06) 0%, transparent 50%, rgba(155,138,254,0.06) 100%)",
+                "linear-gradient(135deg, rgba(14,165,233,0.05) 0%, transparent 50%, rgba(56,189,248,0.05) 100%)",
             }}
           />
 
@@ -238,7 +238,7 @@ export function HowItWorksSection() {
                 <span
                   className="text-3xl sm:text-4xl font-black mb-1.5 bg-clip-text text-transparent"
                   style={{
-                    backgroundImage: "linear-gradient(135deg, #7B68EE 0%, #9B8AFE 100%)",
+                    backgroundImage: "linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%)",
                   }}
                 >
                   {stat.value}

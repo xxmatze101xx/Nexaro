@@ -27,14 +27,14 @@ export function CTASection() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.65, ease: [0.2, 0.85, 0.45, 1] }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B68EE] mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-600 mb-5">
             Get Started Today
           </p>
           <h2 className="text-4xl sm:text-5xl lg:text-[60px] font-bold text-zinc-900 dark:text-white leading-[1.08] tracking-tight mb-6">
             Stop triaging.{" "}
             <span
               style={{
-                background: "linear-gradient(135deg, #7B68EE 0%, #6559d4 40%, #9B8AFE 100%)",
+                background: "linear-gradient(135deg, #0EA5E9 0%, #0284C7 40%, #38BDF8 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -51,7 +51,7 @@ export function CTASection() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2.5 rounded-[12px] bg-[#7B68EE] hover:bg-[#6A59D4] text-white font-bold px-8 py-4 text-lg transition-all duration-200 shadow-xl shadow-[#7B68EE]/25 hover:shadow-[#7B68EE]/40 hover:-translate-y-0.5"
+              className="group inline-flex items-center gap-2.5 rounded-[12px] bg-sky-500 hover:bg-sky-600 text-white font-bold px-8 py-4 text-lg transition-all duration-200 shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 hover:-translate-y-0.5"
             >
               Start free trial
               <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
